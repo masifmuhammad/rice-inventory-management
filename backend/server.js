@@ -6,7 +6,31 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(cors());
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow localhost for development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // Allow all Vercel deployments
+    if (origin.includes('vercel.app')) {
+      return callback(null, true);
+    }
+    
+    // Allow other common hosting platforms
+    if (origin.includes('netlify.app') || origin.includes('railway.app') || origin.includes('render.com')) {
+      return callback(null, true);
+    }
+    
+    callback(null, true); // Allow all origins for now (you can restrict this later)
+  },
+  credentials: true
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
