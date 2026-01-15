@@ -1,11 +1,6 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { formatPKR, formatQuantity } from './currency';
-
-// Check if jspdf-autotable is loaded
-if (typeof jsPDF !== 'undefined' && !jsPDF.API.autoTable) {
-  console.warn('jspdf-autotable not loaded, trying alternative import');
-}
 
 /**
  * Generate PDF invoice for a transaction
@@ -17,11 +12,6 @@ export const generateTransactionPDF = (transaction, product, companyInfo = {}) =
   try {
     console.log('Starting PDF generation...');
     const doc = new jsPDF();
-
-    if (!doc.autoTable) {
-      console.error('autoTable is not available on jsPDF instance');
-      throw new Error('PDF table library not loaded properly');
-    }
 
   // Default company info
   const company = {
@@ -224,10 +214,6 @@ export const generateInventoryReportPDF = (products, summary, companyInfo = {}) 
   try {
     console.log('Generating inventory report PDF...');
     const doc = new jsPDF('landscape');
-
-    if (!doc.autoTable) {
-      throw new Error('PDF table library not loaded properly');
-    }
 
   const company = {
     name: companyInfo.name || 'Rice Inventory Management',
