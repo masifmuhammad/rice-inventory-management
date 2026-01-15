@@ -156,67 +156,67 @@ const Transactions = () => {
         ) : (
           <div className="divide-y divide-gray-200">
             {transactions.map((transaction) => (
-              <div key={transaction._id} className="p-6 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-4 flex-1">
-                    <div className={`p-3 rounded-xl ${getTransactionColor(transaction.type)}`}>
+              <div key={transaction._id} className="p-4 sm:p-6 hover:bg-gray-50 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex items-start space-x-3 sm:space-x-4 flex-1">
+                    <div className={`p-2 sm:p-3 rounded-xl ${getTransactionColor(transaction.type)} flex-shrink-0`}>
                       {getTransactionIcon(transaction.type)}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                           {transaction.product?.name || 'Unknown Product'}
                         </h3>
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getTransactionColor(transaction.type)}`}>
+                        <span className={`px-2 sm:px-3 py-1 text-xs font-semibold rounded-full border ${getTransactionColor(transaction.type)} whitespace-nowrap`}>
                           {transaction.type.replace('_', ' ').toUpperCase()}
                         </span>
                       </div>
-                      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-3 sm:gap-4 text-sm">
                         <div>
-                          <span className="text-gray-500 font-medium">Quantity:</span>
-                          <p className="font-semibold text-gray-900 mt-1">
+                          <span className="text-gray-500 font-medium text-xs sm:text-sm">Quantity:</span>
+                          <p className="font-semibold text-gray-900 mt-1 text-sm">
                             {formatQuantity(transaction.quantity, transaction.unit)}
                           </p>
                         </div>
                         {transaction.price && (
                           <div>
-                            <span className="text-gray-500 font-medium">Price:</span>
-                            <p className="font-semibold text-gray-900 mt-1">
+                            <span className="text-gray-500 font-medium text-xs sm:text-sm">Price:</span>
+                            <p className="font-semibold text-gray-900 mt-1 text-sm">
                               {formatPKR(transaction.price)}
                             </p>
                           </div>
                         )}
                         {transaction.totalValue && (
                           <div>
-                            <span className="text-gray-500 font-medium">Total:</span>
-                            <p className="font-bold text-primary-600 mt-1">
+                            <span className="text-gray-500 font-medium text-xs sm:text-sm">Total:</span>
+                            <p className="font-bold text-primary-600 mt-1 text-sm">
                               {formatPKR(transaction.totalValue)}
                             </p>
                           </div>
                         )}
                         <div>
-                          <span className="text-gray-500 font-medium">Stock Change:</span>
-                          <p className="font-semibold text-gray-900 mt-1">
+                          <span className="text-gray-500 font-medium text-xs sm:text-sm">Stock:</span>
+                          <p className="font-semibold text-gray-900 mt-1 text-sm">
                             {formatQuantity(transaction.stockBefore, transaction.unit)} → {formatQuantity(transaction.stockAfter, transaction.unit)}
                           </p>
                         </div>
                       </div>
                       {(transaction.reference || transaction.supplier || transaction.customer || transaction.notes) && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg text-xs sm:text-sm">
                           {transaction.reference && (
-                            <div className="flex items-center">
+                            <div className="flex items-center flex-wrap">
                               <span className="font-medium text-gray-700">Reference:</span>
                               <span className="ml-2 text-gray-600">{transaction.reference}</span>
                             </div>
                           )}
                           {transaction.supplier && (
-                            <div className="flex items-center mt-1">
+                            <div className="flex items-center mt-1 flex-wrap">
                               <span className="font-medium text-gray-700">Supplier:</span>
                               <span className="ml-2 text-gray-600">{transaction.supplier}</span>
                             </div>
                           )}
                           {transaction.customer && (
-                            <div className="flex items-center mt-1">
+                            <div className="flex items-center mt-1 flex-wrap">
                               <span className="font-medium text-gray-700">Customer:</span>
                               <span className="ml-2 text-gray-600">{transaction.customer}</span>
                             </div>
@@ -224,7 +224,7 @@ const Transactions = () => {
                           {transaction.notes && (
                             <div className="mt-1">
                               <span className="font-medium text-gray-700">Notes:</span>
-                              <p className="text-gray-600 mt-1">{transaction.notes}</p>
+                              <p className="text-gray-600 mt-1 break-words">{transaction.notes}</p>
                             </div>
                           )}
                         </div>
@@ -236,11 +236,11 @@ const Transactions = () => {
                   </div>
                   <button
                     onClick={() => handleDownloadReceipt(transaction)}
-                    className="ml-4 flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-md hover:shadow-lg"
+                    className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg whitespace-nowrap"
                     title="Download Receipt PDF"
                   >
                     <FiDownload className="w-4 h-4 mr-2" />
-                    Receipt
+                    <span className="text-sm font-medium">Receipt</span>
                   </button>
                 </div>
               </div>

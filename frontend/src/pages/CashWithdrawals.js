@@ -151,64 +151,116 @@ const CashWithdrawals = () => {
             <p className="text-gray-500 text-sm mt-1">Record your first withdrawal to get started</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gradient-to-r from-red-600 to-red-700">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Date & Time</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Purpose</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Taken By</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Reference</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Recorded By</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {withdrawals.map((withdrawal) => (
-                  <tr key={withdrawal._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {format(new Date(withdrawal.createdAt), 'PP')}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {format(new Date(withdrawal.createdAt), 'p')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-lg font-bold text-red-600">
+          <>
+            {/* Mobile View */}
+            <div className="block sm:hidden divide-y divide-gray-200">
+              {withdrawals.map((withdrawal) => (
+                <div key={withdrawal._id} className="p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="text-lg font-bold text-red-600 mb-1">
                         {formatPKR(withdrawal.amount)}
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{withdrawal.purpose}</div>
-                      {withdrawal.notes && (
-                        <div className="text-xs text-gray-500 mt-1">{withdrawal.notes}</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-gray-900">{withdrawal.takenBy}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">{withdrawal.reference || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">{withdrawal.createdBy?.name || 'Unknown'}</div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleDelete(withdrawal._id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete withdrawal"
-                      >
-                        <FiTrash2 className="w-5 h-5" />
-                      </button>
-                    </td>
+                      <div className="text-sm font-medium text-gray-900 mb-1">
+                        {withdrawal.purpose}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {format(new Date(withdrawal.createdAt), 'PP')} at {format(new Date(withdrawal.createdAt), 'p')}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDelete(withdrawal._id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 transform hover:scale-110 active:scale-95"
+                      title="Delete withdrawal"
+                    >
+                      <FiTrash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-center">
+                      <span className="text-gray-500 w-24">Taken By:</span>
+                      <span className="font-semibold text-gray-900">{withdrawal.takenBy}</span>
+                    </div>
+                    {withdrawal.reference && (
+                      <div className="flex items-center">
+                        <span className="text-gray-500 w-24">Reference:</span>
+                        <span className="text-gray-600">{withdrawal.reference}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center">
+                      <span className="text-gray-500 w-24">Recorded By:</span>
+                      <span className="text-gray-600">{withdrawal.createdBy?.name || 'Unknown'}</span>
+                    </div>
+                    {withdrawal.notes && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                        {withdrawal.notes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-red-600 to-red-700">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Date & Time</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Purpose</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Taken By</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Reference</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Recorded By</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {withdrawals.map((withdrawal) => (
+                    <tr key={withdrawal._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {format(new Date(withdrawal.createdAt), 'PP')}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {format(new Date(withdrawal.createdAt), 'p')}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-lg font-bold text-red-600">
+                          {formatPKR(withdrawal.amount)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">{withdrawal.purpose}</div>
+                        {withdrawal.notes && (
+                          <div className="text-xs text-gray-500 mt-1">{withdrawal.notes}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-gray-900">{withdrawal.takenBy}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600">{withdrawal.reference || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600">{withdrawal.createdBy?.name || 'Unknown'}</div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleDelete(withdrawal._id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 transform hover:scale-110 active:scale-95"
+                          title="Delete withdrawal"
+                        >
+                          <FiTrash2 className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

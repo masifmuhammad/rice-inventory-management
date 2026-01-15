@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiPackage, FiMail, FiLock, FiUser } from 'react-icons/fi';
+import { FiPackage, FiMail, FiLock, FiUser, FiLoader } from 'react-icons/fi';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,6 +12,7 @@ const Login = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
@@ -24,10 +25,12 @@ const Login = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setLoadingMessage(isLogin ? 'Signing you in...' : 'Creating your account...');
 
     try {
       if (isLogin) {
         await login(formData.email, formData.password);
+        setLoadingMessage('Welcome back!');
       } else {
         if (!formData.name) {
           setError('Name is required');
@@ -35,11 +38,15 @@ const Login = () => {
           return;
         }
         await register(formData.name, formData.email, formData.password);
+        setLoadingMessage('Account created!');
       }
-      navigate('/');
+
+      // Small delay for smooth transition
+      setTimeout(() => {
+        navigate('/');
+      }, 300);
     } catch (err) {
       setError(err.response?.data?.message || 'An error occurred');
-    } finally {
       setLoading(false);
     }
   };
@@ -125,9 +132,16 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
             >
-              {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <FiLoader className="w-5 h-5 mr-2 animate-spin" />
+                  {loadingMessage}
+                </span>
+              ) : (
+                isLogin ? 'Sign In' : 'Create Account'
+              )}
             </button>
           </form>
 
