@@ -2,6 +2,11 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { formatPKR, formatQuantity } from './currency';
 
+// Check if jspdf-autotable is loaded
+if (typeof jsPDF !== 'undefined' && !jsPDF.API.autoTable) {
+  console.warn('jspdf-autotable not loaded, trying alternative import');
+}
+
 /**
  * Generate PDF invoice for a transaction
  * @param {Object} transaction - Transaction data
@@ -9,7 +14,14 @@ import { formatPKR, formatQuantity } from './currency';
  * @param {Object} companyInfo - Company information
  */
 export const generateTransactionPDF = (transaction, product, companyInfo = {}) => {
-  const doc = new jsPDF();
+  try {
+    console.log('Starting PDF generation...');
+    const doc = new jsPDF();
+
+    if (!doc.autoTable) {
+      console.error('autoTable is not available on jsPDF instance');
+      throw new Error('PDF table library not loaded properly');
+    }
 
   // Default company info
   const company = {
@@ -192,7 +204,14 @@ export const generateTransactionPDF = (transaction, product, companyInfo = {}) =
 
   // Save PDF
   const fileName = `Transaction_${typeText.replace(' ', '_')}_${transactionId}_${new Date().getTime()}.pdf`;
+  console.log('Saving PDF as:', fileName);
   doc.save(fileName);
+  console.log('PDF saved successfully');
+  return true;
+  } catch (error) {
+    console.error('Error in generateTransactionPDF:', error);
+    throw error;
+  }
 };
 
 /**
@@ -202,7 +221,13 @@ export const generateTransactionPDF = (transaction, product, companyInfo = {}) =
  * @param {Object} companyInfo - Company information
  */
 export const generateInventoryReportPDF = (products, summary, companyInfo = {}) => {
-  const doc = new jsPDF('landscape');
+  try {
+    console.log('Generating inventory report PDF...');
+    const doc = new jsPDF('landscape');
+
+    if (!doc.autoTable) {
+      throw new Error('PDF table library not loaded properly');
+    }
 
   const company = {
     name: companyInfo.name || 'Rice Inventory Management',
@@ -311,5 +336,12 @@ export const generateInventoryReportPDF = (products, summary, companyInfo = {}) 
 
   // Save
   const fileName = `Inventory_Report_${new Date().getTime()}.pdf`;
+  console.log('Saving inventory report as:', fileName);
   doc.save(fileName);
+  console.log('Inventory report saved successfully');
+  return true;
+  } catch (error) {
+    console.error('Error in generateInventoryReportPDF:', error);
+    throw error;
+  }
 };

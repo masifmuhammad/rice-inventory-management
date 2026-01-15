@@ -19,6 +19,7 @@ const Transactions = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
   const [formData, setFormData] = useState({
     type: 'stock_in',
     product: '',
@@ -70,14 +71,41 @@ const Transactions = () => {
     }
   };
 
-  const handleDownloadReceipt = (transaction) => {
-    const product = transaction.product;
-    generateTransactionPDF(transaction, product, {
-      name: 'Rice Inventory Management',
-      address: 'Pakistan',
-      phone: '',
-      email: ''
-    });
+  const handleDownloadReceipt = async (transaction) => {
+    try {
+      setDownloadingId(transaction._id);
+
+      if (!transaction.product) {
+        alert('Error: Product information is missing for this transaction');
+        setDownloadingId(null);
+        return;
+      }
+
+      const product = transaction.product;
+      console.log('Generating PDF for transaction:', transaction._id);
+
+      // Add small delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const success = generateTransactionPDF(transaction, product, {
+        name: 'Rice Inventory Management',
+        address: 'Pakistan',
+        phone: '',
+        email: ''
+      });
+
+      if (success) {
+        console.log('PDF generated successfully');
+        // Show success message briefly
+        setTimeout(() => {
+          setDownloadingId(null);
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert(`Failed to generate receipt: ${error.message || 'Unknown error'}`);
+      setDownloadingId(null);
+    }
   };
 
   const resetForm = () => {
@@ -236,11 +264,21 @@ const Transactions = () => {
                   </div>
                   <button
                     onClick={() => handleDownloadReceipt(transaction)}
-                    className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg whitespace-nowrap"
+                    disabled={downloadingId === transaction._id}
+                    className={`w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg whitespace-nowrap ${downloadingId === transaction._id ? 'opacity-70 cursor-wait' : ''}`}
                     title="Download Receipt PDF"
                   >
-                    <FiDownload className="w-4 h-4 mr-2" />
-                    <span className="text-sm font-medium">Receipt</span>
+                    {downloadingId === transaction._id ? (
+                      <>
+                        <FiDownload className="w-4 h-4 mr-2 animate-bounce" />
+                        <span className="text-sm font-medium">Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiDownload className="w-4 h-4 mr-2" />
+                        <span className="text-sm font-medium">Receipt</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
