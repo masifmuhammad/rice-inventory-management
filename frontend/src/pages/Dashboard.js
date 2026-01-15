@@ -36,6 +36,7 @@ const Dashboard = () => {
   const [biAnalytics, setBiAnalytics] = useState(null);
   const [profitAnalysis, setProfitAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [selectedDateRange, setSelectedDateRange] = useState('30');
 
   useEffect(() => {
@@ -77,11 +78,37 @@ const Dashboard = () => {
 
   const handleExportReport = async () => {
     try {
+      setExporting(true);
+      console.log('Fetching stock value report...');
+
       const response = await api.get('/reports/stock-value');
-      generateInventoryReportPDF(response.data.products, response.data.summary);
+      console.log('Report data received:', response.data);
+
+      if (!response.data.products || response.data.products.length === 0) {
+        alert('No products found to generate report');
+        setExporting(false);
+        return;
+      }
+
+      // Add small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const success = generateInventoryReportPDF(response.data.products, response.data.summary, {
+        name: 'Rice Inventory Management',
+        address: 'Pakistan'
+      });
+
+      if (success) {
+        console.log('Report generated successfully');
+      }
+
+      setTimeout(() => {
+        setExporting(false);
+      }, 500);
     } catch (error) {
       console.error('Error generating report:', error);
-      alert('Failed to generate report');
+      alert(`Failed to generate report: ${error.message || 'Unknown error'}`);
+      setExporting(false);
     }
   };
 
@@ -161,10 +188,20 @@ const Dashboard = () => {
           </select>
           <button
             onClick={handleExportReport}
-            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            disabled={exporting}
+            className={`flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg ${exporting ? 'opacity-70 cursor-wait' : ''}`}
           >
-            <FiDownload className="mr-2" />
-            Export Report
+            {exporting ? (
+              <>
+                <FiDownload className="mr-2 animate-bounce" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FiDownload className="mr-2" />
+                Export Report
+              </>
+            )}
           </button>
         </div>
       </div>
