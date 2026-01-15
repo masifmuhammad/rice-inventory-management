@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
+const CashWithdrawal = require('../models/CashWithdrawal');
 const auth = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
@@ -35,6 +36,13 @@ router.get('/dashboard', auth, async (req, res) => {
       .filter(t => t.type === 'stock_out')
       .reduce((sum, t) => sum + t.quantity, 0);
 
+    // Get cash withdrawals for last 30 days
+    const recentWithdrawals = await CashWithdrawal.find({
+      createdAt: { $gte: thirtyDaysAgo }
+    });
+
+    const totalWithdrawals = recentWithdrawals.reduce((sum, w) => sum + w.amount, 0);
+
     res.json({
       totalProducts,
       totalStockValue: Math.round(totalStockValue * 100) / 100,
@@ -50,7 +58,9 @@ router.get('/dashboard', auth, async (req, res) => {
       recentActivity: {
         stockIn: Math.round(stockIn * 100) / 100,
         stockOut: Math.round(stockOut * 100) / 100,
-        transactions: recentTransactions.length
+        transactions: recentTransactions.length,
+        cashWithdrawals: recentWithdrawals.length,
+        totalWithdrawn: Math.round(totalWithdrawals * 100) / 100
       }
     });
   } catch (error) {

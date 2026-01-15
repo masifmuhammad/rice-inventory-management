@@ -109,7 +109,7 @@ export const generateTransactionPDF = (transaction, product, companyInfo = {}) =
     productDetails.push(['Expiry Date', new Date(transaction.expiryDate).toLocaleDateString('en-PK')]);
   }
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: productY + 5,
     head: [['Field', 'Value']],
     body: productDetails,
@@ -146,7 +146,7 @@ export const generateTransactionPDF = (transaction, product, companyInfo = {}) =
     ['Stock After', formatQuantity(transaction.stockAfter, transaction.unit || product?.unit || 'kg')]
   ];
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: transactionY + 5,
     head: [['Description', 'Amount']],
     body: transactionDetails,
@@ -281,7 +281,7 @@ export const generateInventoryReportPDF = (products, summary, companyInfo = {}) 
     p.currentStock <= (p.minStockLevel || 0) ? 'Low' : 'OK'
   ]);
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: summaryY + 25,
     head: [['Product Name', 'SKU', 'Category', 'Stock', 'Cost Price', 'Sell Price', 'Stock Value', 'Status']],
     body: tableData,

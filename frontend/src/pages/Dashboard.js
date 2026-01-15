@@ -372,6 +372,23 @@ const Dashboard = () => {
                   {stats?.recentActivity?.transactions || 0}
                 </p>
               </div>
+
+              {stats?.recentActivity?.totalWithdrawn > 0 && (
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                      <FiDollarSign className="w-6 h-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Cash Withdrawn</p>
+                      <p className="text-sm text-gray-600">{stats?.recentActivity?.cashWithdrawals || 0} withdrawals</p>
+                    </div>
+                  </div>
+                  <p className="text-xl font-bold text-orange-600">
+                    {formatPKR(stats?.recentActivity?.totalWithdrawn || 0)}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
