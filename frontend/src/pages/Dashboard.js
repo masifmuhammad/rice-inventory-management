@@ -200,30 +200,9 @@ const Dashboard = () => {
         })}
       </div>
 
-      {/* Profit Analysis */}
-      {profitAnalysis && profitAnalysis.summary.totalProfit > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
-            <FiDollarSign className="w-8 h-8 mb-3 opacity-90" />
-            <p className="text-sm font-medium opacity-90 uppercase tracking-wider">Total Profit</p>
-            <p className="text-3xl font-bold mt-2">{formatPKR(profitAnalysis.summary.totalProfit)}</p>
-          </div>
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
-            <FiPieChart className="w-8 h-8 mb-3 opacity-90" />
-            <p className="text-sm font-medium opacity-90 uppercase tracking-wider">Average Margin</p>
-            <p className="text-3xl font-bold mt-2">{profitAnalysis.summary.averageMargin.toFixed(2)}%</p>
-          </div>
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
-            <FiShoppingCart className="w-8 h-8 mb-3 opacity-90" />
-            <p className="text-sm font-medium opacity-90 uppercase tracking-wider">Total Sales</p>
-            <p className="text-3xl font-bold mt-2">{profitAnalysis.summary.transactionCount}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Charts Section */}
+      {/* Stock Movement & Top Products */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Transaction Trends Chart */}
+        {/* Stock Movement Chart */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-gray-900 flex items-center">
@@ -256,69 +235,6 @@ const Dashboard = () => {
           ) : (
             <p className="text-gray-500 text-center py-12">No data available</p>
           )}
-        </div>
-
-        {/* Category Revenue Chart */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center">
-              <FiPieChart className="w-5 h-5 text-primary-600 mr-2" />
-              Revenue by Category
-            </h2>
-          </div>
-          {biAnalytics?.categoryRevenue?.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={biAnalytics.categoryRevenue}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({category, percent}) => `${category}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="revenue"
-                >
-                  {biAnalytics.categoryRevenue.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatPKR(value)} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-gray-500 text-center py-12">No data available</p>
-          )}
-        </div>
-      </div>
-
-      {/* Category Analysis & Top Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Category Analysis */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center">
-              <FiBarChart2 className="w-5 h-5 text-primary-600 mr-2" />
-              Category Stock Value
-            </h2>
-          </div>
-          <div className="p-6">
-            {biAnalytics?.categoryAnalysis?.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={biAnalytics.categoryAnalysis}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category" tick={{fontSize: 11}} />
-                  <YAxis tick={{fontSize: 12}} />
-                  <Tooltip formatter={(value) => formatPKR(value)} />
-                  <Legend />
-                  <Bar dataKey="totalValue" fill="#0284c7" name="Current Value" />
-                  <Bar dataKey="totalPotentialValue" fill="#10b981" name="Potential Value" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-gray-500 text-center py-12">No data available</p>
-            )}
-          </div>
         </div>
 
         {/* Top Products */}

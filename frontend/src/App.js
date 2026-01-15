@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Transactions from './pages/Transactions';
+import CashWithdrawals from './pages/CashWithdrawals';
 import Layout from './components/Layout';
 
 const PrivateRoute = ({ children }) => {
@@ -38,6 +39,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="products" element={<Products />} />
             <Route path="transactions" element={<Transactions />} />
+            <Route path="cash-withdrawals" element={<CashWithdrawals />} />
           </Route>
         </Routes>
       </Router>

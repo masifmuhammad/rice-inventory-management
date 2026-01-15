@@ -9,7 +9,8 @@ import {
   FiMenu,
   FiX,
   FiLogOut,
-  FiUser
+  FiUser,
+  FiDollarSign
 } from 'react-icons/fi';
 
 const Layout = () => {
@@ -21,6 +22,7 @@ const Layout = () => {
     { name: 'Dashboard', href: '/', icon: FiHome },
     { name: 'Products', href: '/products', icon: FiPackage },
     { name: 'Transactions', href: '/transactions', icon: FiTrendingUp },
+    { name: 'Cash Withdrawals', href: '/cash-withdrawals', icon: FiDollarSign },
   ];
 
   const isActive = (path) => {
