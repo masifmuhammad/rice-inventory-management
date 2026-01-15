@@ -21,7 +21,6 @@ const Layout = () => {
     { name: 'Dashboard', href: '/', icon: FiHome },
     { name: 'Products', href: '/products', icon: FiPackage },
     { name: 'Transactions', href: '/transactions', icon: FiTrendingUp },
-    { name: 'Reports', href: '/reports', icon: FiBarChart2 },
   ];
 
   const isActive = (path) => {
