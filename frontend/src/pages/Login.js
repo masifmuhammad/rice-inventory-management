@@ -57,11 +57,29 @@ const Login = () => {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-              <FiPackage className="w-8 h-8 text-primary-600" />
+            <div className="inline-flex items-center justify-center mb-4">
+              <img 
+                src="/hm-logo.jpg" 
+                alt="HM Logo" 
+                className="h-20 w-20 object-contain"
+                onError={(e) => { 
+                  // Try PNG if JPG fails
+                  if (e.target.src.includes('.jpg')) {
+                    e.target.src = '/hm-logo.png';
+                  } else {
+                    e.target.style.display = 'none';
+                    if (e.target.nextSibling) {
+                      e.target.nextSibling.style.display = 'flex';
+                    }
+                  }
+                }}
+              />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full" style={{display: 'none'}}>
+                <FiPackage className="w-8 h-8 text-primary-600" />
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Rice Inventory</h1>
-            <p className="text-gray-600 mt-2">Manage your rice factory inventory</p>
+            <h1 className="text-3xl font-bold text-gray-900">Haji Muhammad Rice Mills</h1>
+            <p className="text-gray-600 mt-2">Inventory Management System</p>
           </div>
 
           {/* Form */}

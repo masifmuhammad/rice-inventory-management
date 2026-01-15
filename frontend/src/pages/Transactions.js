@@ -3,11 +3,9 @@ import api from '../services/api';
 import { format } from 'date-fns';
 import {
   FiPlus,
-  FiSearch,
   FiTrendingUp,
   FiTrendingDown,
   FiEdit,
-  FiFilter,
   FiDownload,
   FiX
 } from 'react-icons/fi';
@@ -87,8 +85,8 @@ const Transactions = () => {
       // Add small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      const success = generateTransactionPDF(transaction, product, {
-        name: 'Rice Inventory Management',
+      const success = await generateTransactionPDF(transaction, product, {
+        name: 'Haji Muhammad Rice Mills Inventory',
         address: 'Pakistan',
         phone: '',
         email: ''

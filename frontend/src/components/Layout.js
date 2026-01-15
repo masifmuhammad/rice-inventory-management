@@ -5,7 +5,6 @@ import {
   FiHome,
   FiPackage,
   FiTrendingUp,
-  FiBarChart2,
   FiMenu,
   FiX,
   FiLogOut,
@@ -51,7 +50,22 @@ const Layout = () => {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-primary-600">Rice Inventory</h1>
+            <div className="flex items-center space-x-2">
+              <img 
+                src="/hm-logo.jpg" 
+                alt="HM Logo" 
+                className="h-8 w-8 object-contain"
+                onError={(e) => { 
+                  // Try PNG if JPG fails
+                  if (e.target.src.includes('.jpg')) {
+                    e.target.src = '/hm-logo.png';
+                  } else {
+                    e.target.style.display = 'none';
+                  }
+                }}
+              />
+              <h1 className="text-xl font-bold text-primary-600">Haji Muhammad Rice Mills</h1>
+            </div>
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-gray-500 hover:text-gray-700"

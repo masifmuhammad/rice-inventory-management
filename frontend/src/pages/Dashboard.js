@@ -93,8 +93,8 @@ const Dashboard = () => {
       // Add small delay for better UX
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      const success = generateInventoryReportPDF(response.data.products, response.data.summary, {
-        name: 'Rice Inventory Management',
+      const success = await generateInventoryReportPDF(response.data.products, response.data.summary, {
+        name: 'Haji Muhammad Rice Mills Inventory',
         address: 'Pakistan'
       });
 
@@ -172,7 +172,7 @@ const Dashboard = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Business Intelligence Dashboard</h1>
-          <p className="text-gray-600 mt-1">Comprehensive analytics and insights for your rice inventory</p>
+          <p className="text-gray-600 mt-1">Comprehensive analytics and insights for Haji Muhammad Rice Mills inventory</p>
         </div>
         <div className="flex items-center space-x-3 mt-4 md:mt-0">
           <select

@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatPKR, formatQuantity } from './currency';
+import { loadLogoForPDF } from './logoHelper';
 
 /**
  * Generate PDF invoice for a transaction
@@ -8,136 +9,187 @@ import { formatPKR, formatQuantity } from './currency';
  * @param {Object} product - Product data
  * @param {Object} companyInfo - Company information
  */
-export const generateTransactionPDF = (transaction, product, companyInfo = {}) => {
+export const generateTransactionPDF = async (transaction, product, companyInfo = {}) => {
   try {
     console.log('Starting PDF generation...');
     const doc = new jsPDF();
+    
+    // Load logo
+    const logoData = await loadLogoForPDF();
 
   // Default company info
   const company = {
-    name: companyInfo.name || 'Rice Inventory Management',
+    name: companyInfo.name || 'Haji Muhammad Rice Mills Inventory',
     address: companyInfo.address || 'Pakistan',
     phone: companyInfo.phone || '',
     email: companyInfo.email || '',
     ...companyInfo
   };
 
-  // Colors
-  const primaryColor = [2, 132, 199]; // #0284c7
-  const darkColor = [31, 41, 55]; // #1f2937
-  const lightGray = [243, 244, 246]; // #f3f4f6
+  // Colors - Matching HM Rice Mills Logo
+  const darkGreen = [26, 95, 63]; // #1a5f3f - Main brand color (from logo outer ring)
+  const goldenBrown = [212, 165, 116]; // #d4a574 - Accent color (from logo text/decorations)
+  const darkGreenDarker = [20, 70, 50]; // Darker shade for borders
+  const white = [255, 255, 255];
 
-  // Header - Company Name
-  doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, 210, 40, 'F');
+  // Compact Header - White background to match logo
+  doc.setFillColor(...white);
+  doc.rect(0, 0, 210, 42, 'F');
+  
+  // Top accent bar in dark green for branding
+  doc.setFillColor(...darkGreen);
+  doc.rect(0, 0, 210, 5, 'F');
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.setFont(undefined, 'bold');
-  doc.text(company.name, 15, 20);
+  // Add logo if available - smaller for compact header
+  let textStartX = 15;
+  let logoSize = 0;
+  if (logoData && logoData.data) {
+    try {
+      logoSize = 28; // Compact logo size
+      const logoX = 15;
+      const logoY = 7;
+      
+      // Add logo directly without background
+      doc.addImage(logoData.data, logoData.type, logoX, logoY, logoSize, logoSize);
+      textStartX = logoX + logoSize + 10;
+      console.log('Logo added successfully to PDF');
+    } catch (e) {
+      console.error('Error adding logo to PDF:', e);
+      logoSize = 0;
+    }
+  }
 
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'normal');
-  if (company.address) doc.text(company.address, 15, 27);
-  if (company.phone) doc.text(`Phone: ${company.phone}`, 15, 32);
-  if (company.email) doc.text(`Email: ${company.email}`, 15, 37);
-
-  // Transaction Type Badge
+  // Company name in dark green (on white background)
+  doc.setTextColor(...darkGreen);
   doc.setFontSize(16);
   doc.setFont(undefined, 'bold');
+  doc.text(company.name, textStartX, 22);
+
+  // Company address in dark gray (on white background)
+  doc.setTextColor(60, 60, 60);
+  doc.setFontSize(8);
+  doc.setFont(undefined, 'normal');
+  if (company.address) doc.text(company.address, textStartX, 28);
+
+  // Transaction Type Badge - top right (golden-brown on white)
   const typeText = transaction.type === 'stock_in' ? 'STOCK IN' :
                    transaction.type === 'stock_out' ? 'STOCK OUT' :
                    transaction.type === 'adjustment' ? 'ADJUSTMENT' : 'TRANSFER';
-  doc.text(typeText, 200, 20, { align: 'right' });
-
-  // Document Info Box
-  doc.setTextColor(...darkColor);
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'normal');
-
-  const docInfoY = 50;
-  doc.setFillColor(...lightGray);
-  doc.rect(140, docInfoY, 55, 25, 'F');
-
+  
+  doc.setFillColor(...goldenBrown);
+  doc.roundedRect(165, 12, 40, 10, 2, 2, 'F');
+  doc.setTextColor(...darkGreen);
+  doc.setFontSize(9);
   doc.setFont(undefined, 'bold');
-  doc.text('Transaction ID:', 145, docInfoY + 6);
-  doc.text('Date:', 145, docInfoY + 12);
-  doc.text('Reference:', 145, docInfoY + 18);
+  doc.text(typeText, 185, 19, { align: 'center' });
 
-  doc.setFont(undefined, 'normal');
+  // Transaction Info - Compact box on right side
   const transactionId = transaction._id ? transaction._id.slice(-8).toUpperCase() : 'N/A';
   const transactionDate = new Date(transaction.createdAt).toLocaleDateString('en-PK', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
+  const hasReference = transaction.reference && transaction.reference !== 'N/A';
 
-  doc.text(transactionId, 195, docInfoY + 6, { align: 'right' });
-  doc.text(transactionDate, 195, docInfoY + 12, { align: 'right' });
-  doc.text(transaction.reference || 'N/A', 195, docInfoY + 18, { align: 'right' });
+  doc.setFillColor(...goldenBrown);
+  doc.setDrawColor(...darkGreenDarker);
+  doc.setLineWidth(0.5);
+  const infoBoxHeight = hasReference ? 16 : 12;
+  doc.roundedRect(140, 28, 65, infoBoxHeight, 2, 2, 'FD');
+  
+  doc.setTextColor(...white);
+  doc.setFontSize(7);
+  doc.setFont(undefined, 'bold');
+  let infoY = 33;
+  doc.text('ID:', 145, infoY);
+  doc.text('Date:', 145, infoY + 5);
+  if (hasReference) {
+    doc.text('Ref:', 145, infoY + 10);
+  }
+  
+  doc.setTextColor(...darkGreen);
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(8);
+  doc.text(transactionId, 200, infoY, { align: 'right' });
+  doc.text(transactionDate, 200, infoY + 5, { align: 'right' });
+  if (hasReference) {
+    doc.text(transaction.reference, 200, infoY + 10, { align: 'right' });
+  }
 
-  // Party Information (Supplier/Customer)
-  let partyY = docInfoY;
+  // Start content area
+  let currentY = 50;
+
+  // Supplier/Customer Information - Compact
   if (transaction.supplier || transaction.customer) {
+    doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
-    doc.setFontSize(12);
-    const partyLabel = transaction.supplier ? 'Supplier Information' : 'Customer Information';
-    doc.text(partyLabel, 15, partyY + 6);
-
+    doc.setTextColor(...darkGreen);
+    const partyLabel = transaction.supplier ? 'Supplier' : 'Customer';
+    doc.text(`${partyLabel}:`, 15, currentY);
+    
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
-    doc.text(transaction.supplier || transaction.customer || 'N/A', 15, partyY + 12);
+    doc.setTextColor(60, 60, 60);
+    doc.text(transaction.supplier || transaction.customer || 'N/A', 50, currentY);
+    currentY += 8;
   }
 
-  // Product Details Section
-  const productY = 85;
-  doc.setFontSize(14);
+  // Product Details - Compact inline format
+  currentY += 3;
+  doc.setFontSize(11);
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(...primaryColor);
-  doc.text('Product Details', 15, productY);
-
-  // Product Details Table
-  const productDetails = [
+  doc.setTextColor(...darkGreen);
+  doc.text('Product Details', 15, currentY);
+  
+  currentY += 7;
+  const productInfo = [
     ['Product Name', product?.name || 'N/A'],
     ['SKU', product?.sku || 'N/A'],
-    ['Category', product?.category || 'N/A'],
-    ['Batch Number', transaction.batchNumber || 'N/A'],
-    ['Location', product?.location || 'N/A']
+    ['Category', product?.category || 'N/A']
   ];
-
+  
+  if (transaction.batchNumber) productInfo.push(['Batch', transaction.batchNumber]);
+  if (product?.location) productInfo.push(['Location', product.location]);
   if (transaction.expiryDate) {
-    productDetails.push(['Expiry Date', new Date(transaction.expiryDate).toLocaleDateString('en-PK')]);
+    productInfo.push(['Expiry', new Date(transaction.expiryDate).toLocaleDateString('en-PK')]);
   }
 
+  // Compact product info table
   autoTable(doc, {
-    startY: productY + 5,
+    startY: currentY,
     head: [['Field', 'Value']],
-    body: productDetails,
-    theme: 'grid',
+    body: productInfo,
+    theme: 'plain',
     headStyles: {
-      fillColor: primaryColor,
+      fillColor: darkGreen,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 10
+      fontSize: 9
     },
     styles: {
-      fontSize: 10,
-      cellPadding: 4
+      fontSize: 9,
+      cellPadding: 3,
+      lineColor: [200, 200, 200]
     },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 50 },
-      1: { cellWidth: 130 }
-    }
+      0: { fontStyle: 'bold', cellWidth: 45, textColor: [60, 60, 60] },
+      1: { cellWidth: 150, textColor: [40, 40, 40] }
+    },
+    margin: { left: 15, right: 15 }
   });
 
-  // Transaction Details Section
-  let transactionY = doc.lastAutoTable.finalY + 15;
-  doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(...primaryColor);
-  doc.text('Transaction Details', 15, transactionY);
+  currentY = doc.lastAutoTable.finalY + 8;
 
-  // Transaction Table
+  // Transaction Details - Prominent values
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...darkGreen);
+  doc.text('Transaction Details', 15, currentY);
+  
+  currentY += 7;
+  
+  // Transaction details with prominent values
   const transactionDetails = [
     ['Quantity', formatQuantity(transaction.quantity, transaction.unit || product?.unit || 'kg')],
     ['Price per Unit', formatPKR(transaction.price || product?.sellingPrice || 0)],
@@ -147,50 +199,79 @@ export const generateTransactionPDF = (transaction, product, companyInfo = {}) =
   ];
 
   autoTable(doc, {
-    startY: transactionY + 5,
+    startY: currentY,
     head: [['Description', 'Amount']],
     body: transactionDetails,
     theme: 'striped',
     headStyles: {
-      fillColor: primaryColor,
+      fillColor: darkGreen,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 10
     },
     styles: {
-      fontSize: 11,
-      cellPadding: 5
+      fontSize: 10,
+      cellPadding: 4
     },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 80 },
-      1: { cellWidth: 110, halign: 'right', fontStyle: 'bold' }
-    }
+      0: { fontStyle: 'bold', cellWidth: 75, textColor: [60, 60, 60] },
+      1: { 
+        cellWidth: 115, 
+        halign: 'right', 
+        fontStyle: 'bold',
+        textColor: [40, 40, 40],
+        fontSize: 11
+      }
+    },
+    didParseCell: (data) => {
+      // Make Total Value extra prominent
+      if (data.row.index === 2 && data.column.index === 1) {
+        data.cell.styles.fontSize = 13;
+        data.cell.styles.textColor = darkGreen;
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [240, 248, 255]; // Light background for emphasis
+      }
+      // Make all monetary values more readable
+      if (data.column.index === 1 && data.row.index > 0) {
+        data.cell.styles.fontSize = 11;
+        if (data.row.index === 1 || data.row.index === 2) {
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    },
+    margin: { left: 15, right: 15 }
   });
 
-  // Notes Section
-  if (transaction.notes) {
-    const notesY = doc.lastAutoTable.finalY + 15;
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(...darkColor);
-    doc.text('Notes:', 15, notesY);
+  currentY = doc.lastAutoTable.finalY + 8;
 
+  // Notes Section - Compact
+  if (transaction.notes) {
     doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...darkGreen);
+    doc.text('Notes:', 15, currentY);
+
+    doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
+    doc.setTextColor(60, 60, 60);
     const splitNotes = doc.splitTextToSize(transaction.notes, 180);
-    doc.text(splitNotes, 15, notesY + 6);
+    doc.text(splitNotes, 15, currentY + 5);
+    currentY += 5 + (splitNotes.length * 4);
   }
 
-  // Footer
+  // Footer - Compact at bottom
   const pageHeight = doc.internal.pageSize.height;
-  doc.setDrawColor(...lightGray);
-  doc.line(15, pageHeight - 25, 195, pageHeight - 25);
+  const footerY = pageHeight - 15;
+  
+  doc.setDrawColor(...darkGreen);
+  doc.setLineWidth(0.3);
+  doc.line(15, footerY - 8, 195, footerY - 8);
 
-  doc.setFontSize(9);
-  doc.setTextColor(128, 128, 128);
+  doc.setFontSize(7);
+  doc.setTextColor(100, 100, 100);
   doc.setFont(undefined, 'italic');
-  doc.text('This is a computer-generated document. No signature required.', 105, pageHeight - 18, { align: 'center' });
-  doc.text(`Generated on: ${new Date().toLocaleString('en-PK')}`, 105, pageHeight - 13, { align: 'center' });
+  doc.text('This is a computer-generated document. No signature required.', 105, footerY - 3, { align: 'center' });
+  doc.text(`Generated: ${new Date().toLocaleString('en-PK')}`, 105, footerY + 2, { align: 'center' });
 
   // Save PDF
   const fileName = `Transaction_${typeText.replace(' ', '_')}_${transactionId}_${new Date().getTime()}.pdf`;
@@ -210,41 +291,73 @@ export const generateTransactionPDF = (transaction, product, companyInfo = {}) =
  * @param {Object} summary - Summary statistics
  * @param {Object} companyInfo - Company information
  */
-export const generateInventoryReportPDF = (products, summary, companyInfo = {}) => {
+export const generateInventoryReportPDF = async (products, summary, companyInfo = {}) => {
   try {
     console.log('Generating inventory report PDF...');
     const doc = new jsPDF('landscape');
+    
+    // Load logo
+    const logoData = await loadLogoForPDF();
 
   const company = {
-    name: companyInfo.name || 'Rice Inventory Management',
+    name: companyInfo.name || 'Haji Muhammad Rice Mills Inventory',
     ...companyInfo
   };
 
-  const primaryColor = [2, 132, 199];
+  // Colors - Matching HM Rice Mills Logo
+  const darkGreen = [26, 95, 63]; // #1a5f3f - Main brand color
+  const goldenBrown = [212, 165, 116]; // #d4a574 - Accent color
+  const darkGreenDarker = [20, 70, 50];
+  const white = [255, 255, 255];
 
-  // Header
-  doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, 297, 30, 'F');
+  // Header - White background to match logo
+  doc.setFillColor(...white);
+  doc.rect(0, 0, 297, 40, 'F');
+  
+  // Top accent bar in dark green for branding
+  doc.setFillColor(...darkGreen);
+  doc.rect(0, 0, 297, 5, 'F');
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(20);
+  // Add logo if available - positioned nicely
+  let textStartX = 15;
+  if (logoData && logoData.data) {
+    try {
+      const logoSize = 30;
+      const logoX = 15;
+      const logoY = 5;
+      
+      // Add logo directly without background
+      doc.addImage(logoData.data, logoData.type, logoX, logoY, logoSize, logoSize);
+      textStartX = logoX + logoSize + 12;
+      console.log('Logo added successfully to inventory report PDF');
+    } catch (e) {
+      console.error('Error adding logo to PDF:', e);
+    }
+  } else {
+    console.log('Logo data not available for inventory report:', logoData);
+  }
+
+  // Company name in dark green (on white background)
+  doc.setTextColor(...darkGreen);
+  doc.setFontSize(18);
   doc.setFont(undefined, 'bold');
-  doc.text(company.name, 15, 12);
+  doc.text(company.name, textStartX, 20);
 
-  doc.setFontSize(14);
-  doc.text('Inventory Stock Report', 15, 22);
+  doc.setTextColor(60, 60, 60);
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'normal');
+  doc.text('Inventory Stock Report', textStartX, 30);
 
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   const reportDate = new Date().toLocaleDateString('en-PK', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
-  doc.text(`Generated: ${reportDate}`, 282, 22, { align: 'right' });
+  doc.text(`Generated: ${reportDate}`, 282, 30, { align: 'right' });
 
-  // Summary Boxes
-  const summaryY = 40;
-  doc.setTextColor(0, 0, 0);
+  // Summary Boxes - styled with brand colors
+  const summaryY = 48;
   doc.setFontSize(10);
 
   const summaryData = [
@@ -255,15 +368,20 @@ export const generateInventoryReportPDF = (products, summary, companyInfo = {}) 
 
   let summaryX = 15;
   summaryData.forEach((item, index) => {
-    doc.setFillColor(243, 244, 246);
-    doc.rect(summaryX, summaryY, 85, 15, 'F');
+    // Box background in golden-brown with dark green border
+    doc.setFillColor(...goldenBrown);
+    doc.setDrawColor(...darkGreenDarker);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(summaryX, summaryY, 85, 18, 3, 3, 'FD');
 
+    doc.setTextColor(...white);
     doc.setFont(undefined, 'normal');
-    doc.text(item.label, summaryX + 3, summaryY + 6);
+    doc.setFontSize(9);
+    doc.text(item.label, summaryX + 5, summaryY + 8);
 
     doc.setFont(undefined, 'bold');
     doc.setFontSize(11);
-    doc.text(String(item.value), summaryX + 3, summaryY + 12);
+    doc.text(String(item.value), summaryX + 5, summaryY + 15);
 
     doc.setFontSize(10);
     summaryX += 90;
@@ -287,7 +405,7 @@ export const generateInventoryReportPDF = (products, summary, companyInfo = {}) 
     body: tableData,
     theme: 'striped',
     headStyles: {
-      fillColor: primaryColor,
+      fillColor: darkGreen,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 9
@@ -314,11 +432,16 @@ export const generateInventoryReportPDF = (products, summary, companyInfo = {}) 
     }
   });
 
-  // Footer
+  // Footer - styled with brand colors
   const pageHeight = doc.internal.pageSize.height;
+  doc.setDrawColor(...darkGreen);
+  doc.setLineWidth(0.5);
+  doc.line(15, pageHeight - 15, 282, pageHeight - 15);
+  
   doc.setFontSize(8);
-  doc.setTextColor(128, 128, 128);
-  doc.text(`Page 1 - Inventory Report - ${reportDate}`, 148.5, pageHeight - 10, { align: 'center' });
+  doc.setTextColor(...darkGreen);
+  doc.setFont(undefined, 'italic');
+  doc.text(`Page 1 - Inventory Report - ${reportDate}`, 148.5, pageHeight - 8, { align: 'center' });
 
   // Save
   const fileName = `Inventory_Report_${new Date().getTime()}.pdf`;
