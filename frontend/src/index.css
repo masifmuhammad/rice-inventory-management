@@ -317,6 +317,15 @@
     border: 1px solid rgb(var(--hairline) / var(--hairline-strong));
   }
 
+  /**
+   * On dark, an input filled with the card colour is invisible against the card.
+   * Recessing it below the surface it sits on is what makes it read as somewhere
+   * to type rather than as another panel.
+   */
+  .dark .field-control {
+    background-color: rgb(var(--surface-base));
+  }
+
   .field-control:hover:not(:disabled):not(:focus) {
     border-color: rgb(var(--hairline) / 0.2);
   }
@@ -324,6 +333,11 @@
   .field-control:disabled {
     background-color: rgb(var(--surface-3));
     @apply text-content-subtle cursor-not-allowed;
+  }
+
+  /* Inert, not raised — a disabled field should not out-elevate a live one. */
+  .dark .field-control:disabled {
+    background-color: rgb(var(--surface-1));
   }
 
   .field-control-invalid {
@@ -452,6 +466,54 @@
     font-size: clamp(1.25rem, 6vw, 1.75rem);
     line-height: 1;
     letter-spacing: -0.02em;
+  }
+
+  /**
+   * Bilingual assistant copy. English stays Inter; Urdu uses Nastaliq with
+   * taller leading so diacritics and joins stay clear (not muted to death).
+   */
+  .assistant-en {
+    font-family: theme('fontFamily.sans');
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    letter-spacing: -0.011em;
+    text-wrap: pretty;
+  }
+
+  .assistant-en-sm {
+    font-family: theme('fontFamily.sans');
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    text-wrap: pretty;
+  }
+
+  .assistant-ur {
+    font-family: theme('fontFamily.urdu');
+    font-size: 1.125rem;
+    line-height: 2.15;
+    letter-spacing: 0;
+    word-spacing: 0.04em;
+    text-wrap: pretty;
+    font-weight: 500;
+  }
+
+  .assistant-ur-sm {
+    font-family: theme('fontFamily.urdu');
+    font-size: 0.95rem;
+    line-height: 1.95;
+    letter-spacing: 0;
+    word-spacing: 0.03em;
+    font-weight: 500;
+  }
+
+  .assistant-lang-label {
+    font-family: theme('fontFamily.sans');
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(var(--content-subtle));
   }
 }
 

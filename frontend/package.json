@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "//": "The API is same-origin in production; this proxy makes it same-origin in dev too, so `/api` works in both without an env var.",
-  "proxy": "http://localhost:5000",
+  "proxy": "http://127.0.0.1:5000",
   "dependencies": {
     "@headlessui/react": "^2.2.9",
     "@number-flow/react": "^0.6.2",

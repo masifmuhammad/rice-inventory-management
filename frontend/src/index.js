@@ -15,4 +15,10 @@ root.render(
   </React.StrictMode>
 );
 
-serviceWorkerRegistration.register();
+// Never register a service worker during `npm start` — it caches /api and
+// breaks login after Docker rebuilds. Production Docker builds still register.
+if (process.env.NODE_ENV === 'production') {
+  serviceWorkerRegistration.register();
+} else {
+  serviceWorkerRegistration.unregister();
+}

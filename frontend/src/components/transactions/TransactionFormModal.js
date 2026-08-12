@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { FiAlertTriangle, FiArrowRight } from 'react-icons/fi';
 import { useSettings } from '../../context/SettingsContext';
 import { formatMoney, formatQuantity } from '../../utils/currency';
+import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
+import { springUI, reducedTransition } from '../../utils/motion';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import { Input, Select, Textarea } from '../ui/Field';
@@ -23,21 +26,44 @@ const EMPTY = {
   notes: '',
 };
 
-export default function TransactionFormModal({ open, onClose, onSubmit, products = [], productsLoading = false }) {
+export default function TransactionFormModal({
+  open,
+  onClose,
+  onSubmit,
+  products = [],
+  productsLoading = false,
+  initialValues = null,
+}) {
   const { currencySymbol } = useSettings();
   const [values, setValues] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [priceTouched, setPriceTouched] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
+  const revealTransition = reducedMotion ? reducedTransition : springUI;
 
   useEffect(() => {
     if (open) {
-      setValues(EMPTY);
+      setValues(
+        initialValues
+          ? {
+              ...EMPTY,
+              type: initialValues.type || 'stock_in',
+              product: initialValues.product || '',
+              quantity: initialValues.quantity != null ? String(initialValues.quantity) : '',
+              price: initialValues.price != null ? String(initialValues.price) : '',
+              reference: initialValues.reference || '',
+              supplier: initialValues.supplier || '',
+              customer: initialValues.customer || '',
+              notes: initialValues.notes || '',
+            }
+          : EMPTY
+      );
       setErrors({});
-      setPriceTouched(false);
+      setPriceTouched(Boolean(initialValues?.price));
       setSaving(false);
     }
-  }, [open]);
+  }, [open, initialValues]);
 
   const product = useMemo(
     () => products.find((p) => p._id === values.product) || null,
@@ -190,38 +216,50 @@ export default function TransactionFormModal({ open, onClose, onSubmit, products
         </div>
 
         {/* Shows the consequence before it happens, so a typo is caught here
-            rather than discovered in next month's stock count. */}
-        {preview && values.quantity !== '' && (
-          <div
-            className={`rounded-lg border px-4 py-3 ${
-              preview.insufficient
-                ? 'border-red-500/20 bg-red-500/10'
-                : 'border-hairline/[0.07] bg-surface-sunken'
-            }`}
-          >
-            {preview.insufficient ? (
-              <p className="flex items-center gap-2 text-sm text-red-500">
-                <FiAlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
-                Not enough stock — only {formatQuantity(preview.before, preview.unit)} available.
-              </p>
-            ) : (
-              <div className="flex items-center justify-between gap-4 text-sm">
-                <span className="flex items-center gap-2 text-content-muted tabular-nums">
-                  {formatQuantity(preview.before, preview.unit)}
-                  <FiArrowRight className="w-4 h-4 text-content-subtle" aria-hidden="true" />
-                  <span className="font-semibold text-content">
-                    {formatQuantity(preview.after, preview.unit)}
-                  </span>
-                </span>
-                {preview.total > 0 && (
-                  <span className="font-semibold text-content tabular-nums whitespace-nowrap">
-                    {formatMoney(preview.total, currencySymbol)}
-                  </span>
+            rather than discovered in next month's stock count. Only the container
+            animates — the figures inside must keep updating instantly as you type. */}
+        <AnimatePresence initial={false}>
+          {preview && values.quantity !== '' && (
+            <motion.div
+              key="stock-preview"
+              initial={{ opacity: 0, height: 0, y: -6 }}
+              animate={{ opacity: 1, height: 'auto', y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -4 }}
+              transition={revealTransition}
+              className="overflow-hidden"
+            >
+              <div
+                className={`rounded-lg border px-4 py-3 ${
+                  preview.insufficient
+                    ? 'border-red-500/20 bg-red-500/10'
+                    : 'border-hairline/[0.07] bg-surface-sunken'
+                }`}
+              >
+                {preview.insufficient ? (
+                  <p className="flex items-center gap-2 text-sm text-red-500">
+                    <FiAlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                    Not enough stock — only {formatQuantity(preview.before, preview.unit)} available.
+                  </p>
+                ) : (
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <span className="flex items-center gap-2 text-content-muted tabular-nums">
+                      {formatQuantity(preview.before, preview.unit)}
+                      <FiArrowRight className="w-4 h-4 text-content-subtle" aria-hidden="true" />
+                      <span className="font-semibold text-content">
+                        {formatQuantity(preview.after, preview.unit)}
+                      </span>
+                    </span>
+                    {preview.total > 0 && (
+                      <span className="font-semibold text-content tabular-nums whitespace-nowrap">
+                        {formatMoney(preview.total, currencySymbol)}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {values.type === 'stock_in' && (
           <Input label="Supplier" value={values.supplier} onChange={set('supplier')} placeholder="Who you bought from" />

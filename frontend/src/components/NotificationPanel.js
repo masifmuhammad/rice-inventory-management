@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { formatDistanceToNow, format } from 'date-fns';
 import { FiBell, FiX } from 'react-icons/fi';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
+import { springSnappy, reducedTransition } from '../utils/motion';
 import Badge from './ui/Badge';
 
 const LAST_SEEN_KEY = 'rim.notifications.lastSeen';
@@ -24,6 +27,13 @@ export default function NotificationPanel() {
   const [badge, setBadge] = useState(0);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
+  const reducedMotion = usePrefersReducedMotion();
+
+  // The panel grows from the corner nearest the bell, so it reads as coming from
+  // the button rather than arriving out of nowhere.
+  const popoverFrom = reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -4 };
+  const popoverTo = reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 };
+  const popoverTransition = reducedMotion ? reducedTransition : springSnappy;
 
   const fetchNotifications = async () => {
     try {
@@ -113,18 +123,31 @@ export default function NotificationPanel() {
         )}
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div
-            ref={panelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="notifications-title"
-            tabIndex={-1}
-            className="fixed inset-x-3 top-[calc(var(--app-header-height)+env(safe-area-inset-top)+0.5rem)] z-50 max-h-[min(70vh,28rem)] overflow-hidden rounded-2xl border border-hairline/[0.07] bg-surface-1 shadow-xl flex flex-col
-              lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-2 lg:w-96 lg:max-h-[28rem]"
-          >
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="fixed inset-0 z-40 lg:hidden"
+              onClick={() => setOpen(false)}
+              aria-hidden="true"
+            />
+            <motion.div
+              ref={panelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="notifications-title"
+              tabIndex={-1}
+              initial={popoverFrom}
+              animate={popoverTo}
+              exit={popoverFrom}
+              transition={popoverTransition}
+              className="fixed inset-x-3 top-[calc(var(--app-header-height)+env(safe-area-inset-top)+0.5rem)] z-50 max-h-[min(70vh,28rem)] overflow-hidden rounded-2xl border border-hairline/[0.07] bg-surface-1 shadow-xl flex flex-col origin-top
+                lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-2 lg:w-96 lg:max-h-[28rem] lg:origin-top-right"
+            >
             <div className="flex items-center justify-between px-4 py-3 border-b border-hairline/[0.07]">
               <h2 id="notifications-title" className="text-sm font-semibold text-content">
                 Recent activity
@@ -184,9 +207,10 @@ export default function NotificationPanel() {
                 </Link>
               </div>
             )}
-          </div>
-        </>
-      )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

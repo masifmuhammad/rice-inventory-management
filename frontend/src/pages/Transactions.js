@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
@@ -54,6 +55,27 @@ export default function Transactions() {
   const [type, setType] = useState('');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [scanPrefill, setScanPrefill] = useState(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const scan = location.state?.aiScan;
+    if (!scan?.proposedTransaction) return;
+
+    const tx = scan.proposedTransaction;
+    setScanPrefill({
+      type: 'stock_in',
+      product: tx.product,
+      quantity: tx.quantity,
+      price: scan.product?.costPrice,
+      supplier: tx.supplier || '',
+      reference: tx.reference || '',
+      notes: tx.notes || 'From AI delivery note scan',
+    });
+    setModalOpen(true);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.pathname, location.state, navigate]);
   const [downloadingId, setDownloadingId] = useState(null);
 
   const debouncedSearch = useDebounce(search, 350);
@@ -363,10 +385,14 @@ export default function Transactions() {
 
       <TransactionFormModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setScanPrefill(null);
+        }}
         onSubmit={handleCreate}
         products={products.data || []}
         productsLoading={products.loading && !products.data}
+        initialValues={scanPrefill}
       />
     </div>
   );

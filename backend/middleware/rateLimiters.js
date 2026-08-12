@@ -23,4 +23,13 @@ const authLimiter = rateLimit({
   handler: message('Too many login attempts. Please try again in 15 minutes.'),
 });
 
-module.exports = { apiLimiter, authLimiter };
+/** AI endpoints — generous enough for daily use, tight enough to protect credits. */
+const aiLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: isTest ? 100000 : 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: message('Daily AI limit reached. Try again tomorrow or contact your admin.'),
+});
+
+module.exports = { apiLimiter, authLimiter, aiLimiter };

@@ -15,6 +15,28 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// #region agent log
+const dbg = (location, message, data, hypothesisId) => {
+  fetch('http://127.0.0.1:7498/ingest/bb659440-42af-44d0-9469-4bd87f9cef58', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '130b99' },
+    body: JSON.stringify({
+      sessionId: '130b99',
+      location,
+      message,
+      data,
+      hypothesisId,
+      timestamp: Date.now(),
+      runId: 'pre-fix',
+    }),
+  }).catch(() => {});
+};
+dbg('api.js:init', 'API client created', {
+  baseURL: process.env.REACT_APP_API_URL || '/api',
+  pageOrigin: typeof window !== 'undefined' ? window.location.origin : null,
+}, 'E');
+// #endregion
+
 /* ------------------------------------------------------------ token storage */
 
 export const getToken = () => {
@@ -77,6 +99,15 @@ export const setCachedCapabilities = (capabilities) => {
 api.interceptors.request.use((config) => {
   const token = getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  // #region agent log
+  config.metadata = { start: Date.now() };
+  dbg('api.js:request', 'Outgoing API request', {
+    method: config.method,
+    url: config.url,
+    baseURL: config.baseURL,
+    fullURL: `${config.baseURL || ''}${config.url || ''}`,
+  }, 'A');
+  // #endregion
   return config;
 });
 
@@ -88,8 +119,29 @@ export const AUTH_EXPIRED_EVENT = 'rim:auth-expired';
 export const PASSWORD_CHANGE_EVENT = 'rim:password-change-required';
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // #region agent log
+    const ms = Date.now() - (response.config.metadata?.start || Date.now());
+    dbg('api.js:response-ok', 'API response OK', {
+      url: response.config.url,
+      status: response.status,
+      ms,
+    }, 'A');
+    // #endregion
+    return response;
+  },
   (error) => {
+    // #region agent log
+    const ms = Date.now() - (error.config?.metadata?.start || Date.now());
+    dbg('api.js:response-err', 'API response failed', {
+      url: error.config?.url,
+      baseURL: error.config?.baseURL,
+      status: error.response?.status ?? null,
+      code: error.code ?? null,
+      message: error.message,
+      ms,
+    }, 'A');
+    // #endregion
     const status = error.response?.status;
 
     if (status === 401 && !isCredentialRequest(error.config?.url)) {

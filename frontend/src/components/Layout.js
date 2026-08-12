@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Dialog, DialogBackdrop, DialogPanel } from '@headlessui/react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -31,8 +31,11 @@ import MobileTabBar from './MobileTabBar';
 import PageTransition from './PageTransition';
 import ProfileSheet from './ProfileSheet';
 import UserAvatar from './UserAvatar';
+import { lazyPage } from '../utils/lazyPage';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
-import { iconSwap } from '../utils/motion';
+import { iconSwap, springSnappy } from '../utils/motion';
+
+const AssistantShell = lazyPage(() => import('./assistant/AssistantShell'), 'assistant');
 
 export const NAVIGATION = [
   { name: 'Dashboard', href: '/', icon: FiHome, end: true },
@@ -58,10 +61,11 @@ const linkClasses = ({ isActive }) =>
       : 'text-content-muted hover:bg-hairline/[0.05] hover:text-content',
   ].join(' ');
 
-function NavigationLinks({ onNavigate, sections }) {
+function NavigationLinks({ onNavigate, sections, navId }) {
   const prefetch = usePrefetchRoute();
   const navigate = useNavigate();
   const location = useLocation();
+  const reducedMotion = usePrefersReducedMotion();
 
   const handleNav = useCallback(
     (href, end) => (event) => {
@@ -99,12 +103,19 @@ function NavigationLinks({ onNavigate, sections }) {
               >
                 {({ isActive }) => (
                   <>
-                    <span
-                      className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full transition-opacity ${
-                        isActive ? 'bg-primary-500 opacity-100' : 'opacity-0'
-                      }`}
-                      aria-hidden="true"
-                    />
+                    {/* One rail per nav instance slides between links. Centred with
+                        `my-auto` rather than `-translate-y-1/2`, because a transform
+                        class on a `layoutId` element is overwritten by projection.
+                        `navId` keeps the sidebar and drawer copies from claiming
+                        the same shared element while both are mounted. */}
+                    {isActive && (
+                      <motion.span
+                        layoutId={`sidebar-active-${navId}`}
+                        transition={reducedMotion ? { duration: 0 } : springSnappy}
+                        className="absolute left-0 inset-y-0 my-auto w-0.5 h-5 rounded-full bg-primary-500"
+                        aria-hidden="true"
+                      />
+                    )}
                     <Icon
                       className="w-[18px] h-[18px] flex-shrink-0"
                       strokeWidth={isActive ? 2.3 : 1.9}
@@ -246,7 +257,7 @@ export default function Layout() {
             {businessName}
           </span>
         </div>
-        <NavigationLinks sections={navSections} />
+        <NavigationLinks sections={navSections} navId="sidebar" />
         <SidebarFooter
           onSignOut={handleSignOut}
           preference={preference}
@@ -286,7 +297,7 @@ export default function Layout() {
                 <FiX className="w-5 h-5" />
               </button>
             </div>
-            <NavigationLinks sections={navSections} onNavigate={closeDrawer} />
+            <NavigationLinks sections={navSections} onNavigate={closeDrawer} navId="drawer" />
             <SidebarFooter
               onSignOut={handleSignOut}
               preference={preference}
@@ -351,6 +362,9 @@ export default function Layout() {
       </div>
 
       <MobileTabBar />
+      <Suspense fallback={null}>
+        <AssistantShell />
+      </Suspense>
     </div>
   );
 }

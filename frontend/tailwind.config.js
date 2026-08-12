@@ -59,6 +59,14 @@ module.exports = {
           'system-ui',
           'sans-serif',
         ],
+        // Nastaliq for Urdu body copy — pair with generous line-height in CSS.
+        urdu: [
+          '"Noto Nastaliq Urdu"',
+          '"Noto Naskh Arabic"',
+          '"Segoe UI"',
+          'Tahoma',
+          'sans-serif',
+        ],
       },
       keyframes: {
         'fade-in': {

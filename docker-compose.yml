@@ -39,6 +39,10 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/rice_inventory
       # Override this. The server refuses to start in production without it.
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in a .env file next to docker-compose.yml}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      DEBUG_LOG_PATH: /app/debug-130b99.log
+    volumes:
+      - ./debug-130b99.log:/app/debug-130b99.log
     depends_on:
       postgres:
         condition: service_healthy

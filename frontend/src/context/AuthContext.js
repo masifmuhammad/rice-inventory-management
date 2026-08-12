@@ -123,6 +123,9 @@ export function AuthProvider({ children }) {
     api
       .get('/auth/me', { signal: controller.signal })
       .then(({ data }) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7498/ingest/bb659440-42af-44d0-9469-4bd87f9cef58',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'130b99'},body:JSON.stringify({sessionId:'130b99',location:'AuthContext.js:auth-me-ok',message:'auth/me succeeded',data:{hasUser:Boolean(data?.user)},hypothesisId:'B',timestamp:Date.now(),runId:'pre-fix'})}).catch(()=>{});
+        // #endregion
         const resolved = normalizeCapabilities(data.user?.role, data.capabilities);
         setUser(data.user);
         setCachedUser(data.user);
@@ -134,6 +137,9 @@ export function AuthProvider({ children }) {
         writeBusinesses(data.businesses || []);
       })
       .catch((error) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7498/ingest/bb659440-42af-44d0-9469-4bd87f9cef58',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'130b99'},body:JSON.stringify({sessionId:'130b99',location:'AuthContext.js:auth-me-err',message:'auth/me failed',data:{status:error.response?.status??null,code:error.code??null,msg:error.message},hypothesisId:'B',timestamp:Date.now(),runId:'pre-fix'})}).catch(()=>{});
+        // #endregion
         if (error.response?.status === 401) clearSession();
       })
       .finally(() => setInitialising(false));

@@ -11,6 +11,7 @@ const { authLimiter } = require('../middleware/rateLimiters');
 const { asyncHandler, ApiError } = require('../middleware/errorHandler');
 const { audit } = require('../middleware/audit');
 const { capabilitiesFor } = require('../middleware/permissions');
+const { debugLog } = require('../debugLog');
 
 const MAX_FAILED_ATTEMPTS = 8;
 const LOCKOUT_MINUTES = 15;
@@ -93,6 +94,14 @@ router.post(
   validate,
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
+    // #region agent log
+    debugLog({
+      location: 'auth.js:login-in',
+      message: 'Login attempt',
+      data: { email: email ? `${email.slice(0, 3)}***` : null, origin: req.headers.origin || null },
+      hypothesisId: 'B',
+    });
+    // #endregion
 
     const user = await User.findOne({ email }, { select: '+password' });
 
@@ -155,6 +164,14 @@ router.post(
     });
 
     const token = generateToken(user, user.businessId);
+    // #region agent log
+    debugLog({
+      location: 'auth.js:login-ok',
+      message: 'Login succeeded',
+      data: { userId: user._id, status: user.status },
+      hypothesisId: 'B',
+    });
+    // #endregion
     res.json({ token, ...(await sessionPayload(user, user.businessId)) });
   })
 );
