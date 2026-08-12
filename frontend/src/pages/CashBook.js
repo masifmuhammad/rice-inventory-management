@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import { format } from 'date-fns';
 import {
@@ -43,6 +44,8 @@ const LIMIT = 25;
 export default function CashBook() {
   const { currencySymbol } = useSettings();
   const confirm = useConfirm();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
@@ -50,6 +53,15 @@ export default function CashBook() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [defaultDirection, setDefaultDirection] = useState('in');
+
+  useEffect(() => {
+    const direction = location.state?.openCreate;
+    if (direction !== 'in' && direction !== 'out') return;
+    setEditing(null);
+    setDefaultDirection(direction);
+    setModalOpen(true);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   const debouncedSearch = useDebounce(search, 350);
 

@@ -5,7 +5,7 @@ import { FiDollarSign, FiHome, FiPackage, FiTrendingUp } from 'react-icons/fi';
 import usePrefetchRoute from '../hooks/usePrefetchRoute';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { springSnappy, springUI, withReducedMotion } from '../utils/motion';
-import { feedbackTick } from '../utils/feedback';
+import { feedbackTick, unlockFeedbackAudio } from '../utils/feedback';
 
 const TABS = [
   { name: 'Home', href: '/', icon: FiHome, end: true },
@@ -86,6 +86,7 @@ export default function MobileTabBar() {
       : location.pathname.startsWith(committed.href);
 
     if (!alreadyThere) {
+      unlockFeedbackAudio();
       feedbackTick();
       navigate(committed.href);
     }
@@ -97,15 +98,7 @@ export default function MobileTabBar() {
       className="lg:hidden fixed bottom-0 inset-x-0 z-30 pointer-events-none
         px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
-      <div
-        className="pointer-events-auto mx-auto max-w-md
-          rounded-[28px]
-          border border-white/40 dark:border-white/[0.1]
-          bg-surface-1/75 dark:bg-surface-2/70
-          shadow-[0_10px_40px_-12px_rgb(0_0_0/0.28),inset_0_1px_0_rgb(255_255_255/0.55)]
-          dark:shadow-[0_12px_40px_-8px_rgb(0_0_0/0.65),inset_0_1px_0_rgb(255_255_255/0.08)]
-          backdrop-blur-[24px] backdrop-saturate-[180%]
-          supports-[backdrop-filter]:bg-surface-1/55 dark:supports-[backdrop-filter]:bg-surface-2/50"
+      <div className="pointer-events-auto mx-auto max-w-md rounded-card chrome-raised"
       >
         <ul
           ref={trackRef}
@@ -138,7 +131,10 @@ export default function MobileTabBar() {
                       event.preventDefault();
                       return;
                     }
-                    if (!routeActive) feedbackTick();
+                    if (!routeActive) {
+                      unlockFeedbackAudio();
+                      feedbackTick();
+                    }
                   }}
                   aria-current={routeActive ? 'page' : undefined}
                   className={[

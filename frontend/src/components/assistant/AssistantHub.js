@@ -18,28 +18,24 @@ const ACTIONS = [
     id: 'chat',
     icon: FiMessageCircle,
     title: 'Chat & Voice',
-    subtitle: 'پوچھیں / بولیے',
     description: 'Type or speak about stock, sales, cash',
   },
   {
     id: 'scan-receipt',
     icon: FiDollarSign,
     title: 'Scan receipt',
-    subtitle: 'رسید اسکین',
     description: 'Money in/out from a receipt photo',
   },
   {
     id: 'scan',
     icon: FiPackage,
     title: 'Scan stock slip',
-    subtitle: 'سلپ اسکین',
     description: 'Delivery note → stock in',
   },
   {
     id: 'briefing',
     icon: FiFileText,
     title: 'Briefing',
-    subtitle: 'خلاصہ',
     description: "Today's business summary",
   },
 ];
@@ -58,7 +54,7 @@ export default function AssistantHubSheet({ open, onClose }) {
       open={open}
       onClose={onClose}
       title="Assistant"
-      description={<BiLine en="English first · Urdu supported" ur="اردو سپورٹ" size="sm" />}
+      description={<BiLine en="Speak Urdu or English · replies in English" size="sm" />}
       size="md"
     >
       <motion.div
@@ -67,7 +63,7 @@ export default function AssistantHubSheet({ open, onClose }) {
         initial={reducedMotion ? undefined : 'hidden'}
         animate={reducedMotion ? undefined : 'show'}
       >
-        {ACTIONS.map(({ id, icon, title, subtitle, description }) => (
+        {ACTIONS.map(({ id, icon, title, description }) => (
           <motion.button
             key={id}
             type="button"
@@ -95,9 +91,6 @@ export default function AssistantHubSheet({ open, onClose }) {
               >
                 {title}
               </span>
-              <span className="block assistant-ur-sm text-content" dir="rtl" lang="ur">
-                {subtitle}
-              </span>
               <span
                 className="block assistant-en-sm text-content-muted text-pretty leading-snug"
                 lang="en"
@@ -112,7 +105,7 @@ export default function AssistantHubSheet({ open, onClose }) {
   );
 }
 
-export function AssistantSpeedDialItem({ icon: Icon, label, sublabel, onClick, visible }) {
+export function AssistantSpeedDialItem({ icon: Icon, label, onClick, visible }) {
   return (
     <button
       type="button"
@@ -129,11 +122,6 @@ export function AssistantSpeedDialItem({ icon: Icon, label, sublabel, onClick, v
         <span className="block assistant-en-sm font-medium text-content tracking-tight" lang="en">
           {label}
         </span>
-        {sublabel && (
-          <span className="block assistant-ur-sm text-content-muted" dir="rtl" lang="ur">
-            {sublabel}
-          </span>
-        )}
       </span>
     </button>
   );

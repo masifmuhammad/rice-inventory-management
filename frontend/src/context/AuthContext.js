@@ -209,7 +209,15 @@ export function AuthProvider({ children }) {
     async (nextBusinessId) => {
       const { data } = await api.post('/auth/switch-business', { businessId: nextBusinessId });
       applySession(data.token, data.user, data.capabilities, data.businessId, data.businesses);
-      window.dispatchEvent(new CustomEvent('rim:business-changed', { detail: { businessId: data.businessId } }));
+      const name =
+        (data.businesses || []).find((b) => b.id === data.businessId)?.name ||
+        data.user?.businessName ||
+        'business';
+      window.dispatchEvent(
+        new CustomEvent('rim:business-changed', {
+          detail: { businessId: data.businessId, name },
+        })
+      );
       return data;
     },
     [applySession]

@@ -24,72 +24,84 @@
     --color-primary-800: 6 95 70;
     --color-primary-900: 6 78 59;
 
-    --app-header-height: 3.5rem;
+    --app-header-height: 4rem;
     /* Floating tab bar: inner height + bottom margin */
     --app-tabbar-height: 5.5rem;
 
-    /* Light theme: elevation rises toward white. */
-    --surface-base: 247 247 248;
-    --surface-1: 255 255 255;
-    --surface-2: 255 255 255;
-    --surface-3: 243 243 245;
-    --surface-sunken: 244 244 246;
+    /**
+     * Sampled from the reference dashboard. Every value is a true neutral
+     * (R=G=B) — the reference has no blue cast anywhere, and a slate-tinted
+     * grey next to a pure-white card is the tell that gives a theme away.
+     */
+    --surface-base: 241 241 241; /* #F1F1F1 app canvas */
+    --surface-1: 255 255 255; /* #FFFFFF cards */
+    --surface-2: 249 249 249; /* #F9F9F9 panel nested inside a card */
+    --surface-3: 244 244 244; /* #F4F4F4 hover / inert fills */
+    /* A well *on a card* — modal footers, chat bubbles, segmented tracks. */
+    --surface-sunken: 239 239 239; /* #EFEFEF */
 
     /* Hairlines and overlays are one colour at varying alpha. */
-    --hairline: 9 9 11;
-    --hairline-weak: 0.07;
-    --hairline-strong: 0.12;
+    --hairline: 20 20 20;
+    --hairline-weak: 0.06;
+    --hairline-strong: 0.1;
 
-    --content: 24 24 27;
-    --content-muted: 106 106 116;
-    --content-subtle: 148 148 158;
+    --content: 20 20 20; /* #141414 */
+    --content-muted: 111 111 111; /* #6F6F6F */
+    --content-subtle: 154 154 154; /* #9A9A9A */
 
-    /* Tint strength of the brand glow behind the page. */
-    --glow: 0.1;
+    /**
+     * The reference canvas is flat — no brand wash. Cards read as raised
+     * purely from the tonal step (#F1F1F1 → #FFFFFF) plus a shadow soft enough
+     * that it never draws a visible halo at the card's edge.
+     */
+    --glow: 0;
     --card-tint: 0;
-    --card-shadow: 0 1px 2px rgb(9 9 11 / 0.05), 0 1px 3px rgb(9 9 11 / 0.04);
-    --card-shadow-hover: 0 4px 12px -2px rgb(9 9 11 / 0.08), 0 2px 6px -2px rgb(9 9 11 / 0.05);
+    --card-shadow:
+      0 1px 2px rgb(0 0 0 / 0.03),
+      0 8px 24px -10px rgb(0 0 0 / 0.06);
+    --card-shadow-hover:
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 14px 32px -12px rgb(0 0 0 / 0.1);
   }
 
   .dark {
     color-scheme: dark;
 
     /**
-     * Dark is a lit room, not an inverted document. Two things carry that:
-     *
-     * The ladder below is a real one. Elevation in dark UI is read almost
-     * entirely as lightness, so base → card has to be a step you can actually
-     * see; the previous 3% made every card dissolve into the page.
-     *
-     * And the greys carry two to six points of blue. That is far below where it
-     * reads as a colour, but without it neutral grey on near-black goes sepia.
+     * The same structure as light, inverted: one flat canvas, cards one clear
+     * tonal step above it, and nothing tinted. A card is legible here for the
+     * same reason it is in light — the step — so neither theme needs a border
+     * to hold its edges.
      */
-    --surface-base: 9 9 11;
-    --surface-1: 22 22 26;
-    --surface-2: 31 31 36;
-    --surface-3: 44 44 50;
-    --surface-sunken: 5 5 7;
+    --surface-base: 17 17 17; /* #111111 app canvas */
+    --surface-1: 28 28 28; /* #1C1C1C cards */
+    --surface-2: 34 34 34; /* #222222 panel nested inside a card */
+    --surface-3: 42 42 42; /* #2A2A2A hover / inert fills */
+    /* A well *on a card*; recessed below #1C1C1C, matching the light role. */
+    --surface-sunken: 10 10 10; /* #0A0A0A */
 
     --hairline: 255 255 255;
-    --hairline-weak: 0.08;
-    --hairline-strong: 0.14;
+    --hairline-weak: 0.07;
+    --hairline-strong: 0.12;
 
     /* Near-white, not white: #fff on near-black glares and smears the stems. */
-    --content: 244 244 246;
-    --content-muted: 163 163 174;
-    --content-subtle: 138 138 149;
+    --content: 250 250 250; /* #FAFAFA */
+    --content-muted: 138 138 138; /* #8A8A8A — 5.1:1 on a card */
+    --content-subtle: 122 122 122; /* #7A7A7A */
 
-    --glow: 0.06;
+    --glow: 0;
     --card-tint: 0;
-    /* Shadows do work on dark. They just have to be darker and much softer. */
-    --card-shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.7);
-    --card-shadow-hover: 0 1px 2px rgb(0 0 0 / 0.5), 0 16px 40px -16px rgb(0 0 0 / 0.8);
+    /* Shadow does almost nothing on near-black; the tonal step carries it. */
+    --card-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -14px rgb(0 0 0 / 0.6);
+    --card-shadow-hover: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 36px -16px rgb(0 0 0 / 0.7);
   }
 
   html {
     -webkit-text-size-adjust: 100%;
     /* Anchor links and focus jumps land softly instead of teleporting. */
     scroll-behavior: smooth;
+    /* Stop horizontal overscroll from triggering browser back on Android. */
+    overscroll-behavior-x: none;
   }
 
   body {
@@ -97,16 +109,17 @@
     @apply bg-surface-base text-content antialiased;
     font-family: theme('fontFamily.sans');
     scrollbar-gutter: stable;
+    overscroll-behavior-x: none;
 
-    /* A brand-tinted glow anchored to the top of the viewport gives the page
-       depth instead of a flat slab. Fixed so it does not tile while scrolling. */
-    background-image: radial-gradient(
-      125% 70% at 50% -10%,
-      rgb(var(--color-primary-500) / var(--glow)),
-      transparent 62%
-    );
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    /**
+     * Flat canvas, no gradient. Depth comes from the tonal step up to a card,
+     * not from a wash behind it — and a page with nothing painted on it is
+     * also a page the compositor never has to repaint while scrolling.
+     */
+    background-image: none;
+
+    /* One family throughout, tracked in slightly, as in the reference. */
+    letter-spacing: -0.011em;
   }
 
   /* Never let a wide table push the whole document sideways on a phone. */
@@ -162,45 +175,39 @@
     }
   }
 
-  /* Translucency is decorative; when it is unwelcome, go frosted-solid instead. */
-  @media (prefers-reduced-transparency: reduce) {
-    .chrome-blur,
-    .chrome-raised {
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-    }
+  /* Every surface is opaque now, so there is no translucency to reduce. */
 
-    .chrome-blur {
-      background-color: rgb(var(--surface-base));
-    }
-
-    .chrome-raised {
-      background-color: rgb(var(--surface-1));
-    }
-  }
-
-  /* High contrast wants defined edges over soft elevation. */
+  /**
+   * High contrast wants defined edges over soft elevation. Since a card is
+   * normally borderless and held by tone alone, this is the one mode that has
+   * to draw the edge back in — a faint tonal step is exactly what a
+   * high-contrast user cannot see.
+   */
   @media (prefers-contrast: more) {
     :root {
       --hairline-weak: 0.22;
       --hairline-strong: 0.34;
-      --content-muted: 68 68 76;
-      --content-subtle: 92 92 102;
-      --glow: 0;
+      --content-muted: 68 68 68;
+      --content-subtle: 92 92 92;
     }
 
     .dark {
       --hairline-weak: 0.28;
       --hairline-strong: 0.42;
-      --content-muted: 214 214 222;
-      --content-subtle: 184 184 194;
-      --glow: 0;
+      --content-muted: 214 214 214;
+      --content-subtle: 184 184 184;
     }
 
     .surface-card,
     .dark .surface-card {
       background-image: none;
       box-shadow: none;
+      border: 1px solid rgb(var(--hairline) / var(--hairline-strong));
+    }
+
+    .field-shell,
+    .dark .field-shell {
+      border-color: rgb(var(--hairline) / var(--hairline-strong));
     }
   }
 }
@@ -216,56 +223,44 @@
   }
 
   /**
-   * The one card surface. Elevation comes from a lighter fill plus a soft
-   * shadow; the hairline only defines the edge. In dark mode a whisper of brand
-   * tint and an inset top highlight keep it from reading as flat charcoal.
+   * A card is a flat, opaque, borderless panel — the reference draws no edge on
+   * one, and measuring it confirms the canvas runs straight into the fill with
+   * no hairline between. Both themes work the same way: the tonal step off the
+   * canvas is the edge. No gradient, no translucency, no backdrop-filter, which
+   * is also why long pages of these stay smooth — a blurred surface has to be
+   * recomposited against whatever scrolls under it, an opaque one never does.
    */
   .surface-card {
     background-color: rgb(var(--surface-1));
-    background-image: linear-gradient(
-      180deg,
-      rgb(var(--color-primary-400) / var(--card-tint)),
-      rgb(var(--color-primary-400) / 0) 60%
-    );
-    border: 1px solid rgb(var(--hairline) / var(--hairline-weak));
+    background-image: none;
+    border: none;
     box-shadow: var(--card-shadow);
-  }
-
-  /**
-   * A dark card needs what a light card gets for free from a drop shadow: a
-   * light source. The gradient is brightest along the top edge and the inset
-   * hairline reads as that edge catching the light — which is the whole
-   * difference between a material and a grey rectangle.
-   */
-  .dark .surface-card {
-    background-image: linear-gradient(
-      180deg,
-      rgb(255 255 255 / 0.05),
-      rgb(255 255 255 / 0.012) 42%,
-      rgb(255 255 255 / 0) 100%
-    );
-    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.06), var(--card-shadow);
-  }
-
-  .dark .surface-card-hover:hover {
-    background-color: rgb(var(--surface-2));
-    border-color: rgb(var(--hairline) / var(--hairline-strong));
-    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.09), var(--card-shadow-hover);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .surface-card-hover {
-    transition: box-shadow 200ms ease-out, border-color 200ms ease-out;
+    transition: box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 200ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .surface-card-hover:hover {
     box-shadow: var(--card-shadow-hover);
-    border-color: rgb(var(--hairline) / var(--hairline-strong));
   }
 
-  /* A recessed well, for grouped rows and inline stat blocks. */
+  /* On dark the shadow is nearly invisible, so hover lifts by tone instead. */
+  .dark .surface-card-hover:hover {
+    background-color: rgb(var(--surface-2));
+  }
+
+  /**
+   * A panel nested inside a card — the reference's grey block behind the two
+   * headline figures. It steps *down* from the card in light and *up* in dark,
+   * because on each canvas that is the direction that reads as recessed.
+   */
   .surface-sunken {
-    background-color: rgb(var(--surface-sunken));
-    border: 1px solid rgb(var(--hairline) / var(--hairline-weak));
+    background-color: rgb(var(--surface-2));
+    border: none;
   }
 
   /**
@@ -345,19 +340,38 @@
   }
 
   /**
+   * Native number spinners are useless here and actively wrong for weights —
+   * nobody reaches a 12.75 kg entry by clicking a hundredth at a time, and the
+   * arrows only appear on hover, so a field changes shape under the cursor.
+   * Typing (and inputMode="decimal" on phones) is the real input path.
+   */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  /**
    * Revolut-style stacked field: label + value share one compact shell so forms
    * pack tighter on phone sheets without losing the field name.
    */
   .field-shell {
     @apply w-full rounded-well px-3.5 pt-2 pb-2 min-h-[56px] flex flex-col justify-center gap-0.5
       transition-[border-color,box-shadow,background-color] duration-150;
-    background-color: rgb(var(--surface-sunken));
-    border: 1px solid rgb(var(--hairline) / var(--hairline-weak));
+    /* A well on a white card: one step down in tone, no border. */
+    background-color: rgb(var(--surface-3));
+    border: 1px solid transparent;
   }
 
   .dark .field-shell {
+    /* Recessed below the card it sits on, which is what reads as "type here". */
     background-color: rgb(var(--surface-base));
-    border-color: rgb(var(--hairline) / 0.08);
+    border-color: transparent;
   }
 
   .field-shell:hover:not(:focus-within):not(:has(:disabled)) {
@@ -419,56 +433,135 @@
     @apply text-content;
   }
 
-  /* The sliding indicator behind the active segment. */
+  /**
+   * The sliding indicator behind the active segment — also the active sidebar
+   * and tab-bar pill. Flat white on a soft shadow, matching the reference's
+   * selected nav item exactly.
+   */
   .segmented-thumb {
     background-color: rgb(var(--surface-1));
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
-    transition: box-shadow 150ms ease-out;
+    background-image: none;
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 4px 10px -4px rgb(0 0 0 / 0.08);
+    transition: box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .dark .segmented-thumb {
     background-color: rgb(var(--surface-3));
-    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.07), 0 1px 2px rgb(0 0 0 / 0.4);
+    background-image: none;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
   }
 
   .dark .segmented-thumb-held {
-    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.07), 0 4px 12px -2px rgb(0 0 0 / 0.55);
+    box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.55);
   }
 
   /* Lifts while a finger is on it, so the pill reads as picked up. */
   .segmented-thumb-held {
-    box-shadow: 0 3px 10px -2px rgb(0 0 0 / 0.22);
+    box-shadow: 0 3px 12px -2px rgb(0 0 0 / 0.14);
   }
 
   /**
-   * The sidebar is a wall, not a floating panel. It sits at canvas level and is
-   * separated by its hairline alone, so the cards are the only things that lift
-   * off the page — previously it was two steps lighter than the canvas it
-   * bordered, which inverted the whole hierarchy.
+   * The sidebar is not a panel. In the reference it is the bare canvas with nav
+   * items sitting on it, and only the active item is drawn — so there is no
+   * fill, no edge and no blur to render here.
    */
   .sidebar-surface {
-    background-color: rgb(var(--surface-1) / 0.82);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-  }
-
-  .dark .sidebar-surface {
-    background-color: rgb(var(--surface-base));
+    background-color: transparent;
+    background-image: none;
+    border-color: transparent;
+    box-shadow: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
 
-  /* Frosted chrome for the header and floating tab bar. */
-  .chrome-blur {
-    background-color: rgb(var(--surface-base) / 0.72);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  .dark .sidebar-surface {
+    background-color: transparent;
+    background-image: none;
+    border-color: transparent;
+    box-shadow: none;
   }
 
+  /**
+   * The mobile drawer is the same nav content as the rail, but it floats over
+   * the page instead of sitting on the canvas — so unlike the rail it needs a
+   * real opaque fill, or the dashboard reads straight through it.
+   */
+  .drawer-surface {
+    background-color: rgb(var(--surface-1));
+    border: none;
+    box-shadow: 0 24px 60px -12px rgb(0 0 0 / 0.28);
+  }
+
+  .dark .drawer-surface {
+    background-color: rgb(var(--surface-1));
+    box-shadow: 0 24px 60px -12px rgb(0 0 0 / 0.7);
+  }
+
+  /**
+   * Header chrome. Opaque canvas rather than frosted glass: the reference shows
+   * no blur, and an opaque sticky bar is the version that does not repaint the
+   * content behind it on every scroll frame.
+   */
+  .chrome-blur {
+    background-color: rgb(var(--surface-base));
+    background-image: none;
+    border-bottom: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .dark .chrome-blur {
+    background-color: rgb(var(--surface-base));
+    background-image: none;
+    border-bottom: none;
+    box-shadow: none;
+  }
+
+  /**
+   * A floating surface that must read above the page — the mobile tab bar and
+   * the assistant's popover. This is the one place a blur earns its cost: the
+   * element is small and fixed, so the compositor blurs a ~360×64 region rather
+   * than a full-width strip, and the page genuinely does slide under it.
+   */
   .chrome-raised {
-    background-color: rgb(var(--surface-1) / 0.82);
+    background-color: rgb(255 255 255 / 0.72);
+    background-image: linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.9) 0%,
+      rgb(255 255 255 / 0.62) 100%
+    );
+    /* The top edge catching light is what sells it as glass rather than haze. */
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.9),
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 12px 32px -8px rgb(0 0 0 / 0.16);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  .dark .chrome-raised {
+    background-color: rgb(var(--surface-2) / 0.72);
+    background-image: linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.06) 0%,
+      rgb(255 255 255 / 0.02) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.08),
+      0 12px 40px -8px rgb(0 0 0 / 0.6);
+  }
+
+  /* No translucency wanted — fall back to an opaque panel. */
+  @media (prefers-reduced-transparency: reduce) {
+    .chrome-raised {
+      background-color: rgb(var(--surface-1));
+      background-image: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
   }
 
   .app-gradient {
@@ -482,6 +575,29 @@
       rgb(var(--color-primary-500) / 0.08),
       transparent 100%
     );
+  }
+
+  /* The active nav pill uses .segmented-thumb; no separate gloss treatment. */
+
+  /**
+   * Footer controls under the sidebar. The reference leaves this area bare on
+   * the canvas, so the dock is spacing only — same in both themes.
+   */
+  .sidebar-dock {
+    margin: 0.5rem 0.75rem 0.75rem;
+    padding: 0.35rem;
+    border-radius: 1.25rem;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .dark .sidebar-dock {
+    background: transparent;
+    border: none;
+    box-shadow: none;
   }
 }
 
@@ -512,16 +628,21 @@
 
   /* Headline figures scale with the viewport and cap out, so a long number
      shrinks to fit instead of truncating to an ellipsis. */
+  /**
+   * The reference sets its headline figure at 48px/-0.03em, but it only shows
+   * two per card where this app shows four across. These cap below 48px so a
+   * four-up row still fits; the tracking and weight are the reference's.
+   */
   .stat-figure {
-    font-size: clamp(1.625rem, 7.5vw, 2.25rem);
+    font-size: clamp(1.5rem, 6vw, 2.5rem);
     line-height: 1;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.03em;
   }
 
   .stat-figure-sm {
-    font-size: clamp(1.25rem, 6vw, 1.75rem);
+    font-size: clamp(1.25rem, 5vw, 1.75rem);
     line-height: 1;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.028em;
   }
 
   /**

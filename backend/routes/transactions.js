@@ -13,6 +13,14 @@ const { resolveUuid } = require('../db/helpers');
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
+/**
+ * Stock levels, not money. `current_stock` and `quantity` are NUMERIC(14,4), so
+ * a weight can legitimately carry four decimals; rounding the recorded
+ * before/after snapshot to two would make the ledger disagree with the balance
+ * it was taken from. Money stays on round2 — currency really is two places.
+ */
+const roundQty = (n) => Math.round(n * 10000) / 10000;
+
 const resolveProductId = (transaction) =>
   resolveUuid(transaction.productId) || resolveUuid(transaction.product);
 
@@ -33,7 +41,7 @@ const applyStockChange = async (productId, type, quantity) => {
       { new: true }
     );
     if (!updated) throw new ApiError(404, 'Product not found');
-    return { stockBefore: round2(updated.currentStock - quantity), stockAfter: round2(updated.currentStock), product: updated };
+    return { stockBefore: roundQty(updated.currentStock - quantity), stockAfter: roundQty(updated.currentStock), product: updated };
   }
 
   if (type === 'stock_out') {
@@ -52,7 +60,7 @@ const applyStockChange = async (productId, type, quantity) => {
       );
     }
 
-    return { stockBefore: round2(updated.currentStock + quantity), stockAfter: round2(updated.currentStock), product: updated };
+    return { stockBefore: roundQty(updated.currentStock + quantity), stockAfter: roundQty(updated.currentStock), product: updated };
   }
 
   if (type === 'transfer') {
@@ -62,7 +70,7 @@ const applyStockChange = async (productId, type, quantity) => {
     const product = await Product.findOne({ _id: productId, isActive: true });
     if (!product) throw new ApiError(404, 'Product not found');
 
-    const level = round2(product.currentStock);
+    const level = roundQty(product.currentStock);
     return { stockBefore: level, stockAfter: level, product };
   }
 
@@ -75,7 +83,7 @@ const applyStockChange = async (productId, type, quantity) => {
   if (!previous) throw new ApiError(404, 'Product not found');
 
   const product = await Product.findById(productId);
-  return { stockBefore: round2(previous.currentStock), stockAfter: round2(quantity), product };
+  return { stockBefore: roundQty(previous.currentStock), stockAfter: roundQty(quantity), product };
 };
 
 /**

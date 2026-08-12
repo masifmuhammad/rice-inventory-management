@@ -44,10 +44,16 @@ export const withReducedMotion = (transition, reducedMotion) =>
  * Pages mount immediately and rise into place. There is deliberately no exit
  * animation: waiting for the old page to leave before mounting the new one adds
  * latency to every single navigation, which costs far more than it buys.
+ *
+ * Opacity and transform only, here and throughout this file. Those two are the
+ * properties the compositor can animate on its own thread, so they keep pace
+ * with a 120Hz panel. `filter: blur()` cannot: every frame the GPU re-renders a
+ * blurred copy of the element, and on a whole page or a grid of cards that is
+ * what pins the frame rate well below the display's.
  */
 export const routeVariants = {
-  initial: { opacity: 0, y: 10, filter: 'blur(4px)' },
-  animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
 };
 
 export const routeVariantsReduced = {
@@ -70,8 +76,8 @@ export const staggerContainer = {
 };
 
 export const staggerItem = {
-  hidden: { opacity: 0, y: 12, filter: 'blur(4px)' },
-  show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: springUI },
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: springUI },
 };
 
 export const staggerItemReduced = {
@@ -81,8 +87,8 @@ export const staggerItemReduced = {
 
 /** Contextual icon swaps (theme toggle, show/hide password). */
 export const iconSwap = {
-  initial: { opacity: 0, scale: 0.25, filter: 'blur(4px)' },
-  animate: { opacity: 1, scale: 1, filter: 'blur(0px)' },
-  exit: { opacity: 0, scale: 0.25, filter: 'blur(4px)' },
+  initial: { opacity: 0, scale: 0.25 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.25 },
   transition: { type: 'spring', bounce: 0, duration: 0.3 },
 };

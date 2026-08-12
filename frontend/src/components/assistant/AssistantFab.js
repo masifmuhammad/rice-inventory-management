@@ -9,10 +9,10 @@ import { AssistantBrandMark, AssistantFabTrigger } from './AssistantChrome';
 import AssistantPanels from './AssistantPanels';
 
 const DESKTOP_ACTIONS = [
-  { id: 'chat', icon: FiMessageCircle, label: 'Chat & Voice', sublabel: 'پوچھیں' },
-  { id: 'scan-receipt', icon: FiDollarSign, label: 'Scan receipt', sublabel: 'رسید' },
-  { id: 'scan', icon: FiPackage, label: 'Stock slip', sublabel: 'سلپ' },
-  { id: 'briefing', icon: FiFileText, label: 'Briefing', sublabel: 'خلاصہ' },
+  { id: 'chat', icon: FiMessageCircle, label: 'Chat & Voice' },
+  { id: 'scan-receipt', icon: FiDollarSign, label: 'Scan receipt' },
+  { id: 'scan', icon: FiPackage, label: 'Stock slip' },
+  { id: 'briefing', icon: FiFileText, label: 'Briefing' },
 ];
 
 export default function AssistantFab() {
@@ -77,9 +77,6 @@ export default function AssistantFab() {
             >
               <div className="px-2.5 py-2 mb-1 border-b border-hairline/[0.07]">
                 <AssistantBrandMark />
-                <p className="assistant-ur text-[10px] !leading-normal text-content-subtle mt-0.5 pl-8" dir="rtl" lang="ur">
-                  مدد
-                </p>
               </div>
               {DESKTOP_ACTIONS.map((action) => (
                 <AssistantSpeedDialItem

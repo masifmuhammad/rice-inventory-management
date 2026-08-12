@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { PageTitleProvider } from './context/PageTitleContext';
 import ConfirmProvider from './components/ui/ConfirmProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 import ScrollToTop from './components/ScrollToTop';
@@ -141,10 +142,15 @@ function AppRoutes() {
 export default function App() {
   useEffect(() => {
     const unlock = () => unlockFeedbackAudio();
-    window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+    // touchstart matters on iOS (pointer events alone are not always enough
+    // to unlock Web Audio before the first toast).
+    const opts = { once: true, passive: true };
+    window.addEventListener('pointerdown', unlock, opts);
+    window.addEventListener('touchstart', unlock, opts);
     window.addEventListener('keydown', unlock, { once: true });
     return () => {
       window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('touchstart', unlock);
       window.removeEventListener('keydown', unlock);
     };
   }, []);
@@ -155,12 +161,14 @@ export default function App() {
         <ThemeProvider>
           <AuthProvider>
             <SettingsProvider>
-              <ConfirmProvider>
-                <ScrollToTop />
-                <AppRoutes />
-                <InstallPrompt />
-                <AppToaster />
-              </ConfirmProvider>
+              <PageTitleProvider>
+                <ConfirmProvider>
+                  <ScrollToTop />
+                  <AppRoutes />
+                  <InstallPrompt />
+                  <AppToaster />
+                </ConfirmProvider>
+              </PageTitleProvider>
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>

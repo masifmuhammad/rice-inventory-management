@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import {
   FiAlertCircle,
@@ -40,6 +41,8 @@ const isLowStock = (product) => product.currentStock <= product.minStockLevel;
 export default function Products() {
   const { currencySymbol } = useSettings();
   const confirm = useConfirm();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
@@ -47,6 +50,17 @@ export default function Products() {
   const [sort, setSort] = useState('newest');
   const [editing, setEditing] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    const state = location.state;
+    if (!state) return;
+    if (typeof state.search === 'string') setSearch(state.search);
+    if (state.openCreate) {
+      setEditing(null);
+      setModalOpen(true);
+    }
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   // One request when typing stops, instead of one per keystroke.
   const debouncedSearch = useDebounce(search, 350);

@@ -4,6 +4,7 @@ import { FiDownload, FiX } from 'react-icons/fi';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../utils/motion';
 import Button from './ui/Button';
+import BrandLogo from './BrandLogo';
 
 const DISMISS_KEY = 'rim.pwa.install.dismissed';
 
@@ -43,10 +44,10 @@ export default function InstallPrompt() {
   const enterTransition = reducedMotion ? reducedTransition : springUI;
   const enterFrom = reducedMotion
     ? { opacity: 0 }
-    : { opacity: 0, y: 16, filter: 'blur(4px)' };
+    : { opacity: 0, y: 16 };
   const enterTo = reducedMotion
     ? { opacity: 1 }
-    : { opacity: 1, y: 0, filter: 'blur(0px)' };
+    : { opacity: 1, y: 0 };
 
   return (
     <AnimatePresence>
@@ -61,9 +62,10 @@ export default function InstallPrompt() {
           className="fixed bottom-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom)+0.75rem)] inset-x-3 z-40 lg:bottom-4 lg:left-auto lg:right-4 lg:max-w-sm"
         >
           <div className="surface-card rounded-card p-4 shadow-lg flex items-start gap-3">
+            <BrandLogo size={40} rounded="rounded-xl" className="shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-content">Install on your device</p>
-              <p className="text-xs text-content-subtle mt-1">Add to your home screen for quick access offline.</p>
+              <p className="text-xs text-content-subtle mt-1">Add Haji Muhammad Rice Mills to your home screen for quick access.</p>
               <div className="mt-3 flex gap-2">
                 <Button size="sm" icon={FiDownload} onClick={install}>
                   Install

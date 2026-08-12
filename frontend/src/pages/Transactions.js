@@ -61,21 +61,29 @@ export default function Transactions() {
 
   useEffect(() => {
     const scan = location.state?.aiScan;
-    if (!scan?.proposedTransaction) return;
+    if (scan?.proposedTransaction) {
+      const tx = scan.proposedTransaction;
+      setScanPrefill({
+        type: 'stock_in',
+        product: tx.product,
+        quantity: tx.quantity,
+        price: scan.product?.costPrice,
+        supplier: tx.supplier || '',
+        reference: tx.reference || '',
+        notes: tx.notes || 'From AI delivery note scan',
+      });
+      setModalOpen(true);
+      navigate(location.pathname, { replace: true, state: {} });
+      return;
+    }
 
-    const tx = scan.proposedTransaction;
-    setScanPrefill({
-      type: 'stock_in',
-      product: tx.product,
-      quantity: tx.quantity,
-      price: scan.product?.costPrice,
-      supplier: tx.supplier || '',
-      reference: tx.reference || '',
-      notes: tx.notes || 'From AI delivery note scan',
-    });
-    setModalOpen(true);
-    navigate(location.pathname, { replace: true, state: {} });
+    if (location.state?.openCreate) {
+      setScanPrefill(null);
+      setModalOpen(true);
+      navigate(location.pathname, { replace: true, state: null });
+    }
   }, [location.pathname, location.state, navigate]);
+
   const [downloadingId, setDownloadingId] = useState(null);
 
   const debouncedSearch = useDebounce(search, 350);

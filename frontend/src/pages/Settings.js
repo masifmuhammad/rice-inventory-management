@@ -404,7 +404,7 @@ export default function Settings() {
         <CardBody className="space-y-3">
           <Checkbox
             label="Sound effects"
-            description="Short chimes on success and errors — the most reliable cue on iPhone"
+            description="Short chimes on success and errors — works on iPhone and Android after your first tap"
             checked={feedbackPrefs.sound}
             onChange={(e) => {
               unlockFeedbackAudio();
@@ -417,7 +417,7 @@ export default function Settings() {
             label="Haptic vibration"
             description={
               getHapticsSupportHint() === 'vibrate'
-                ? 'Uses the Vibration API on this device (typical on Android).'
+                ? 'Uses the Vibration API on this device (typical on Android). Toggle to feel a test pulse.'
                 : getHapticsSupportHint() === 'ios-switch'
                   ? 'iPhone still blocks the normal vibration API — even as a Home Screen app. We try Apple’s switch haptic when the OS allows it; keep Sound on as backup.'
                   : 'Not available in this browser. Sound effects still work.'

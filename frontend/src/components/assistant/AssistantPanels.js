@@ -9,6 +9,7 @@ import {
   FiImage,
   FiLoader,
   FiMic,
+  FiMicOff,
   FiSend,
   FiUpload,
   FiX,
@@ -38,6 +39,15 @@ import {
   AssistantMicButton,
 } from './AssistantChrome';
 import { BiLine, BiPair, BilingualBlock } from './AssistantCopy';
+import {
+  canUseMediaRecorder,
+  formatFromMime,
+  getMicPermissionState,
+  micErrorMessage,
+  pickRecorderMimeType,
+  requestMicrophoneAccess,
+} from '../../utils/microphone';
+import { feedbackTick, unlockFeedbackAudio } from '../../utils/feedback';
 
 function ConfirmTransactionFooter({ intent, onDone, onCancel }) {
   const { currencySymbol } = useSettings();
@@ -74,9 +84,9 @@ function ConfirmTransactionFooter({ intent, onDone, onCancel }) {
         <p className="font-medium text-content text-balance">{tx.productName}</p>
         <p className="text-content-muted tabular-nums">
           {tx.type === 'stock_out' ? (
-            <BiPair en="Sale" ur="فروخت" />
+            <BiPair en="Sale" />
           ) : (
-            <BiPair en="Stock in" ur="اسٹاک ان" />
+            <BiPair en="Stock in" />
           )}
           <span>
             {' '}
@@ -93,10 +103,10 @@ function ConfirmTransactionFooter({ intent, onDone, onCancel }) {
       </div>
       <div className="flex gap-2">
         <Button variant="secondary" fullWidth onClick={onCancel} disabled={saving}>
-          <BiLine en="Cancel" ur="منسوخ" size="sm" align="center" />
+          <BiLine en="Cancel" size="sm" align="center" />
         </Button>
         <Button fullWidth loading={saving} icon={FiCheck} onClick={handleConfirm}>
-          <BiLine en="Confirm" ur="تصدیق" size="sm" align="center" />
+          <BiLine en="Confirm" size="sm" align="center" />
         </Button>
       </div>
     </div>
@@ -108,24 +118,42 @@ function ChatPanel({ onClose }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      text: 'Type a question or tap the mic to speak.\n\nاردو: سوال لکھیں یا مائیک دبا کر بولیں۔',
+      text: 'Type a question or tap the mic to speak.',
     },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [pendingIntent, setPendingIntent] = useState(null);
+  const [micState, setMicState] = useState('prompt');
+  const [micBannerDismissed, setMicBannerDismissed] = useState(false);
   const endRef = useRef(null);
   const mediaRef = useRef(null);
   const chunksRef = useRef([]);
+  const streamRef = useRef(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading, pendingIntent, recording]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const state = await getMicPermissionState();
+      if (!cancelled) setMicState(state);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const stopRecording = useCallback(() => {
     if (mediaRef.current && mediaRef.current.state !== 'inactive') {
       mediaRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
     }
     setRecording(false);
   }, []);
@@ -150,20 +178,20 @@ function ChatPanel({ onClose }) {
     if (intent?.requiresConfirmation) {
       setPendingIntent(intent);
       appendAssistant(
-        `${intent.message || 'Confirm this transaction below.'}\n\nاردو: نیچے تصدیق کریں۔`
+        `${intent.message || 'Confirm this transaction below.'}`
       );
       return;
     }
 
     if (intent?.action === 'navigate' && intent.destination) {
-      appendAssistant(`${intent.message || `Opening ${intent.destination}.`}\n\nاردو: صفحہ کھول رہا ہوں۔`);
+      appendAssistant(`${intent.message || `Opening ${intent.destination}.`}`);
       handleNavigateIntent(intent.destination);
       return;
     }
 
     if (intent?.action === 'stock_check' && intent.data) {
       appendAssistant(
-        `${intent.message}\n\n${intent.data.currentStock} ${intent.data.unit}\n\nاردو: موجودہ سٹاک اوپر ہے۔`
+        `${intent.message}\n\n${intent.data.currentStock} ${intent.data.unit}`
       );
       return;
     }
@@ -181,24 +209,54 @@ function ChatPanel({ onClose }) {
     } catch (error) {
       const msg = getAiErrorMessage(error, 'Could not get a reply');
       toast.error(msg);
-      appendAssistant(`${msg}\n\nاردو: دوبارہ کوشش کریں۔`);
+      appendAssistant(`${msg}`);
     } finally {
       setLoading(false);
     }
   };
 
+  const enableMicrophone = async () => {
+    unlockFeedbackAudio();
+    try {
+      await requestMicrophoneAccess({ keepAlive: false });
+      setMicState('granted');
+      feedbackTick();
+      toast.success('Microphone ready', { feedback: 'tick' });
+    } catch (error) {
+      const state = await getMicPermissionState();
+      setMicState(state === 'prompt' ? 'denied' : state);
+      toast.error(micErrorMessage(error));
+    }
+  };
+
   const startRecording = async () => {
     if (loading || recording) return;
+    unlockFeedbackAudio();
+
+    if (!canUseMediaRecorder()) {
+      toast.error(micErrorMessage({ code: 'unsupported' }));
+      setMicState('unsupported');
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const stream = await requestMicrophoneAccess({ keepAlive: true });
+      streamRef.current = stream;
+      setMicState('granted');
+
+      const mimeType = pickRecorderMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+      const usedMime = recorder.mimeType || mimeType || 'audio/webm';
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        streamRef.current = null;
+        const blob = new Blob(chunksRef.current, { type: usedMime });
         if (blob.size < 500) {
           toast.error('Recording too short. Hold a bit longer.');
           return;
@@ -211,7 +269,7 @@ function ChatPanel({ onClose }) {
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
-          const data = await sendVoiceAudio(base64, 'webm');
+          const data = await sendVoiceAudio(base64, formatFromMime(usedMime));
           await handleVoiceResult(data);
         } catch (error) {
           toast.error(getAiErrorMessage(error, 'Could not process voice'));
@@ -223,8 +281,11 @@ function ChatPanel({ onClose }) {
       recorder.start();
       setRecording(true);
       setPendingIntent(null);
-    } catch {
-      toast.error('Microphone access is required to speak.');
+      feedbackTick();
+    } catch (error) {
+      const state = await getMicPermissionState();
+      setMicState(state === 'prompt' ? 'denied' : state);
+      toast.error(micErrorMessage(error));
     }
   };
 
@@ -232,6 +293,12 @@ function ChatPanel({ onClose }) {
     if (recording) stopRecording();
     else startRecording();
   };
+
+  const micBlocked = micState === 'denied' || micState === 'unsupported' || micState === 'insecure';
+  const showMicBanner =
+    !micBannerDismissed &&
+    !recording &&
+    (micState === 'prompt' || micState === 'denied' || micState === 'insecure' || micState === 'unsupported');
 
   const send = async () => {
     const text = input.trim();
@@ -246,7 +313,7 @@ function ChatPanel({ onClose }) {
     } catch (error) {
       const msg = getAiErrorMessage(error, 'Could not get a reply');
       toast.error(msg);
-      appendAssistant(`${msg}\n\nاردو: دوبارہ کوشش کریں۔`);
+      appendAssistant(`${msg}`);
     } finally {
       setLoading(false);
     }
@@ -257,7 +324,7 @@ function ChatPanel({ onClose }) {
       open
       onClose={onClose}
       title="Chat & Voice"
-      description={<BiLine en="Type or speak · English first" ur="اردو نیچے" size="sm" />}
+      description={<BiLine en="Type or speak · Urdu understood, replies in English" size="sm" />}
       size="lg"
       footer={
         pendingIntent?.requiresConfirmation ? (
@@ -265,7 +332,7 @@ function ChatPanel({ onClose }) {
             intent={pendingIntent}
             onDone={() => {
               setPendingIntent(null);
-              appendAssistant('Saved.\n\nاردو: محفوظ ہو گیا۔');
+              appendAssistant('Saved.');
             }}
             onCancel={() => setPendingIntent(null)}
           />
@@ -273,6 +340,38 @@ function ChatPanel({ onClose }) {
       }
     >
       <div className="flex flex-col -my-5 -mx-5 sm:-mx-6 min-h-[420px] max-h-[60vh]">
+        {showMicBanner && (
+          <div className="mx-5 sm:mx-6 mt-1 mb-1 rounded-[14px] bg-primary-500/[0.08] shadow-[inset_0_0_0_1px_rgb(var(--primary-500)/0.18)] px-3.5 py-3 flex gap-3 items-start">
+            <span className="mt-0.5 text-primary-600 dark:text-primary-400" aria-hidden="true">
+              {micBlocked ? (
+                <FiMicOff className="w-4 h-4" strokeWidth={ASSISTANT_STROKE} />
+              ) : (
+                <FiMic className="w-4 h-4" strokeWidth={ASSISTANT_STROKE} />
+              )}
+            </span>
+            <div className="flex-1 min-w-0 space-y-2">
+              <p className="text-sm text-content text-pretty">
+                {micState === 'insecure'
+                  ? 'Voice needs HTTPS on phones. Typing still works.'
+                  : micState === 'unsupported'
+                    ? 'This browser cannot record audio. Typing still works.'
+                    : micState === 'denied'
+                      ? 'Microphone is blocked. Allow it in site settings, or keep typing.'
+                      : 'Allow the microphone once so you can speak orders. Or skip and type.'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(micState === 'prompt' || micState === 'denied') && (
+                  <Button size="sm" onClick={enableMicrophone}>
+                    {micState === 'denied' ? 'Try again' : 'Allow microphone'}
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={() => setMicBannerDismissed(true)}>
+                  Use typing
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-3.5">
           {messages.map((msg, i) => (
             <div
@@ -308,7 +407,7 @@ function ChatPanel({ onClose }) {
           {recording && (
             <div className="flex items-center gap-2 text-sm text-red-500">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
-              <BiLine en="Listening… tap mic to stop" ur="سن رہا ہے…" size="sm" />
+              <BiLine en="Listening… tap mic to stop" size="sm" />
             </div>
           )}
           {loading && !recording && (
@@ -323,13 +422,13 @@ function ChatPanel({ onClose }) {
           <AssistantMicButton
             recording={recording}
             onClick={toggleMic}
-            disabled={loading && !recording}
+            disabled={(loading && !recording) || (micBlocked && !recording)}
           />
           <Input
             className="flex-1 min-w-0"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={recording ? 'Listening…' : 'Ask anything… / کچھ بھی پوچھیں'}
+            placeholder={recording ? 'Listening…' : 'Ask anything…'}
             disabled={recording}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
           />
@@ -363,7 +462,7 @@ function BriefingPanel({ onClose }) {
       open
       onClose={onClose}
       title="Daily Briefing"
-      description={<BiLine en="Today's summary" ur="آج کا خلاصہ" size="sm" />}
+      description={<BiLine en="Today's summary" size="sm" />}
       size="lg"
     >
       {loading ? (
@@ -374,21 +473,21 @@ function BriefingPanel({ onClose }) {
         <div className="text-center py-10 space-y-4">
           <p className="text-sm text-content-muted">{error}</p>
           <Button onClick={load}>
-            <BiLine en="Try again" ur="دوبارہ کوشش" size="sm" align="center" />
+            <BiLine en="Try again" size="sm" align="center" />
           </Button>
         </div>
       ) : (
         <div className="space-y-6">
           <section>
             <h3 className="mb-2.5">
-              <BiLine en="Overview" ur="خلاصہ" size="sm" />
+              <BiLine en="Overview" size="sm" />
             </h3>
             <BilingualBlock text={data?.briefing} />
           </section>
           {data?.restock && (
             <section>
               <h3 className="mb-2.5">
-                <BiLine en="Restock" ur="ری آرڈر" size="sm" />
+                <BiLine en="Restock" size="sm" />
               </h3>
               <BilingualBlock text={data.restock} />
             </section>
@@ -396,7 +495,7 @@ function BriefingPanel({ onClose }) {
           {data?.anomalies && (
             <section>
               <h3 className="mb-2.5">
-                <BiLine en="Alerts" ur="انتباہات" size="sm" />
+                <BiLine en="Alerts" size="sm" />
               </h3>
               <BilingualBlock text={data.anomalies} />
             </section>
@@ -531,16 +630,16 @@ function ScanPanel({ onClose }) {
       open
       onClose={onClose}
       title="Scan Delivery Note"
-      description={<BiLine en="Photo of supplier slip" ur="سپلائر سلپ کی تصویر" size="sm" />}
+      description={<BiLine en="Photo of supplier slip" size="sm" />}
       size="lg"
       footer={
         result ? (
           <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
             <Button variant="secondary" onClick={clearScan} disabled={loading}>
-              Scan another / دوسری تصویر
+              Scan another
             </Button>
             <Button icon={FiCheck} onClick={goToTransactions} disabled={loading}>
-              Review stock-in / اسٹاک ان
+              Review stock-in
             </Button>
           </div>
         ) : null
@@ -569,9 +668,6 @@ function ScanPanel({ onClose }) {
                   <AssistantIconWell icon={FiImage} size="lg" tone="muted" />
                   <p className="assistant-en-sm text-content text-pretty" lang="en">
                     Drop a photo here, or use the buttons below
-                  </p>
-                  <p className="assistant-ur-sm text-content-muted" dir="rtl" lang="ur">
-                    تصویر یہاں ڈالیں یا نیچے سے منتخب کریں
                   </p>
                 </div>
               )}
@@ -605,10 +701,10 @@ function ScanPanel({ onClose }) {
                     }}
                   />
                   <Button icon={FiCamera} onClick={() => cameraRef.current?.click()}>
-                    Take photo / کیمرہ
+                    Take photo
                   </Button>
                   <Button variant="secondary" icon={FiUpload} onClick={() => fileRef.current?.click()}>
-                    Upload file / فائل
+                    Upload file
                   </Button>
                 </div>
               )}
@@ -652,7 +748,7 @@ function ScanPanel({ onClose }) {
                 required
                 type="number"
                 min="0"
-                step="0.01"
+                step="any"
                 inputMode="decimal"
                 value={form.quantity}
                 onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
@@ -815,13 +911,13 @@ function CashReceiptPanel({ onClose }) {
       open
       onClose={onClose}
       title="Scan Receipt"
-      description={<BiLine en="Photo → money in / money out" ur="رسید سے کیش بک" size="sm" />}
+      description={<BiLine en="Photo → money in / money out" size="sm" />}
       size="lg"
       footer={
         scanned ? (
           <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
             <Button variant="secondary" onClick={clearScan} disabled={saving}>
-              Scan another / دوسری
+              Scan another
             </Button>
             <Button
               icon={FiCheck}
@@ -859,9 +955,6 @@ function CashReceiptPanel({ onClose }) {
                   <p className="assistant-en-sm text-content text-pretty" lang="en">
                     Drop a receipt photo, or use the buttons
                   </p>
-                  <p className="assistant-ur-sm text-content-muted" dir="rtl" lang="ur">
-                    رسید کی تصویر یہاں ڈالیں
-                  </p>
                 </div>
               )}
 
@@ -894,10 +987,10 @@ function CashReceiptPanel({ onClose }) {
                     }}
                   />
                   <Button icon={FiCamera} onClick={() => cameraRef.current?.click()}>
-                    Take photo / کیمرہ
+                    Take photo
                   </Button>
                   <Button variant="secondary" icon={FiUpload} onClick={() => fileRef.current?.click()}>
-                    Upload file / فائل
+                    Upload file
                   </Button>
                 </div>
               )}
@@ -1071,14 +1164,14 @@ export function TextCommandBar({ onClose }) {
         rows={2}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Type a command… / کمانڈ لکھیں"
+        placeholder="Type a command…"
       />
       <div className="flex gap-2">
         <Button variant="ghost" icon={FiX} onClick={onClose}>
           Close
         </Button>
         <Button fullWidth loading={loading} onClick={run}>
-          Run / چلائیں
+          Run
         </Button>
       </div>
       {result?.intent?.requiresConfirmation && (

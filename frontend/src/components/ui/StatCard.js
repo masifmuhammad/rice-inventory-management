@@ -15,7 +15,6 @@ export function StatGrid({ children, className = '' }) {
   );
 }
 
-// Status is carried by the figure's colour, so only one accent competes at a time.
 const figureTones = {
   neutral: 'text-content',
   success: 'text-content',
@@ -24,10 +23,7 @@ const figureTones = {
 };
 
 /**
- * One headline figure.
- *
- * The label sits above in small muted type and the number dominates, matching
- * how a dashboard is actually scanned. Pass `rawValue` for animated digits.
+ * One headline figure — compact cell, full hint text, left-aligned like before.
  */
 export default function StatCard({
   title,
@@ -48,28 +44,27 @@ export default function StatCard({
   const isUp = hasChange && change > 0;
   const isFlat = hasChange && change === 0;
 
-  // For withdrawals or stock-out, "up" is not automatically good.
   const positive = invertChange ? !isUp : isUp;
   const TrendIcon = isFlat ? FiMinus : isUp ? FiArrowUpRight : FiArrowDownRight;
 
   const figureSize = size === 'sm' ? 'stat-figure-sm' : 'stat-figure';
-  const figureClassName = `font-display font-bold tabular-nums ${figureSize} ${
+  // 600, not 700 — the reference's figures are semibold and tracked in tight.
+  const figureClassName = `font-display font-semibold tabular-nums ${figureSize} ${
     figureTones[tone] || figureTones.neutral
   }`;
-  const unitClassName = 'text-sm font-semibold text-content-subtle';
+  const unitClassName = 'text-caption font-semibold text-content-subtle';
 
   return (
-    <div className="p-4 sm:p-5 min-w-0">
-      <div className="flex items-center gap-1.5 min-w-0">
+    <div className="p-3.5 sm:p-4 min-w-0">
+      {/* Sentence case, not small-caps — the reference labels a figure plainly. */}
+      <div className="flex items-center gap-2 min-w-0">
         {Icon && (
-          <Icon className="w-3.5 h-3.5 flex-shrink-0 text-content-subtle" aria-hidden="true" />
+          <Icon className="w-4 h-4 flex-shrink-0 text-content-muted" aria-hidden="true" />
         )}
-        <p className="text-[10px] font-semibold uppercase tracking-[0.09em] text-content-muted truncate">
-          {title}
-        </p>
+        <p className="text-caption font-medium text-content-muted truncate">{title}</p>
       </div>
 
-      <div className="mt-2">
+      <div className="mt-1.5">
         {rawValue !== undefined && rawValue !== null ? (
           <AnimatedValue
             value={rawValue}
@@ -87,19 +82,24 @@ export default function StatCard({
       </div>
 
       {hasChange ? (
-        <p className="mt-2 text-[11px] flex items-center gap-1 min-w-0">
+        /* The delta is a tinted pill in the reference, not loose coloured text. */
+        <p className="mt-2 text-[11px] flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0 text-pretty">
           <span
-            className={`inline-flex items-center gap-0.5 font-medium flex-shrink-0 ${
-              isFlat ? 'text-content-subtle' : positive ? 'text-emerald-500' : 'text-red-500'
+            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+              isFlat
+                ? 'bg-hairline/[0.06] text-content-muted'
+                : positive
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-red-500/10 text-red-600 dark:text-red-400'
             }`}
           >
             <TrendIcon className="w-3 h-3" aria-hidden="true" />
             {Math.abs(change).toFixed(1)}%
           </span>
-          <span className="text-content-subtle truncate">{changeLabel || 'vs previous'}</span>
+          <span className="text-content-subtle">{changeLabel || 'vs previous'}</span>
         </p>
       ) : hint ? (
-        <p className="mt-2 text-[11px] text-content-subtle truncate">{hint}</p>
+        <p className="mt-2 text-[11px] text-content-subtle text-pretty leading-snug">{hint}</p>
       ) : null}
     </div>
   );

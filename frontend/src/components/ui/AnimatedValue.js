@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import NumberFlow from '@number-flow/react';
+import NumberFlow, { useCanAnimate } from '@number-flow/react';
+import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 
 const parseNumeric = (value) => {
   if (value === null || value === undefined || value === '') return null;
@@ -16,12 +17,12 @@ const toCompact = (value) => {
   return { amount: value, unit: '', digits: magnitude === 0 ? 0 : 2 };
 };
 
+const SCROLL_EASE = 'cubic-bezier(0.2, 0, 0, 1)';
+const scrollTiming = { duration: 780, easing: SCROLL_EASE };
+const fadeTiming = { duration: 320, easing: 'ease-out' };
+
 /**
- * An animated figure.
- *
- * The currency symbol and scale unit render as separate small, muted spans so
- * the digits carry the visual weight — and so a long amount never has to be
- * truncated to fit its cell.
+ * An animated figure with a digit-reel scroll when the value changes.
  */
 export default function AnimatedValue({
   value,
@@ -32,6 +33,8 @@ export default function AnimatedValue({
   animate = true,
   title,
 }) {
+  const reducedMotion = usePrefersReducedMotion();
+  const canAnimate = useCanAnimate({ respectMotionPreference: true });
   const numeric = parseNumeric(value);
 
   const compact = useMemo(
@@ -56,11 +59,22 @@ export default function AnimatedValue({
     format = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
   }
 
+  const shouldAnimate = animate && canAnimate && !reducedMotion;
+
   return (
     <span className="inline-flex items-baseline gap-1 tabular-nums" title={title}>
       {isMoney && symbol && <span className={unitClassName}>{symbol}</span>}
-      {animate ? (
-        <NumberFlow value={amount} format={format} className={figureClassName} willChange />
+      {shouldAnimate ? (
+        <NumberFlow
+          value={amount}
+          format={format}
+          locales="en-PK"
+          className={figureClassName}
+          willChange
+          transformTiming={scrollTiming}
+          spinTiming={scrollTiming}
+          opacityTiming={fadeTiming}
+        />
       ) : (
         <span className={figureClassName}>{amount.toLocaleString('en-PK', format)}</span>
       )}

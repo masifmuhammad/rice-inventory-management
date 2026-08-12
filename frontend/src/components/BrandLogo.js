@@ -2,19 +2,28 @@ import React, { useEffect, useState } from 'react';
 import { FiPackage } from 'react-icons/fi';
 import { useSettings } from '../context/SettingsContext';
 
+const DEFAULT_BRAND_LOGO = `${process.env.PUBLIC_URL || ''}/brand/hm-logo.png`;
+
 /**
- * The business logo, falling back to a mark when there is no image or it fails
- * to load.
+ * Always show the Haji Muhammad mark unless a business uploaded its own logo.
+ * Falls back to the bundled brand asset (not the generic package icon).
  */
 export default function BrandLogo({ size = 40, className = '', rounded = 'rounded-lg' }) {
   const { logo } = useSettings();
-  const [failed, setFailed] = useState(!logo);
+  // Prefer uploaded logo only when it looks like a real image data URL / path.
+  const src = logo || DEFAULT_BRAND_LOGO;
+  const [failed, setFailed] = useState(false);
+  const [fallbackSrc, setFallbackSrc] = useState(null);
 
-  useEffect(() => setFailed(!logo), [logo]);
+  useEffect(() => {
+    setFailed(false);
+    setFallbackSrc(null);
+  }, [src]);
 
   const dimensions = { width: size, height: size };
+  const displaySrc = fallbackSrc || src;
 
-  if (!logo || failed) {
+  if (failed && !fallbackSrc) {
     return (
       <span
         style={dimensions}
@@ -27,13 +36,19 @@ export default function BrandLogo({ size = 40, className = '', rounded = 'rounde
 
   return (
     <img
-      src={logo}
-      alt=""
+      src={displaySrc}
+      alt="Haji Muhammad Rice Mills"
       width={size}
       height={size}
       style={dimensions}
-      className={`flex-shrink-0 object-contain bg-surface-1 ${rounded} ${className}`}
-      onError={() => setFailed(true)}
+      className={`flex-shrink-0 object-contain bg-white ${rounded} ${className}`}
+      onError={() => {
+        if (displaySrc !== DEFAULT_BRAND_LOGO) {
+          setFallbackSrc(DEFAULT_BRAND_LOGO);
+          return;
+        }
+        setFailed(true);
+      }}
       decoding="async"
     />
   );

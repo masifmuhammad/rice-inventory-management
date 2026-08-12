@@ -260,7 +260,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
               label="Current stock"
               required
               type="number"
-              step="0.01"
+              step="any"
               min="0"
               inputMode="decimal"
               value={values.currentStock}
@@ -272,7 +272,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
               label="Minimum level"
               required
               type="number"
-              step="0.01"
+              step="any"
               min="0"
               inputMode="decimal"
               value={values.minStockLevel}
@@ -284,7 +284,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
             <Input
               label="Maximum level"
               type="number"
-              step="0.01"
+              step="any"
               min="0"
               inputMode="decimal"
               value={values.maxStockLevel}

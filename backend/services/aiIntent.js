@@ -222,7 +222,7 @@ const answerQuestion = async (question, context) => {
         content:
           'You are a helpful assistant for a rice mill inventory app. ' +
           'Answer using ONLY the JSON data provided — never invent stock levels or sales figures. ' +
-          'Reply in English first, then the same answer in Urdu on a new paragraph prefixed with "اردو:". ' +
+          'Reply in English only. ' +
           'Keep answers concise and practical for shop staff.',
       },
       {
@@ -261,7 +261,7 @@ const generateBriefing = async (context, anomalies) => {
           role: 'system',
           content:
             'Write a short daily business briefing for a rice mill owner. ' +
-            'Use ONLY the provided JSON data. Structure: 3-5 bullet points in English, then repeat as bullet points in Urdu under "اردو:". ' +
+            'Use ONLY the provided JSON data. Structure: 3-5 bullet points in English. ' +
             'Mention low stock, today sales, restock priorities, and any anomalies. Be direct and actionable. Keep under 120 words.',
         },
         { role: 'user', content: JSON.stringify(slim) },
@@ -290,12 +290,10 @@ const shouldSkipBriefingAi = (context, anomalies = []) => {
 
 const buildLocalBriefing = (context, anomalies = []) => {
   const en = [];
-  const ur = [];
 
   if (!(context.productCount || 0)) {
     return (
-      'No products yet — add stock to unlock a useful daily briefing.\n\n' +
-      'اردو: ابھی کوئی پروڈکٹ نہیں۔ روزانہ خلاصہ کے لیے پہلے اسٹاک شامل کریں۔'
+      'No products yet - add stock to unlock a useful daily briefing.'
     );
   }
 
@@ -304,25 +302,19 @@ const buildLocalBriefing = (context, anomalies = []) => {
 
   if (!(today.salesCount || 0) && !(today.stockInCount || 0)) {
     en.push('Quiet day so far — no sales or stock-in recorded yet.');
-    ur.push('آج ابھی کوئی فروخت یا اسٹاک ان درج نہیں ہوا۔');
   } else {
     if (today.salesCount) {
       en.push(
         `Today: ${today.salesCount} sale(s) · qty ${today.salesQuantity} · value ${today.salesValue}.`
       );
-      ur.push(
-        `آج: ${today.salesCount} فروخت · مقدار ${today.salesQuantity} · رقم ${today.salesValue}۔`
-      );
     }
     if (today.stockInCount) {
       en.push(`Stock in today: ${today.stockInCount} entry(ies), qty ${today.stockInQuantity}.`);
-      ur.push(`آج اسٹاک ان: ${today.stockInCount} اندراجات، مقدار ${today.stockInQuantity}۔`);
     }
   }
 
   if (month.salesCount) {
     en.push(`Last 30 days: ${month.salesCount} sale(s), value ${month.salesValue}.`);
-    ur.push(`آخری ۳۰ دن: ${month.salesCount} فروخت، رقم ${month.salesValue}۔`);
   }
 
   const low = context.lowStock || [];
@@ -332,41 +324,33 @@ const buildLocalBriefing = (context, anomalies = []) => {
       .map((p) => p.name)
       .join(', ');
     en.push(`${low.length} product(s) at/below minimum${names ? ` (${names})` : ''}.`);
-    ur.push(`${low.length} پروڈکٹ کم اسٹاک پر ہیں${names ? ` (${names})` : ''}۔`);
   } else {
     en.push('Stock levels look fine — nothing below minimum.');
-    ur.push('اسٹاک ٹھیک ہے — کوئی چیز کم از کم حد سے نیچے نہیں۔');
   }
 
   if ((context.expiringSoon || []).length) {
     en.push(`${context.expiringSoon.length} item(s) expire within 30 days.`);
-    ur.push(`${context.expiringSoon.length} اشیاء ۳۰ دن میں ختم ہو رہی ہیں۔`);
   }
 
   if (anomalies.length) {
     en.push(`${anomalies.length} unusual pattern(s) this week — see Alerts below.`);
-    ur.push(`${anomalies.length} غیر معمولی اشارے — نیچے انتباہات دیکھیں۔`);
   } else {
     en.push('No unusual activity flagged this week.');
-    ur.push('اس ہفتے کوئی غیر معمولی سرگرمی نہیں ملی۔');
   }
 
   if (context.cash) {
     en.push(
       `Cash (30d): in ${context.cash.cashIn}, out ${context.cash.cashOut}, net ${context.cash.netCash}.`
     );
-    ur.push(
-      `کیش (۳۰ دن): آمد ${context.cash.cashIn}، خرچ ${context.cash.cashOut}، خالص ${context.cash.netCash}۔`
-    );
   }
 
-  return `${en.map((line) => `• ${line}`).join('\n')}\n\nاردو:\n${ur.map((line) => `• ${line}`).join('\n')}`;
+  return en.map((line) => `• ${line}`).join('\n');
 };
 
 const explainRestock = async (hints) => {
   if (!hints.length) {
     return (
-      'No urgent restock items.\n\nاردو: فی الحال فوری ری آرڈر کی ضرورت نہیں۔'
+      'No urgent restock items.'
     );
   }
 
@@ -375,7 +359,7 @@ const explainRestock = async (hints) => {
       {
         role: 'system',
         content:
-          'Explain restock suggestions for a rice mill. English first (short bullets), then Urdu under "اردو:". Use only the JSON provided. Keep under 80 words.',
+          'Explain restock suggestions for a rice mill in English, as short bullets. Use only the JSON provided. Keep under 80 words.',
       },
       { role: 'user', content: JSON.stringify(hints.slice(0, 8)) },
     ],
@@ -388,7 +372,7 @@ const explainRestock = async (hints) => {
 const explainAnomalies = async (anomalies) => {
   if (!anomalies.length) {
     return (
-      'No unusual activity detected this week.\n\nاردو: اس ہفتے کوئی غیر معمولی سرگرمی نہیں ملی۔'
+      'No unusual activity detected this week.'
     );
   }
 
@@ -397,7 +381,7 @@ const explainAnomalies = async (anomalies) => {
       {
         role: 'system',
         content:
-          'Turn inventory anomaly alerts into plain English then Urdu (prefix "اردو:"). Be brief and non-alarmist. Keep under 80 words.',
+          'Turn inventory anomaly alerts into plain English. Be brief and non-alarmist. Keep under 80 words.',
       },
       { role: 'user', content: JSON.stringify(anomalies) },
     ],

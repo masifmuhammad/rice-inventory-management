@@ -20,7 +20,7 @@ const activityLink = (entry) => {
   return '/';
 };
 
-export default function NotificationPanel() {
+export default function NotificationPanel({ variant = 'default' }) {
   const { can } = useAuth();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState({ pendingCount: 0, recentActivity: [], pendingUsers: [] });
@@ -113,12 +113,22 @@ export default function NotificationPanel() {
         aria-label={`Notifications${badge ? `, ${badge} unread` : ''}`}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className="relative p-2.5 rounded-lg text-content-subtle hover:bg-hairline/[0.05] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+        className={
+          variant === 'circle'
+            ? 'relative grid place-items-center w-10 h-10 rounded-full bg-surface-1 border border-hairline/[0.06] text-content-muted hover:text-content hover:border-hairline/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500'
+            : 'relative p-2.5 rounded-lg text-content-subtle hover:bg-hairline/[0.05] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center'
+        }
       >
-        <FiBell className="w-5 h-5" aria-hidden="true" />
+        <FiBell className="w-[18px] h-[18px]" aria-hidden="true" />
         {badge > 0 && (
-          <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-            {badge > 9 ? '9+' : badge}
+          <span
+            className={
+              variant === 'circle'
+                ? 'absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-surface-2'
+                : 'absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center'
+            }
+          >
+            {variant === 'circle' ? <span className="sr-only">{badge} unread</span> : badge > 9 ? '9+' : badge}
           </span>
         )}
       </button>
@@ -197,7 +207,7 @@ export default function NotificationPanel() {
             </div>
 
             {can('audit.view') && (
-              <div className="border-t border-hairline/[0.07] px-4 py-3 bg-surface-sunken">
+              <div className="border-t border-hairline/[0.06] px-4 py-3">
                 <Link
                   to="/admin/activity"
                   onClick={() => setOpen(false)}

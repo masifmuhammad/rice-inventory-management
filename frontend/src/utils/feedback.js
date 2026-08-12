@@ -71,9 +71,16 @@ export const unlockFeedbackAudio = () => {
 };
 
 const tone = (freq, { duration = 0.06, gain = 0.045, type = 'sine', delay = 0 } = {}) => {
-  if (!getFeedbackPrefs().sound || prefersReducedMotion()) return;
+  // Sound is independent of reduced-motion — phones often have that a11y flag on,
+  // and silencing chimes made feedback feel "broken" with no vibration API.
+  if (!getFeedbackPrefs().sound) return;
   const ctx = getCtx();
-  if (!ctx || !unlocked) return;
+  if (!ctx) return;
+  // iOS suspends AudioContext aggressively; resume on every play attempt.
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+  if (!unlocked && ctx.state !== 'running') return;
 
   const t0 = ctx.currentTime + delay;
   const osc = ctx.createOscillator();
@@ -124,6 +131,8 @@ const iosSwitchPulse = () => {
 
 const vibrate = (pattern, { pulses = 1 } = {}) => {
   if (!getFeedbackPrefs().haptics) return;
+  // Skip haptic motion when the user asked for less motion; sound still plays.
+  if (prefersReducedMotion()) return;
 
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
     try {

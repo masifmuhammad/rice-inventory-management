@@ -185,9 +185,14 @@ export const Select = forwardRef(function Select(
     backgroundSize: '1.25rem',
   };
 
-  // Filters / toolbars keep the native control — compact and fine outside forms.
-  if (bare || !label) {
-    const selectEl = (
+  /**
+   * Only an explicit `bare` keeps a real <select>. Everything else goes through
+   * the listbox below, including unlabelled toolbar filters: a native option
+   * list is painted by the OS, so on Windows it drops a blue system menu into
+   * the middle of the design that no stylesheet can reach.
+   */
+  if (bare) {
+    return (
       <select
         ref={ref}
         id={selectId}
@@ -206,15 +211,6 @@ export const Select = forwardRef(function Select(
         {children}
       </select>
     );
-
-    if (bare) return selectEl;
-
-    return (
-      <div className={className}>
-        {selectEl}
-        <FieldMessage error={error} hint={hint} />
-      </div>
-    );
   }
 
   const selected = options.find((option) => option.value === String(value ?? '')) || null;
@@ -226,6 +222,10 @@ export const Select = forwardRef(function Select(
     onChange({ target: { value: next, name: name || undefined }, currentTarget: { value: next } });
   };
 
+  // Labelled fields get the tall stacked shell; unlabelled toolbar filters keep
+  // the compact single-line chrome they had, just with a styled option list.
+  const compact = !label;
+
   return (
     <div className={className}>
       <Listbox value={String(value ?? '')} onChange={emitChange} disabled={disabled} name={name}>
@@ -234,20 +234,29 @@ export const Select = forwardRef(function Select(
             ref={ref}
             id={selectId}
             aria-invalid={error ? 'true' : undefined}
-            className={`${shellClasses(error, 'relative w-full text-left cursor-pointer')}
+            className={`${
+              compact
+                ? controlClasses(
+                    error,
+                    `${flatSizing} relative w-full flex items-center text-left cursor-pointer`
+                  )
+                : shellClasses(error, 'relative w-full text-left cursor-pointer')
+            }
               data-[open]:ring-2 data-[open]:ring-primary-500/35 data-[open]:border-primary-500/55
               disabled:cursor-not-allowed disabled:opacity-65`}
           >
             <ShellLabel as="span" label={label} required={required} />
             <span
-              className={`field-shell-control block pr-7 truncate ${
+              className={`block pr-7 truncate ${compact ? 'w-full' : 'field-shell-control'} ${
                 placeholderLike ? 'text-content-subtle' : ''
               } ${selectClassName}`.trim()}
             >
               {display}
             </span>
             <FiChevronDown
-              className="pointer-events-none absolute right-3.5 bottom-3 w-4 h-4 text-content-subtle"
+              className={`pointer-events-none absolute right-3.5 w-4 h-4 text-content-subtle ${
+                compact ? 'top-1/2 -translate-y-1/2' : 'bottom-3'
+              }`}
               aria-hidden="true"
             />
           </ListboxButton>

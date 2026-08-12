@@ -2,19 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/icons/icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icons/icon.svg" />
+    <link rel="icon" href="%PUBLIC_URL%/icons/icon-192.png?v=3" type="image/png" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icons/apple-touch-icon.png?v=3" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#059669" />
-    <meta name="description" content="Inventory management for stock, sales and cash" />
+    <!-- Browser chrome matches the app canvas, so the two never seam. -->
+    <meta name="theme-color" content="#F1F1F1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Inventory management for Haji Muhammad Rice Mills — stock, sales and cash" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Inventory" />
+    <meta name="apple-mobile-web-app-title" content="HM Mills" />
+    <meta name="application-name" content="HM Mills" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
-    <title>Inventory Management</title>
+    <!--
+      Inter Tight is the reference dashboard's face: same skeleton as Inter but
+      with the narrower sidebearings that let headings and big figures sit tight
+      without negative tracking doing all the work. One family for UI and
+      display, as in the reference — Plus Jakarta is gone with it.
+    -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>Haji Muhammad Rice Mills</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

@@ -11,7 +11,7 @@ export default function Pagination({ page, pages, total, limit, onChange, classN
   return (
     <div
       className={`flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3
-        border-t border-hairline/[0.07] bg-surface-sunken ${className}`}
+        border-t border-hairline/[0.06] ${className}`}
     >
       <p className="text-sm text-content-muted tabular-nums">
         <span className="font-medium text-content">

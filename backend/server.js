@@ -32,6 +32,7 @@ app.use(
         imgSrc: ["'self'", 'data:', 'blob:'],
         fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
         connectSrc: ["'self'", ...env.corsOrigins],
+        mediaSrc: ["'self'", 'blob:', 'mediastream:'],
         objectSrc: ["'none'"],
         frameAncestors: ["'self'"],
         baseUri: ["'self'"],
@@ -49,6 +50,13 @@ app.use(
     hsts: false,
   })
 );
+
+// Explicitly allow mic/camera for the AI assistant. Some mobile WebViews inherit
+// a restrictive default that blocks getUserMedia without this header.
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'microphone=(self), camera=(self)');
+  next();
+});
 
 /* ---------------------------------------------------------------------- cors */
 

@@ -9,7 +9,6 @@ import {
   FiDollarSign,
   FiHome,
   FiLogOut,
-  FiMenu,
   FiMoon,
   FiPackage,
   FiSettings,
@@ -19,20 +18,21 @@ import {
   FiX,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../context/SettingsContext';
 import { useTheme } from '../context/ThemeContext';
 import { useConfirm } from './ui/ConfirmProvider';
 import usePrefetchRoute from '../hooks/usePrefetchRoute';
 import BrandLogo from './BrandLogo';
 import ErrorBoundary from './ErrorBoundary';
 import BusinessSwitcher from './BusinessSwitcher';
-import NotificationPanel from './NotificationPanel';
 import MobileTabBar from './MobileTabBar';
+import MicPermissionPrompt from './MicPermissionPrompt';
+import BusinessSwitchOverlay from './BusinessSwitchOverlay';
+import AppHeader from './AppHeader';
 import PageTransition from './PageTransition';
 import ProfileSheet from './ProfileSheet';
-import UserAvatar from './UserAvatar';
 import { lazyPage } from '../utils/lazyPage';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
+import useDrawerEdgeSwipe from '../hooks/useDrawerEdgeSwipe';
 import { iconSwap, springUI, withReducedMotion } from '../utils/motion';
 
 const AssistantShell = lazyPage(() => import('./assistant/AssistantShell'), 'assistant');
@@ -54,11 +54,11 @@ const ADMIN_NAV = [
 
 const linkClasses = ({ isActive }) =>
   [
-    'group relative flex items-center gap-3 px-3 py-2.5 rounded-well text-sm font-medium min-h-[44px]',
+    'group relative flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-medium min-h-[44px]',
     'transition-colors duration-150 ease-out',
     'active:scale-[0.98] motion-reduce:active:scale-100 transition-transform',
     isActive
-      ? 'text-primary-600 dark:text-primary-400'
+      ? 'text-content dark:text-primary-400'
       : 'text-content-muted hover:text-content',
   ].join(' ');
 
@@ -83,15 +83,15 @@ function NavigationLinks({ onNavigate, sections, navId }) {
   );
 
   return (
-    <nav className="flex-1 px-3 py-3 overflow-y-auto" aria-label="Main">
+    <nav className="flex-1 px-2.5 py-2 overflow-y-auto" aria-label="Main">
       {sections.map(({ label, items }, sectionIndex) => (
-        <div key={label || `section-${sectionIndex}`} className={sectionIndex > 0 ? 'mt-4' : ''}>
+        <div key={label || `section-${sectionIndex}`} className={sectionIndex > 0 ? 'mt-5' : ''}>
           {label && (
-            <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-content-subtle/80">
+            <p className="px-3.5 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-content-subtle/70">
               {label}
             </p>
           )}
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {items.map(({ name, href, icon: Icon, end }) => (
               <NavLink
                 key={href}
@@ -110,14 +110,15 @@ function NavigationLinks({ onNavigate, sections, navId }) {
                       <motion.span
                         layoutId={`sidebar-active-thumb-${navId}`}
                         transition={pillTransition}
-                        className="absolute inset-0 rounded-well segmented-thumb
-                          ring-1 ring-black/[0.04] dark:ring-white/[0.06]"
+                        /* Shadow comes from .segmented-thumb; an inline one here
+                           would override it and flatten the pill. */
+                        className="absolute inset-0 rounded-2xl segmented-thumb"
                         aria-hidden="true"
                       />
                     )}
                     {!isActive && (
                       <span
-                        className="absolute inset-0 rounded-well opacity-0 group-hover:opacity-100
+                        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100
                           bg-hairline/[0.05] transition-opacity duration-150"
                         aria-hidden="true"
                       />
@@ -148,7 +149,7 @@ function ThemeToggle({ preference, onCycle, isDark, reducedMotion }) {
       type="button"
       onClick={onCycle}
       aria-label={`${label}. Click to change.`}
-      className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-well text-sm font-medium
+      className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-2xl text-sm font-medium
         text-content-muted hover:bg-hairline/[0.05] hover:text-content transition-colors"
     >
       <AnimatePresence initial={false} mode="popLayout">
@@ -174,7 +175,7 @@ function ThemeToggle({ preference, onCycle, isDark, reducedMotion }) {
 
 function SidebarFooter({ onSignOut, preference, onCycleTheme, isDark, reducedMotion }) {
   return (
-    <div className="px-3 py-3 border-t border-hairline/[0.07] bg-surface-sunken/30 space-y-1">
+    <div className="sidebar-dock space-y-0.5">
       <ThemeToggle
         preference={preference}
         onCycle={onCycleTheme}
@@ -185,7 +186,7 @@ function SidebarFooter({ onSignOut, preference, onCycleTheme, isDark, reducedMot
       <button
         type="button"
         onClick={onSignOut}
-        className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-well text-sm font-medium
+        className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-2xl text-sm font-medium
           text-content-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
       >
         <FiLogOut className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" />
@@ -195,19 +196,24 @@ function SidebarFooter({ onSignOut, preference, onCycleTheme, isDark, reducedMot
   );
 }
 
-function SidebarBrandHeader({ businessName, onClose }) {
+function SidebarBrandHeader({ onClose }) {
+  // Mobile drawer: logo only — the business name dropdown lives in the header.
+  // Desktop sidebar: logo + name dropdown in one place.
+  const mobileDrawer = Boolean(onClose);
+
   return (
-    <div className="flex items-center gap-3 h-14 px-4 border-b border-hairline/[0.07] sidebar-gradient flex-shrink-0">
-      <BrandLogo size={32} />
-      <span className="font-display font-semibold text-content text-sm leading-tight line-clamp-2 min-w-0 flex-1">
-        {businessName}
-      </span>
+    /* h-16 matches the app header's height so the mark sits on the same line as
+       the page title once the rail's 1rem top inset is accounted for. */
+    <div className="flex items-center gap-2.5 h-16 px-3.5 sm:px-4 flex-shrink-0">
+      <BrandLogo size={44} className="flex-shrink-0" />
+      {!mobileDrawer && <BusinessSwitcher className="flex-1 min-w-0 text-left" />}
+      {mobileDrawer && <span className="flex-1" />}
       {onClose && (
         <button
           type="button"
           onClick={onClose}
           aria-label="Close navigation"
-          className="-mr-2 p-2 rounded-well text-content-muted hover:bg-hairline/[0.06] hover:text-content min-h-[44px] min-w-[44px] transition-colors flex-shrink-0"
+          className="-mr-1 p-2 rounded-2xl text-content-muted hover:bg-hairline/[0.06] hover:text-content min-h-[44px] min-w-[44px] transition-colors flex-shrink-0"
         >
           <FiX className="w-5 h-5" />
         </button>
@@ -220,11 +226,25 @@ export default function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
-  const { user, logout, can } = useAuth();
-  const { businessName } = useSettings();
+  const { logout, can, businessId } = useAuth();
   const { preference, setTheme, isDark } = useTheme();
   const confirm = useConfirm();
   const reducedMotion = usePrefersReducedMotion();
+  const [contentPulse, setContentPulse] = useState(false);
+
+  useEffect(() => {
+    let timer;
+    const handler = () => {
+      setContentPulse(true);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setContentPulse(false), reducedMotion ? 180 : 600);
+    };
+    window.addEventListener('rim:business-changed', handler);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('rim:business-changed', handler);
+    };
+  }, [reducedMotion]);
 
   const navSections = useMemo(() => {
     const main = NAVIGATION.slice(0, 5);
@@ -247,6 +267,13 @@ export default function Layout() {
   }, [location.pathname]);
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  const openDrawer = useCallback(() => setDrawerOpen(true), []);
+
+  useDrawerEdgeSwipe({
+    open: drawerOpen,
+    onOpen: openDrawer,
+    onClose: closeDrawer,
+  });
 
   useEffect(() => {
     if (!drawerOpen) return undefined;
@@ -275,10 +302,24 @@ export default function Layout() {
         Skip to content
       </a>
 
+      {/* Left-edge swipe target — helps phones claim the gesture before browser back. */}
+      <div
+        aria-hidden="true"
+        className="lg:hidden fixed inset-y-0 left-0 z-20 w-3"
+        style={{ touchAction: 'none' }}
+        onClick={openDrawer}
+      />
+
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
 
-      <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 sidebar-surface border-r border-hairline/[0.07]">
-        <SidebarBrandHeader businessName={businessName} />
+      {/* One rail in both themes — dark used to be a flush full-height wall,
+          which is why it read as a different app rather than a dark version. */}
+      <aside
+        className="hidden lg:flex lg:flex-col lg:fixed z-40
+          lg:top-4 lg:bottom-4 lg:left-4 lg:w-[15.5rem]
+          sidebar-surface rounded-card"
+      >
+        <SidebarBrandHeader />
         <NavigationLinks sections={navSections} navId="sidebar" />
         <SidebarFooter
           onSignOut={handleSignOut}
@@ -293,17 +334,18 @@ export default function Layout() {
         <DialogBackdrop
           transition
           className="fixed inset-0 bg-black/50 backdrop-blur-sm transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
-            data-[closed]:opacity-0 data-[closed]:backdrop-blur-none motion-reduce:duration-150"
+            data-[closed]:opacity-0 motion-reduce:duration-150"
         />
 
         <div className="fixed inset-0 overflow-hidden">
           <DialogPanel
             transition
-            className="fixed inset-y-0 left-0 flex w-[min(17rem,85vw)] flex-col sidebar-surface shadow-2xl
+            className="fixed inset-y-0 left-0 m-3 flex w-[min(17rem,calc(85vw-1.5rem))] flex-col drawer-surface
+              rounded-card
               transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
               data-[closed]:-translate-x-full pt-[env(safe-area-inset-top)] motion-reduce:duration-150"
           >
-            <SidebarBrandHeader businessName={businessName} onClose={closeDrawer} />
+            <SidebarBrandHeader onClose={closeDrawer} />
             <NavigationLinks sections={navSections} onNavigate={closeDrawer} navId="drawer" />
             <SidebarFooter
               onSignOut={handleSignOut}
@@ -316,59 +358,28 @@ export default function Layout() {
         </div>
       </Dialog>
 
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 chrome-blur border-b border-hairline/[0.07] pt-[env(safe-area-inset-top)]">
-          <div className="relative h-14 flex items-center justify-between px-3 sm:px-6">
-            <div className="z-10 flex items-center min-w-[44px]">
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(true)}
-                aria-label="Open navigation menu"
-                aria-expanded={drawerOpen}
-                className="lg:hidden -ml-1 p-2.5 rounded-well text-content-muted hover:bg-hairline/[0.06] hover:text-content transition-colors min-h-[44px] min-w-[44px] grid place-items-center"
-              >
-                <FiMenu className="w-5 h-5" aria-hidden="true" />
-              </button>
-              <div className="hidden lg:flex items-center min-w-0">
-                <BusinessSwitcher className="text-left" />
-              </div>
-            </div>
-
-            <div className="lg:hidden absolute inset-x-0 flex justify-center items-center gap-2 px-[4.5rem] pointer-events-none">
-              <BrandLogo size={28} className="flex-shrink-0 pointer-events-none" />
-              <BusinessSwitcher className="pointer-events-auto min-w-0 max-w-[11rem]" centered />
-            </div>
-
-            <div className="z-10 flex items-center gap-0.5 flex-shrink-0 min-w-[44px] justify-end">
-              <NotificationPanel />
-
-              <button
-                type="button"
-                onClick={() => setProfileOpen(true)}
-                className="flex items-center gap-2 px-1.5 sm:px-2 py-1.5 rounded-well hover:bg-hairline/[0.06] transition-colors min-h-[44px]"
-                title="Your profile"
-                aria-label={`Your profile — ${user?.name || 'Account'}`}
-              >
-                <UserAvatar name={user?.name} avatar={user?.avatar} size="xs" />
-                <span className="hidden lg:inline text-sm text-content-muted max-w-[12rem] truncate">
-                  {user?.name}
-                </span>
-              </button>
-            </div>
-          </div>
-        </header>
+      <div className="lg:pl-[calc(15.5rem+2rem)]">
+        <AppHeader
+          onOpenDrawer={() => setDrawerOpen(true)}
+          drawerOpen={drawerOpen}
+          onOpenProfile={() => setProfileOpen(true)}
+        />
 
         <main
           id="main-content"
-          className="px-4 sm:px-6 py-5 sm:py-6 pb-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom))] lg:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+          className={`px-4 sm:px-6 lg:px-7 py-5 sm:py-6 pb-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom))] lg:pb-[max(1.5rem,env(safe-area-inset-bottom))] transition-opacity duration-500 ease-[cubic-bezier(0.2,0,0,1)] ${
+            contentPulse ? 'opacity-70' : 'opacity-100'
+          }`}
         >
-          <ErrorBoundary resetKeys={[location.pathname]}>
+          <ErrorBoundary resetKeys={[location.pathname, businessId]}>
             <PageTransition />
           </ErrorBoundary>
         </main>
       </div>
 
       <MobileTabBar />
+      <MicPermissionPrompt />
+      <BusinessSwitchOverlay />
       <Suspense fallback={null}>
         <AssistantShell />
       </Suspense>

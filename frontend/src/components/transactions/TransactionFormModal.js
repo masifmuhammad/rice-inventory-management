@@ -192,7 +192,7 @@ export default function TransactionFormModal({
             label={values.type === 'adjustment' ? 'Corrected stock level' : 'Quantity'}
             required
             type="number"
-            step="0.01"
+            step="any"
             min="0"
             inputMode="decimal"
             value={values.quantity}

@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Inventory app icon">
-  <rect width="512" height="512" rx="96" fill="#059669"/>
-  <path fill="#ecfdf5" d="M128 176h256v32H128zm0 64h256v32H128zm0 64h176v32H128z"/>
-  <circle cx="360" cy="336" r="48" fill="#a7f3d0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Haji Muhammad Rice Mills">
+  <rect width="512" height="512" rx="96" fill="#1B5E3B"/>
+  <circle cx="256" cy="220" r="118" fill="#C4A574"/>
+  <path fill="#1B5E3B" d="M196 168h28v104h-28zm92 0h28v104h-28zM210 214c18 28 46 44 72 44s54-16 72-44" fill="none" stroke="#1B5E3B" stroke-width="18" stroke-linecap="round"/>
+  <path fill="#1B5E3B" d="M256 150c-6 28-4 52 0 78 4-26 6-50 0-78zm-22 34c-10 8-18 20-22 34 12-8 24-14 36-18-4-6-8-12-14-16zm44 0c6 4 10 10 14 16 12 4 24 10 36 18-4-14-12-26-22-34-10 0-20 0-28 0z"/>
+  <rect x="64" y="348" width="384" height="56" rx="8" fill="#C4A574"/>
+  <text x="256" y="386" text-anchor="middle" fill="#fff" font-family="Georgia, serif" font-size="28" font-weight="700">SINCE 1989</text>
 </svg>

@@ -106,20 +106,20 @@ export default function Modal({
       <DialogBackdrop
         transition
         className="fixed inset-0 bg-black/50 backdrop-blur-sm transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
-          data-[closed]:opacity-0 data-[closed]:backdrop-blur-none motion-reduce:duration-150"
+          data-[closed]:opacity-0 motion-reduce:duration-150"
       />
 
       <div className="fixed inset-x-0 overflow-hidden" style={overlayStyle || { inset: 0 }}>
         <div className="flex h-full items-end justify-center sm:items-center sm:p-4">
-          {/* Blur and scale animate together so the panel arrives as a material
-              rather than a flat opacity fade. */}
+          {/* Scale and translate carry the arrival — both composited, so the
+              sheet keeps pace with a high-refresh display. */}
           <DialogPanel
             transition
             className={`relative w-full ${sizes[size] || sizes.md}
               transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
-              data-[closed]:opacity-0 data-[closed]:blur-[2px]
+              data-[closed]:opacity-0
               data-[closed]:translate-y-6 sm:data-[closed]:translate-y-0 sm:data-[closed]:scale-[0.97]
-              motion-reduce:duration-150 motion-reduce:data-[closed]:translate-y-0 motion-reduce:data-[closed]:scale-100 motion-reduce:data-[closed]:blur-0`}
+              motion-reduce:duration-150 motion-reduce:data-[closed]:translate-y-0 motion-reduce:data-[closed]:scale-100`}
           >
             {/* The card is a separate layer from the panel above: Headless UI owns
                 the enter/exit transform, this owns the drag offset. Sharing one
@@ -178,7 +178,7 @@ export default function Modal({
               </div>
 
               {footer && (
-                <div className="flex-shrink-0 px-5 sm:px-6 py-3.5 sm:py-4 border-t border-hairline/[0.07] bg-surface-sunken rounded-b-2xl pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:pb-4">
+                <div className="flex-shrink-0 px-5 sm:px-6 py-3.5 sm:py-4 border-t border-hairline/[0.06] rounded-b-2xl pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:pb-4">
                   {footer}
                 </div>
               )}

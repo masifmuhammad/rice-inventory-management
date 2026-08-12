@@ -91,9 +91,9 @@ export function SkeletonStatCards({ count = 4 }) {
     <div className="skeleton-appear surface-card rounded-card overflow-hidden" aria-hidden="true">
       <div className="stat-grid">
         {Array.from({ length: count }).map((_, i) => (
-          <div key={i} className="p-4 sm:p-5 space-y-2.5">
+          <div key={i} className="p-3.5 sm:p-4 space-y-2">
             <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-7 w-24" />
             <Skeleton className="h-2.5 w-16" />
           </div>
         ))}
@@ -138,11 +138,11 @@ export function SkeletonPageHeader({ withActions = true }) {
 
   return (
     <div
-      className="skeleton-appear flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+      className="skeleton-appear flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
       aria-hidden="true"
     >
       <div className="space-y-2 min-w-0">
-        <Skeleton className="h-8 w-48 hidden lg:block" />
+        <Skeleton className="h-6 w-40 lg:hidden" />
         <Skeleton className="h-4 w-72 max-w-full" />
       </div>
       {withActions && (

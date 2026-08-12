@@ -348,9 +348,11 @@ export default function Dashboard() {
                   { label: 'Stock out', value: `${formatNumber(trendTotals.stockOut, 1)} kg`, tone: 'text-red-500' },
                   { label: 'Revenue', value: formatCompactMoney(trendTotals.revenue, currencySymbol), tone: 'text-primary-600 dark:text-primary-400' },
                 ].map((item) => (
-                  <div key={item.label} className="rounded-lg bg-surface-sunken px-3 py-2">
-                    <p className="text-[10px] sm:text-xs font-medium text-content-subtle uppercase tracking-wide">{item.label}</p>
-                    <p className={`text-sm sm:text-base font-semibold tabular-nums mt-0.5 ${item.tone}`}>{item.value}</p>
+                  /* Nested panel tone, sentence case — a filled grey slab with
+                     small-caps read as a form field rather than a figure. */
+                  <div key={item.label} className="rounded-well bg-surface-2 px-3.5 py-2.5">
+                    <p className="text-caption font-medium text-content-muted">{item.label}</p>
+                    <p className={`text-base sm:text-lg font-semibold tabular-nums tracking-[-0.02em] mt-0.5 ${item.tone}`}>{item.value}</p>
                   </div>
                 ))}
               </div>
@@ -686,9 +688,9 @@ export default function Dashboard() {
                 { label: 'Profit', value: profit.data.summary.totalProfit, type: 'compactMoney' },
                 { label: 'Average margin', value: profit.data.summary.averageMargin ?? 0, suffix: '%' },
               ].map((item) => (
-                <div key={item.label} className="rounded-well bg-surface-sunken px-4 py-3">
-                  <p className="text-xs font-medium text-content-subtle uppercase tracking-wide">{item.label}</p>
-                  <p className="text-lg font-semibold text-content mt-1 tabular-nums">
+                <div key={item.label} className="rounded-well bg-surface-2 px-4 py-3">
+                  <p className="text-caption font-medium text-content-muted">{item.label}</p>
+                  <p className="text-xl font-semibold text-content mt-0.5 tabular-nums tracking-[-0.02em]">
                     <AnimatedValue
                       value={item.value}
                       type={item.type || 'decimal'}

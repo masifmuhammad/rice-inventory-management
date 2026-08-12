@@ -37,11 +37,14 @@ module.exports = {
         },
       },
       borderRadius: {
-        card: '20px',
-        well: '14px',
+        // Measured off the reference: cards 28px, panels nested in them 20px.
+        card: '28px',
+        well: '20px',
+        pill: '12px',
       },
       fontFamily: {
         sans: [
+          'Inter Tight',
           'Inter var',
           'Inter',
           '-apple-system',
@@ -52,8 +55,9 @@ module.exports = {
           'Arial',
           'sans-serif',
         ],
+        // The reference sets headings and figures in the same face as the UI.
         display: [
-          'Plus Jakarta Sans',
+          'Inter Tight',
           'Inter var',
           'Inter',
           'system-ui',
@@ -67,6 +71,19 @@ module.exports = {
           'Tahoma',
           'sans-serif',
         ],
+      },
+      /**
+       * The reference's type scale, measured from cap heights in the mock. Each
+       * token carries its own tracking because the correction is size-dependent:
+       * display sizes need it pulled in hard, 13px body text needs none at all.
+       */
+      fontSize: {
+        figure: ['3rem', { lineHeight: '1', letterSpacing: '-0.03em', fontWeight: '600' }],
+        title: ['2rem', { lineHeight: '1.15', letterSpacing: '-0.022em', fontWeight: '600' }],
+        heading: ['1.25rem', { lineHeight: '1.3', letterSpacing: '-0.016em', fontWeight: '600' }],
+        subhead: ['1.125rem', { lineHeight: '1.4', letterSpacing: '-0.014em', fontWeight: '600' }],
+        body: ['0.9375rem', { lineHeight: '1.55', letterSpacing: '-0.011em' }],
+        caption: ['0.8125rem', { lineHeight: '1.45', letterSpacing: '-0.005em' }],
       },
       keyframes: {
         'fade-in': {

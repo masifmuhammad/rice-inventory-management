@@ -14,8 +14,9 @@ export function Card({ className = '', interactive = false, children, ...props }
 
 export function CardHeader({ title, subtitle, icon: Icon, action, className = '' }) {
   return (
+    /* No rule under the title — in the reference a card header is held by space. */
     <div
-      className={`flex items-start justify-between gap-3 px-4 sm:px-6 py-4 border-b border-hairline/[0.07] ${className}`}
+      className={`flex items-start justify-between gap-3 px-4 sm:px-6 pt-5 pb-3 ${className}`}
     >
       <div className="flex items-start gap-3 min-w-0">
         {Icon && (
@@ -24,8 +25,8 @@ export function CardHeader({ title, subtitle, icon: Icon, action, className = ''
           </span>
         )}
         <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold text-content truncate">{title}</h2>
-          {subtitle && <p className="text-xs text-content-subtle mt-0.5">{subtitle}</p>}
+          <h2 className="font-display text-heading text-content truncate">{title}</h2>
+          {subtitle && <p className="text-caption text-content-subtle mt-1">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="flex-shrink-0">{action}</div>}
