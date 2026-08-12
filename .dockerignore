@@ -1,0 +1,28 @@
+# Never copy host dependencies into the image — they may be built for a
+# different platform, and they make the build context enormous.
+**/node_modules
+**/build
+**/dist
+
+# Secrets must come from the runtime environment, not be baked into a layer
+# that anyone who pulls the image can read.
+**/.env
+**/.env.*
+!**/.env.example
+
+.git
+.gitignore
+**/.vscode
+**/.idea
+
+*.md
+!README.md
+
+**/npm-debug.log*
+**/*.log
+**/.DS_Store
+**/Thumbs.db
+
+docker-compose*.yml
+Dockerfile
+.dockerignore

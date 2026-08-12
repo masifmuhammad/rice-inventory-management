@@ -1,50 +1,159 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Products from './pages/Products';
-import Transactions from './pages/Transactions';
-import CashWithdrawals from './pages/CashWithdrawals';
+import { SettingsProvider } from './context/SettingsContext';
+import { ThemeProvider } from './context/ThemeContext';
+import ConfirmProvider from './components/ui/ConfirmProvider';
+import ErrorBoundary from './components/ErrorBoundary';
+import ScrollToTop from './components/ScrollToTop';
+import AppToaster from './components/AppToaster';
 import Layout from './components/Layout';
+import Login from './pages/Login';
+import ChangePassword from './pages/ChangePassword';
+import InstallPrompt from './components/InstallPrompt';
+import AuthShellSkeleton from './components/skeletons/AuthShellSkeleton';
+import { lazyPage } from './utils/lazyPage';
 
-const PrivateRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+const Dashboard = lazyPage(() => import('./pages/Dashboard'), 'dashboard');
+const Products = lazyPage(() => import('./pages/Products'), 'products page');
+const Transactions = lazyPage(() => import('./pages/Transactions'), 'transactions page');
+const CashBook = lazyPage(() => import('./pages/CashBook'), 'cash book');
+const Reports = lazyPage(() => import('./pages/Reports'), 'reports page');
+const Settings = lazyPage(() => import('./pages/Settings'), 'settings page');
+const AdminUsers = lazyPage(() => import('./pages/AdminUsers'), 'users page');
+const AdminActivity = lazyPage(() => import('./pages/AdminActivity'), 'activity log');
+const Businesses = lazyPage(() => import('./pages/Businesses'), 'businesses page');
+const NotFound = lazyPage(() => import('./pages/NotFound'), 'page');
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
+function RequireAuth({ children }) {
+  const { user, initialising } = useAuth();
+  const location = useLocation();
+
+  if (initialising) return <AuthShellSkeleton />;
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+
+  return children;
+}
+
+function RequirePasswordChange({ children }) {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (user?.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
   }
 
-  return user ? children : <Navigate to="/login" />;
-};
+  if (!user?.mustChangePassword && location.pathname === '/change-password') {
+    return <Navigate to="/" replace />;
+  }
 
-function App() {
+  return children;
+}
+
+function RequireCapability({ capability, children }) {
+  const { can } = useAuth();
+  if (!can(capability)) return <Navigate to="/" replace />;
+  return children;
+}
+
+function RedirectIfSignedIn({ children }) {
+  const { user, initialising } = useAuth();
+  const location = useLocation();
+
+  if (initialising) return <AuthShellSkeleton />;
+  if (user) {
+    const target = user.mustChangePassword ? '/change-password' : location.state?.from?.pathname || '/';
+    return <Navigate to={target} replace />;
+  }
+
+  return children;
+}
+
+function AppRoutes() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              <PrivateRoute>
-                <Layout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<Dashboard />} />
-            <Route path="products" element={<Products />} />
-            <Route path="transactions" element={<Transactions />} />
-            <Route path="cash-withdrawals" element={<CashWithdrawals />} />
-          </Route>
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          <RedirectIfSignedIn>
+            <Login />
+          </RedirectIfSignedIn>
+        }
+      />
+
+      <Route
+        path="/change-password"
+        element={
+          <RequireAuth>
+            <ChangePassword />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        element={
+          <RequireAuth>
+            <RequirePasswordChange>
+              <Layout />
+            </RequirePasswordChange>
+          </RequireAuth>
+        }
+      >
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/transactions" element={<Transactions />} />
+        <Route path="/cash-book" element={<CashBook />} />
+        <Route path="/cash-withdrawals" element={<Navigate to="/cash-book" replace />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route
+          path="/admin/users"
+          element={
+            <RequireCapability capability="users.manage">
+              <AdminUsers />
+            </RequireCapability>
+          }
+        />
+        <Route
+          path="/admin/businesses"
+          element={
+            <RequireCapability capability="settings.manage">
+              <Businesses />
+            </RequireCapability>
+          }
+        />
+        <Route
+          path="/admin/activity"
+          element={
+            <RequireCapability capability="audit.view">
+              <AdminActivity />
+            </RequireCapability>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <SettingsProvider>
+              <ConfirmProvider>
+                <ScrollToTop />
+                <AppRoutes />
+                <InstallPrompt />
+                <AppToaster />
+              </ConfirmProvider>
+            </SettingsProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
+  );
+}

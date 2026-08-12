@@ -1,118 +1,135 @@
-const express = require('express');
-const router = express.Router();
-const BusinessSettings = require('../models/BusinessSettings');
-const auth = require('../middleware/auth');
-
-// @route   GET /api/settings
-// @desc    Get business settings for current user
-// @access  Private
-router.get('/', auth, async (req, res) => {
-  try {
-    let settings = await BusinessSettings.findOne({ userId: req.user._id });
-    
-    // Create default settings if not exists
-    if (!settings) {
-      settings = await BusinessSettings.createDefaultSettings(req.user._id, req.user.name);
-    }
-    
-    res.json(settings);
-  } catch (error) {
-    console.error('Error fetching settings:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// @route   PUT /api/settings
-// @desc    Update business settings
-// @access  Private
-router.put('/', auth, async (req, res) => {
-  try {
-    let settings = await BusinessSettings.findOne({ userId: req.user._id });
-    
-    if (!settings) {
-      settings = await BusinessSettings.createDefaultSettings(req.user._id, req.user.name);
-    }
-    
-    // Update fields
-    const allowedFields = [
-      'businessName', 'businessType', 'tagline', 'email', 'phone', 'website',
-      'address', 'logo', 'primaryColor', 'accentColor', 'currency', 'defaultUnit',
-      'fiscalYearStart', 'timezone', 'dateFormat', 'features', 'receiptSettings',
-      'onboardingCompleted', 'setupSteps'
-    ];
-    
-    allowedFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        settings[field] = req.body[field];
-      }
-    });
-    
-    await settings.save();
-    
-    res.json(settings);
-  } catch (error) {
-    console.error('Error updating settings:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// @route   POST /api/settings/logo
-// @desc    Upload business logo
-// @access  Private
-router.post('/logo', auth, async (req, res) => {
-  try {
-    const { logo } = req.body;
-    
-    if (!logo) {
-      return res.status(400).json({ message: 'Logo data required' });
-    }
-    
-    let settings = await BusinessSettings.findOne({ userId: req.user._id });
-    
-    if (!settings) {
-      settings = await BusinessSettings.createDefaultSettings(req.user._id, req.user.name);
-    }
-    
-    settings.logo = logo;
-    await settings.save();
-    
-    res.json({ message: 'Logo uploaded successfully', logo: settings.logo });
-  } catch (error) {
-    console.error('Error uploading logo:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// @route   PUT /api/settings/onboarding/:step
-// @desc    Mark onboarding step as complete
-// @access  Private
-router.put('/onboarding/:step', auth, async (req, res) => {
-  try {
-    const { step } = req.params;
-    
-    let settings = await BusinessSettings.findOne({ userId: req.user._id });
-    
-    if (!settings) {
-      settings = await BusinessSettings.createDefaultSettings(req.user._id, req.user.name);
-    }
-    
-    if (settings.setupSteps[step] !== undefined) {
-      settings.setupSteps[step] = true;
-    }
-    
-    // Check if all steps complete
-    const allComplete = Object.values(settings.setupSteps).every(v => v === true);
-    if (allComplete) {
-      settings.onboardingCompleted = true;
-    }
-    
-    await settings.save();
-    
-    res.json(settings);
-  } catch (error) {
-    console.error('Error updating onboarding:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-module.exports = router;
+const express = require('express');
+const router = express.Router();
+const { body } = require('express-validator');
+const BusinessSettings = require('../models/BusinessSettings');
+const auth = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const { asyncHandler, ApiError } = require('../middleware/errorHandler');
+const { requireCapability } = require('../middleware/permissions');
+const { audit } = require('../middleware/audit');
+
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
+const getOrCreate = async (businessId, businessName) => {
+  const existing = await BusinessSettings.findOne({ businessId });
+  if (existing) return existing;
+  return BusinessSettings.createDefaultSettings(businessId, businessName);
+};
+
+router.get(
+  '/',
+  auth,
+  asyncHandler(async (req, res) => {
+    res.json(await getOrCreate(req.businessId));
+  })
+);
+
+router.put(
+  '/',
+  auth,
+  requireCapability('settings.manage'),
+  [
+    body('businessName').optional().trim().notEmpty().withMessage('Business name cannot be empty').isLength({ max: 120 }),
+    body('email').optional({ values: 'falsy' }).isEmail().withMessage('Enter a valid email'),
+    body('primaryColor').optional().matches(/^#[0-9a-fA-F]{6}$/).withMessage('Use a hex colour like #059669'),
+    body('accentColor').optional().matches(/^#[0-9a-fA-F]{6}$/).withMessage('Use a hex colour like #10b981'),
+  ],
+  validate,
+  asyncHandler(async (req, res) => {
+    const settings = await getOrCreate(req.businessId);
+    const previous = {
+      businessName: settings.businessName,
+      primaryColor: settings.primaryColor,
+      accentColor: settings.accentColor,
+    };
+
+    const allowedFields = [
+      'businessName', 'businessType', 'tagline', 'email', 'phone', 'website',
+      'address', 'logo', 'primaryColor', 'accentColor', 'currency', 'defaultUnit',
+      'fiscalYearStart', 'timezone', 'dateFormat', 'features', 'receiptSettings',
+      'onboardingCompleted', 'setupSteps',
+    ];
+
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) settings[field] = req.body[field];
+    });
+
+    await settings.save();
+    audit(req, 'UPDATE_SETTINGS', 'SETTINGS', settings.id, {}, previous, {
+      businessName: settings.businessName,
+      primaryColor: settings.primaryColor,
+      accentColor: settings.accentColor,
+    });
+
+    res.json(settings);
+  })
+);
+
+router.post(
+  '/logo',
+  auth,
+  requireCapability('settings.manage'),
+  asyncHandler(async (req, res) => {
+    const { logo } = req.body;
+
+    if (!logo || typeof logo !== 'string') {
+      throw new ApiError(400, 'Logo data is required');
+    }
+
+    if (!/^data:image\/(png|jpe?g|webp|svg\+xml);base64,/.test(logo)) {
+      throw new ApiError(400, 'Upload a PNG, JPG, WEBP or SVG image');
+    }
+
+    const approxBytes = (logo.length - logo.indexOf(',') - 1) * 0.75;
+    if (approxBytes > MAX_LOGO_BYTES) {
+      throw new ApiError(413, 'Logo must be smaller than 2MB');
+    }
+
+    const settings = await getOrCreate(req.businessId);
+    settings.logo = logo;
+    settings.setupSteps.branding = true;
+    await settings.save();
+
+    audit(req, 'UPDATE_LOGO', 'SETTINGS', settings.id, {});
+
+    res.json({ message: 'Logo uploaded', logo: settings.logo });
+  })
+);
+
+router.delete(
+  '/logo',
+  auth,
+  requireCapability('settings.manage'),
+  asyncHandler(async (req, res) => {
+    const settings = await getOrCreate(req.businessId);
+    settings.logo = undefined;
+    await settings.save();
+    audit(req, 'REMOVE_LOGO', 'SETTINGS', settings.id, {});
+    res.json({ message: 'Logo removed' });
+  })
+);
+
+router.put(
+  '/onboarding/:step',
+  auth,
+  requireCapability('settings.manage'),
+  asyncHandler(async (req, res) => {
+    const { step } = req.params;
+    const settings = await getOrCreate(req.businessId);
+
+    if (settings.setupSteps[step] === undefined) {
+      throw new ApiError(400, `Unknown onboarding step: ${step}`);
+    }
+
+    settings.setupSteps[step] = true;
+
+    if (Object.values(settings.setupSteps).every(Boolean)) {
+      settings.onboardingCompleted = true;
+    }
+
+    await settings.save();
+    res.json(settings);
+  })
+);
+
+module.exports = router;

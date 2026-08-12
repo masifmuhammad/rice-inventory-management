@@ -1,438 +1,373 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import React, { useCallback, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
-  FiPlus,
-  FiTrendingUp,
-  FiTrendingDown,
-  FiEdit,
+  FiArrowRight,
   FiDownload,
-  FiX
+  FiEdit,
+  FiPlus,
+  FiSearch,
+  FiTrash2,
+  FiTrendingDown,
+  FiTrendingUp,
+  FiX,
 } from 'react-icons/fi';
-import { formatPKR, formatQuantity } from '../utils/currency';
-import { generateTransactionPDF } from '../utils/pdfGenerator';
 
-const Transactions = () => {
-  const [transactions, setTransactions] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+import api, { getErrorMessage } from '../services/api';
+import useApi from '../hooks/useApi';
+import useDebounce from '../hooks/useDebounce';
+import { useSettings } from '../context/SettingsContext';
+import { useConfirm } from '../components/ui/ConfirmProvider';
+import { formatMoney, formatQuantity } from '../utils/currency';
+import PageHeader from '../components/PageHeader';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Badge, { transactionTone } from '../components/ui/Badge';
+import Pagination from '../components/ui/Pagination';
+import { Select } from '../components/ui/Field';
+import { EmptyState, ErrorState } from '../components/ui/States';
+import { SkeletonTable } from '../components/ui/Skeleton';
+import RefetchIndicator from '../components/ui/RefetchIndicator';
+import TransactionFormModal from '../components/transactions/TransactionFormModal';
+
+const TYPE_FILTERS = [
+  { value: '', label: 'All types' },
+  { value: 'stock_in', label: 'Stock in' },
+  { value: 'stock_out', label: 'Stock out' },
+  { value: 'adjustment', label: 'Adjustments' },
+];
+
+const typeIcon = {
+  stock_in: FiTrendingUp,
+  stock_out: FiTrendingDown,
+  adjustment: FiEdit,
+  transfer: FiArrowRight,
+};
+
+const LIMIT = 20;
+
+export default function Transactions() {
+  const { currencySymbol, settings } = useSettings();
+  const confirm = useConfirm();
+
+  const [page, setPage] = useState(1);
+  const [type, setType] = useState('');
+  const [search, setSearch] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
-  const [formData, setFormData] = useState({
-    type: 'stock_in',
-    product: '',
-    quantity: 0,
-    price: '',
-    reference: '',
-    batchNumber: '',
-    expiryDate: '',
-    supplier: '',
-    customer: '',
-    notes: '',
-  });
 
-  useEffect(() => {
-    fetchProducts();
-    fetchTransactions();
-  }, []);
+  const debouncedSearch = useDebounce(search, 350);
 
-  const fetchProducts = async () => {
-    try {
-      const response = await api.get('/products');
-      setProducts(response.data);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    }
+  const params = useMemo(
+    () => ({
+      page,
+      limit: LIMIT,
+      ...(type ? { type } : {}),
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    }),
+    [page, type, debouncedSearch]
+  );
+
+  const transactions = useApi(
+    (signal) => api.get('/transactions', { params, signal }).then((r) => r.data),
+    [params],
+    { keepPreviousData: true }
+  );
+
+  // Needed for the form's product picker; kept separate so the list can refresh
+  // without refetching every product.
+  const products = useApi(
+    (signal) => api.get('/products', { params: { sort: 'name' }, signal }).then((r) => r.data),
+    []
+  );
+
+  const list = transactions.data?.data || [];
+  const pagination = transactions.data?.pagination;
+
+  const changeFilter = (setter) => (value) => {
+    setter(value);
+    setPage(1); // a new filter always starts at the first page
   };
 
-  const fetchTransactions = async () => {
-    try {
-      const response = await api.get('/transactions', { params: { limit: 100 } });
-      setTransactions(response.data);
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleCreate = useCallback(
+    async (values) => {
+      try {
+        await api.post('/transactions', values);
+        toast.success('Transaction recorded');
+        setModalOpen(false);
+        setPage(1);
+        // Stock levels moved, so both lists are now stale.
+        transactions.refetch();
+        products.refetch();
+      } catch (error) {
+        toast.error(getErrorMessage(error, 'Could not record the transaction'));
+        throw error;
+      }
+    },
+    [transactions, products]
+  );
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/transactions', formData);
-      setShowModal(false);
-      resetForm();
-      fetchTransactions();
-      fetchProducts(); // Refresh products to update stock
-    } catch (error) {
-      alert(error.response?.data?.message || 'Error creating transaction');
-    }
-  };
+  const handleReverse = useCallback(
+    async (transaction) => {
+      const confirmed = await confirm({
+        title: 'Reverse this transaction?',
+        message:
+          'The stock it moved goes back, and if it was a sale its cash-book line is removed too.',
+        confirmLabel: 'Reverse',
+        tone: 'danger',
+      });
+      if (!confirmed) return;
 
-  const handleDownloadReceipt = async (transaction) => {
-    try {
-      setDownloadingId(transaction._id);
+      try {
+        const id = transaction._id || transaction.id;
+        await api.delete(`/transactions/${id}`);
+        toast.success('Transaction reversed');
+        transactions.refetch();
+        products.refetch();
+      } catch (error) {
+        toast.error(getErrorMessage(error, 'Could not reverse the transaction'));
+      }
+    },
+    [confirm, transactions, products]
+  );
 
+  const handleReceipt = useCallback(
+    async (transaction) => {
       if (!transaction.product) {
-        alert('Error: Product information is missing for this transaction');
-        setDownloadingId(null);
+        toast.error('This transaction has no product attached.');
         return;
       }
 
-      const product = transaction.product;
-      console.log('Generating PDF for transaction:', transaction._id);
-
-      // Add small delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      const success = await generateTransactionPDF(transaction, product, {
-        name: 'Haji Muhammad Rice Mills Inventory',
-        address: 'Pakistan',
-        phone: '',
-        email: ''
-      });
-
-      if (success) {
-        console.log('PDF generated successfully');
-        // Show success message briefly
-        setTimeout(() => {
-          setDownloadingId(null);
-        }, 500);
+      setDownloadingId(transaction._id);
+      try {
+        // Kept out of the main bundle; only loaded the first time someone
+        // actually asks for a receipt.
+        const { generateTransactionPDF } = await import('../utils/pdfGenerator');
+        await generateTransactionPDF(transaction, transaction.product, settings);
+        toast.success('Receipt downloaded');
+      } catch (error) {
+        toast.error('Could not build the receipt. Please try again.');
+      } finally {
+        setDownloadingId(null);
       }
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert(`Failed to generate receipt: ${error.message || 'Unknown error'}`);
-      setDownloadingId(null);
-    }
-  };
+    },
+    [settings]
+  );
 
-  const resetForm = () => {
-    setFormData({
-      type: 'stock_in',
-      product: '',
-      quantity: 0,
-      price: '',
-      reference: '',
-      batchNumber: '',
-      expiryDate: '',
-      supplier: '',
-      customer: '',
-      notes: '',
-    });
-  };
-
-  const getTransactionIcon = (type) => {
-    switch (type) {
-      case 'stock_in':
-        return <FiTrendingUp className="w-5 h-5 text-green-600" />;
-      case 'stock_out':
-        return <FiTrendingDown className="w-5 h-5 text-red-600" />;
-      default:
-        return <FiEdit className="w-5 h-5 text-blue-600" />;
-    }
-  };
-
-  const getTransactionColor = (type) => {
-    switch (type) {
-      case 'stock_in':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'stock_out':
-        return 'bg-red-50 text-red-700 border-red-200';
-      default:
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-    }
-  };
+  const loading = transactions.loading && !transactions.data;
+  const refetching = transactions.loading && Boolean(transactions.data);
+  const hasFilters = Boolean(type || search);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
-          <p className="text-gray-600 mt-1">Track all stock movements and download receipts</p>
-        </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          className="mt-4 sm:mt-0 inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-lg hover:shadow-xl"
-        >
-          <FiPlus className="w-5 h-5 mr-2" />
-          New Transaction
-        </button>
-      </div>
+      <PageHeader
+        title="Transactions"
+        description="Every movement in and out of the warehouse."
+        actions={
+          <Button icon={FiPlus} onClick={() => setModalOpen(true)}>
+            New transaction
+          </Button>
+        }
+      />
 
-      {/* Transactions List */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading transactions...</p>
-            </div>
+      <Card className="p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="relative sm:col-span-2">
+            <FiSearch
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-content-subtle"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => changeFilter(setSearch)(event.target.value)}
+              placeholder="Search reference, supplier, customer or notes…"
+              aria-label="Search transactions"
+              className="field-control w-full pl-11 pr-10 py-2.5 min-h-[44px]"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => changeFilter(setSearch)('')}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-content-subtle hover:text-content-muted rounded-lg"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            )}
           </div>
-        ) : transactions.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FiTrendingUp className="w-10 h-10 text-gray-400" />
-            </div>
-            <p className="text-gray-600 text-lg font-medium">No transactions found</p>
-            <p className="text-gray-500 text-sm mt-1">Create your first transaction to get started</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200">
-            {transactions.map((transaction) => (
-              <div key={transaction._id} className="p-4 sm:p-6 hover:bg-gray-50 transition-colors">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="flex items-start space-x-3 sm:space-x-4 flex-1">
-                    <div className={`p-2 sm:p-3 rounded-xl ${getTransactionColor(transaction.type)} flex-shrink-0`}>
-                      {getTransactionIcon(transaction.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
-                          {transaction.product?.name || 'Unknown Product'}
-                        </h3>
-                        <span className={`px-2 sm:px-3 py-1 text-xs font-semibold rounded-full border ${getTransactionColor(transaction.type)} whitespace-nowrap`}>
-                          {transaction.type.replace('_', ' ').toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-3 sm:gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500 font-medium text-xs sm:text-sm">Quantity:</span>
-                          <p className="font-semibold text-gray-900 mt-1 text-sm">
-                            {formatQuantity(transaction.quantity, transaction.unit)}
-                          </p>
-                        </div>
-                        {transaction.price && (
-                          <div>
-                            <span className="text-gray-500 font-medium text-xs sm:text-sm">Price:</span>
-                            <p className="font-semibold text-gray-900 mt-1 text-sm">
-                              {formatPKR(transaction.price)}
-                            </p>
-                          </div>
-                        )}
-                        {transaction.totalValue && (
-                          <div>
-                            <span className="text-gray-500 font-medium text-xs sm:text-sm">Total:</span>
-                            <p className="font-bold text-primary-600 mt-1 text-sm">
-                              {formatPKR(transaction.totalValue)}
-                            </p>
-                          </div>
-                        )}
-                        <div>
-                          <span className="text-gray-500 font-medium text-xs sm:text-sm">Stock:</span>
-                          <p className="font-semibold text-gray-900 mt-1 text-sm">
-                            {formatQuantity(transaction.stockBefore, transaction.unit)} → {formatQuantity(transaction.stockAfter, transaction.unit)}
-                          </p>
-                        </div>
-                      </div>
-                      {(transaction.reference || transaction.supplier || transaction.customer || transaction.notes) && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded-lg text-xs sm:text-sm">
-                          {transaction.reference && (
-                            <div className="flex items-center flex-wrap">
-                              <span className="font-medium text-gray-700">Reference:</span>
-                              <span className="ml-2 text-gray-600">{transaction.reference}</span>
-                            </div>
-                          )}
-                          {transaction.supplier && (
-                            <div className="flex items-center mt-1 flex-wrap">
-                              <span className="font-medium text-gray-700">Supplier:</span>
-                              <span className="ml-2 text-gray-600">{transaction.supplier}</span>
-                            </div>
-                          )}
-                          {transaction.customer && (
-                            <div className="flex items-center mt-1 flex-wrap">
-                              <span className="font-medium text-gray-700">Customer:</span>
-                              <span className="ml-2 text-gray-600">{transaction.customer}</span>
-                            </div>
-                          )}
-                          {transaction.notes && (
-                            <div className="mt-1">
-                              <span className="font-medium text-gray-700">Notes:</span>
-                              <p className="text-gray-600 mt-1 break-words">{transaction.notes}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      <div className="mt-3 text-xs text-gray-500">
-                        {format(new Date(transaction.createdAt), 'PPpp')} by {transaction.createdBy?.name || 'Unknown'}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDownloadReceipt(transaction)}
-                    disabled={downloadingId === transaction._id}
-                    className={`w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg whitespace-nowrap ${downloadingId === transaction._id ? 'opacity-70 cursor-wait' : ''}`}
-                    title="Download Receipt PDF"
-                  >
-                    {downloadingId === transaction._id ? (
-                      <>
-                        <FiDownload className="w-4 h-4 mr-2 animate-bounce" />
-                        <span className="text-sm font-medium">Generating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <FiDownload className="w-4 h-4 mr-2" />
-                        <span className="text-sm font-medium">Receipt</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+
+          <Select
+            value={type}
+            onChange={(event) => changeFilter(setType)(event.target.value)}
+            aria-label="Filter by type"
+          >
+            {TYPE_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
+          </Select>
+        </div>
+      </Card>
+
+      <Card className="overflow-hidden relative">
+        {refetching && (
+          <div className="absolute top-3 right-3 z-10">
+            <RefetchIndicator active />
           </div>
         )}
-      </div>
-
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-5 flex items-center justify-between rounded-t-2xl">
-              <h2 className="text-2xl font-bold text-white">New Transaction</h2>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  resetForm();
-                }}
-                className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
-              >
-                <FiX className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Transaction Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="stock_in">Stock In (Purchase/Receive)</option>
-                  <option value="stock_out">Stock Out (Sale/Issue)</option>
-                  <option value="adjustment">Stock Adjustment</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Product <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={formData.product}
-                  onChange={(e) => setFormData({ ...formData, product: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="">Select a product</option>
-                  {products.map((product) => (
-                    <option key={product._id} value={product._id}>
-                      {product.name} {product.sku ? `(${product.sku})` : ''} - Stock: {product.currentStock} {product.unit}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Quantity <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  required
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Enter quantity"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Price (PKR)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">Rs.</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || '' })}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Leave empty to use product price"
-                  />
-                </div>
-              </div>
-              {formData.type === 'stock_in' && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Supplier</label>
-                  <input
-                    type="text"
-                    value={formData.supplier}
-                    onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Enter supplier name"
-                  />
-                </div>
-              )}
-              {formData.type === 'stock_out' && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Customer</label>
-                  <input
-                    type="text"
-                    value={formData.customer}
-                    onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Enter customer name"
-                  />
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Reference Number</label>
-                <input
-                  type="text"
-                  value={formData.reference}
-                  onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Invoice or PO number"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows="3"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Add any additional notes..."
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-                <button
-                  type="button"
+        {loading ? (
+          <SkeletonTable rows={6} columns={4} />
+        ) : transactions.error ? (
+          <ErrorState message={transactions.error} onRetry={transactions.refetch} />
+        ) : list.length === 0 ? (
+          <EmptyState
+            icon={FiTrendingUp}
+            title={hasFilters ? 'Nothing matches those filters' : 'No transactions yet'}
+            description={
+              hasFilters
+                ? 'Try a different search or clear the type filter.'
+                : 'Record a delivery or a sale and it will show up here.'
+            }
+            action={
+              hasFilters ? (
+                <Button
+                  variant="secondary"
                   onClick={() => {
-                    setShowModal(false);
-                    resetForm();
+                    setSearch('');
+                    setType('');
+                    setPage(1);
                   }}
-                  className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-lg hover:shadow-xl"
-                >
-                  Create Transaction
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                  Clear filters
+                </Button>
+              ) : (
+                <Button icon={FiPlus} onClick={() => setModalOpen(true)}>
+                  New transaction
+                </Button>
+              )
+            }
+          />
+        ) : (
+          <>
+            <ul className="divide-y divide-hairline">
+              {list.map((transaction) => {
+                const tone = transactionTone[transaction.type] || transactionTone.adjustment;
+                const Icon = typeIcon[transaction.type] || FiEdit;
+
+                return (
+                  <li key={transaction._id} className="p-4 sm:px-6 hover:bg-hairline/[0.05] transition-colors">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      <span
+                        className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
+                          transaction.type === 'stock_in'
+                            ? 'bg-emerald-500/10 text-emerald-500'
+                            : transaction.type === 'stock_out'
+                            ? 'bg-red-500/10 text-red-500'
+                            : 'bg-primary-500/12 text-primary-600 dark:text-primary-400'
+                        }`}
+                      >
+                        <Icon className="w-[18px] h-[18px]" aria-hidden="true" />
+                      </span>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-semibold text-content truncate">
+                            {transaction.product?.name || 'Deleted product'}
+                          </h3>
+                          <Badge tone={tone.tone}>{tone.label}</Badge>
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-content-muted">
+                          <span className="tabular-nums">
+                            <span className="text-content-subtle">Qty</span>{' '}
+                            <span className="font-medium text-content">
+                              {formatQuantity(transaction.quantity, transaction.unit)}
+                            </span>
+                          </span>
+
+                          {transaction.totalValue > 0 && (
+                            <span className="tabular-nums">
+                              <span className="text-content-subtle">Total</span>{' '}
+                              <span className="font-medium text-content">
+                                {formatMoney(transaction.totalValue, currencySymbol)}
+                              </span>
+                            </span>
+                          )}
+
+                          <span className="tabular-nums text-content-subtle">
+                            {formatQuantity(transaction.stockBefore, transaction.unit)} →{' '}
+                            {formatQuantity(transaction.stockAfter, transaction.unit)}
+                          </span>
+                        </div>
+
+                        {(transaction.reference || transaction.supplier || transaction.customer) && (
+                          <p className="mt-1.5 text-xs text-content-subtle truncate">
+                            {[
+                              transaction.reference && `Ref ${transaction.reference}`,
+                              transaction.supplier && `From ${transaction.supplier}`,
+                              transaction.customer && `To ${transaction.customer}`,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </p>
+                        )}
+
+                        {transaction.notes && (
+                          <p className="mt-1.5 text-xs text-content-subtle line-clamp-2">{transaction.notes}</p>
+                        )}
+
+                        <p className="mt-2 text-xs text-content-subtle">
+                          {format(new Date(transaction.createdAt), 'd MMM yyyy, h:mm a')} ·{' '}
+                          {transaction.createdBy?.name || 'Unknown'}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-center gap-1 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          icon={FiDownload}
+                          loading={downloadingId === transaction._id}
+                          onClick={() => handleReceipt(transaction)}
+                          className="whitespace-nowrap"
+                        >
+                          <span className="hidden sm:inline">Receipt</span>
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleReverse(transaction)}
+                          aria-label="Reverse transaction"
+                          className="p-2.5 rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <Pagination
+              page={pagination?.page || 1}
+              pages={pagination?.pages || 1}
+              total={pagination?.total || 0}
+              limit={LIMIT}
+              onChange={setPage}
+            />
+          </>
+        )}
+      </Card>
+
+      <TransactionFormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleCreate}
+        products={products.data || []}
+        productsLoading={products.loading && !products.data}
+      />
     </div>
   );
-};
-
-export default Transactions;
+}

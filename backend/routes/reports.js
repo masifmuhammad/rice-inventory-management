@@ -2,81 +2,195 @@ const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
-const CashWithdrawal = require('../models/CashWithdrawal');
+const CashEntry = require('../models/CashEntry');
 const auth = require('../middleware/auth');
-const PDFDocument = require('pdfkit');
-const fs = require('fs');
+const { asyncHandler } = require('../middleware/errorHandler');
+const { requireCapability, can } = require('../middleware/permissions');
+
+const round2 = (n) => Math.round((n || 0) * 100) / 100;
+
+const daysAgo = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const daysFromNow = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  d.setHours(23, 59, 59, 999);
+  return d;
+};
+
+/** Builds a createdAt filter from query params, falling back to a rolling window. */
+const dateRange = (query, defaultDays = 30) => {
+  const { startDate, endDate } = query;
+  if (!startDate && !endDate) return { $gte: daysAgo(defaultDays) };
+
+  const range = {};
+  if (startDate) range.$gte = new Date(startDate);
+  if (endDate) {
+    // A plain `YYYY-MM-DD` end date parses to midnight, which would silently drop
+    // everything recorded on that final day.
+    const end = new Date(endDate);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(endDate))) end.setHours(23, 59, 59, 999);
+    range.$lte = end;
+  }
+  return range;
+};
+
+/** Percentage change, guarding the divide-by-zero a new business always hits. */
+const percentChange = (current, previous) => {
+  if (!previous) return current > 0 ? 100 : 0;
+  return round2(((current - previous) / previous) * 100);
+};
 
 // @route   GET /api/reports/dashboard
-// @desc    Get dashboard statistics
+// @desc    Headline numbers for the dashboard
 // @access  Private
-router.get('/dashboard', auth, async (req, res) => {
-  try {
-    const totalProducts = await Product.countDocuments({ isActive: true });
-    
-    const products = await Product.find({ isActive: true });
-    const totalStockValue = products.reduce((sum, p) => sum + (p.currentStock * p.costPrice), 0);
-    const totalStockQuantity = products.reduce((sum, p) => sum + p.currentStock, 0);
-    
-    const lowStockProducts = products.filter(p => p.currentStock <= p.minStockLevel);
-    
-    // Get transactions for last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const recentTransactions = await Transaction.find({
-      createdAt: { $gte: thirtyDaysAgo }
-    });
-    
-    const stockIn = recentTransactions
-      .filter(t => t.type === 'stock_in')
-      .reduce((sum, t) => sum + t.quantity, 0);
-    
-    const stockOut = recentTransactions
-      .filter(t => t.type === 'stock_out')
-      .reduce((sum, t) => sum + t.quantity, 0);
+router.get(
+  '/dashboard',
+  auth,
+  requireCapability('products.view'),
+  asyncHandler(async (req, res) => {
+    const biz = req.businessId;
+    const windowStart = daysAgo(30);
+    const previousStart = daysAgo(60);
 
-    // Get cash withdrawals for last 30 days
-    const recentWithdrawals = await CashWithdrawal.find({
-      createdAt: { $gte: thirtyDaysAgo }
-    });
+    const [inventory, lowStock, movement, previousMovement, withdrawals, expiringSoon] =
+      await Promise.all([
+        Product.aggregate(
+          [
+            { $match: { isActive: true } },
+            {
+              $group: {
+                _id: null,
+                totalProducts: { $sum: 1 },
+                totalStockQuantity: { $sum: '$currentStock' },
+                totalStockValue: { $sum: { $multiply: ['$currentStock', '$costPrice'] } },
+                totalPotentialValue: { $sum: { $multiply: ['$currentStock', '$sellingPrice'] } },
+              },
+            },
+          ],
+          { businessId: biz }
+        ),
 
-    const totalWithdrawals = recentWithdrawals.reduce((sum, w) => sum + w.amount, 0);
+        Product.find(
+          { isActive: true, businessId: biz, $expr: { $lte: ['$currentStock', '$minStockLevel'] } },
+          { sort: { currentStock: 1 }, limit: 10, select: 'name sku unit currentStock minStockLevel' }
+        ),
+
+        Transaction.aggregate([
+          { $match: { businessId: biz, createdAt: { $gte: windowStart } } },
+          {
+            $group: {
+              _id: '$type',
+              quantity: { $sum: '$quantity' },
+              value: { $sum: '$totalValue' },
+              count: { $sum: 1 },
+            },
+          },
+        ]),
+
+        Transaction.aggregate([
+          { $match: { businessId: biz, createdAt: { $gte: previousStart, $lt: windowStart } } },
+          { $group: { _id: '$type', quantity: { $sum: '$quantity' }, value: { $sum: '$totalValue' }, count: { $sum: 1 } } },
+        ]),
+
+        CashEntry.aggregate([
+          { $match: { businessId: biz, occurredAt: { $gte: windowStart } } },
+          { $group: { _id: '$direction', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+        ]),
+
+        Product.find(
+          {
+            isActive: true,
+            businessId: biz,
+            expiryDate: { $gte: new Date(), $lte: daysFromNow(30) },
+          },
+          { sort: { expiryDate: 1 }, limit: 10, select: 'name sku expiryDate currentStock unit' }
+        ),
+      ]);
+
+    const byType = (rows, type) => rows.find((r) => r._id === type) || { quantity: 0, value: 0, count: 0 };
+
+    const totals = inventory[0] || {
+      totalProducts: 0,
+      totalStockQuantity: 0,
+      totalStockValue: 0,
+      totalPotentialValue: 0,
+    };
+
+    const current = {
+      stockIn: byType(movement, 'stock_in'),
+      stockOut: byType(movement, 'stock_out'),
+    };
+    const previous = {
+      stockIn: byType(previousMovement, 'stock_in'),
+      stockOut: byType(previousMovement, 'stock_out'),
+    };
+
+    const transactionCount = movement.reduce((sum, r) => sum + r.count, 0);
+    const previousCount = previousMovement.reduce((sum, r) => sum + r.count, 0);
+
+    const cashOut = withdrawals.find((r) => r._id === 'out') || { total: 0, count: 0 };
+    const cashIn = withdrawals.find((r) => r._id === 'in') || { total: 0, count: 0 };
 
     res.json({
-      totalProducts,
-      totalStockValue: Math.round(totalStockValue * 100) / 100,
-      totalStockQuantity: Math.round(totalStockQuantity * 100) / 100,
-      lowStockCount: lowStockProducts.length,
-      lowStockProducts: lowStockProducts.map(p => ({
+      totalProducts: totals.totalProducts,
+      totalStockValue: round2(totals.totalStockValue),
+      totalStockQuantity: round2(totals.totalStockQuantity),
+      totalPotentialValue: round2(totals.totalPotentialValue),
+      lowStockCount: lowStock.length,
+      lowStockProducts: lowStock.map((p) => ({
         id: p._id,
         name: p.name,
         sku: p.sku,
+        unit: p.unit,
         currentStock: p.currentStock,
-        minStockLevel: p.minStockLevel
+        minStockLevel: p.minStockLevel,
+      })),
+      expiringSoon: expiringSoon.map((p) => ({
+        id: p._id,
+        name: p.name,
+        sku: p.sku,
+        expiryDate: p.expiryDate,
+        currentStock: p.currentStock,
+        unit: p.unit,
       })),
       recentActivity: {
-        stockIn: Math.round(stockIn * 100) / 100,
-        stockOut: Math.round(stockOut * 100) / 100,
-        transactions: recentTransactions.length,
-        cashWithdrawals: recentWithdrawals.length,
-        totalWithdrawn: Math.round(totalWithdrawals * 100) / 100
-      }
+        stockIn: round2(current.stockIn.quantity),
+        stockOut: round2(current.stockOut.quantity),
+        revenue: round2(current.stockOut.value),
+        transactions: transactionCount,
+        cashWithdrawals: cashOut.count,
+        totalWithdrawn: round2(cashOut.total),
+        cashIn: round2(cashIn.total),
+        cashInCount: cashIn.count,
+        netCash: round2(cashIn.total - cashOut.total),
+      },
+      // Measured against the preceding 30 days — no placeholder percentages.
+      trends: {
+        stockIn: percentChange(current.stockIn.quantity, previous.stockIn.quantity),
+        stockOut: percentChange(current.stockOut.quantity, previous.stockOut.quantity),
+        revenue: percentChange(current.stockOut.value, previous.stockOut.value),
+        transactions: percentChange(transactionCount, previousCount),
+      },
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+  })
+);
 
 // @route   GET /api/reports/stock-value
-// @desc    Get stock value report
 // @access  Private
-router.get('/stock-value', auth, async (req, res) => {
-  try {
-    const products = await Product.find({ isActive: true }).sort({ name: 1 });
-    
-    const report = products.map(product => ({
+router.get(
+  '/stock-value',
+  auth,
+  requireCapability('reports.view'),
+  asyncHandler(async (req, res) => {
+    const products = await Product.find({ isActive: true, businessId: req.businessId }, { sort: { name: 1 } });
+
+    const report = products.map((product) => ({
       id: product._id,
       name: product.name,
       sku: product.sku,
@@ -85,249 +199,261 @@ router.get('/stock-value', auth, async (req, res) => {
       unit: product.unit,
       costPrice: product.costPrice,
       sellingPrice: product.sellingPrice,
-      stockValue: Math.round(product.currentStock * product.costPrice * 100) / 100,
-      potentialValue: Math.round(product.currentStock * product.sellingPrice * 100) / 100
+      minStockLevel: product.minStockLevel,
+      stockValue: round2(product.currentStock * product.costPrice),
+      potentialValue: round2(product.currentStock * product.sellingPrice),
+      potentialProfit: round2(product.currentStock * (product.sellingPrice - product.costPrice)),
     }));
-
-    const totalValue = report.reduce((sum, item) => sum + item.stockValue, 0);
-    const totalPotentialValue = report.reduce((sum, item) => sum + item.potentialValue, 0);
 
     res.json({
       products: report,
       summary: {
-        totalValue: Math.round(totalValue * 100) / 100,
-        totalPotentialValue: Math.round(totalPotentialValue * 100) / 100
-      }
+        totalValue: round2(report.reduce((sum, i) => sum + i.stockValue, 0)),
+        totalPotentialValue: round2(report.reduce((sum, i) => sum + i.potentialValue, 0)),
+        totalPotentialProfit: round2(report.reduce((sum, i) => sum + i.potentialProfit, 0)),
+        productCount: report.length,
+      },
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+  })
+);
 
 // @route   GET /api/reports/movement
-// @desc    Get stock movement report
+// @desc    Per-product stock in/out over a period
 // @access  Private
-router.get('/movement', auth, async (req, res) => {
-  try {
-    const { startDate, endDate, productId } = req.query;
-    const query = {};
-
-    if (productId) query.product = productId;
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = new Date(startDate);
-      if (endDate) query.createdAt.$lte = new Date(endDate);
+router.get(
+  '/movement',
+  auth,
+  requireCapability('reports.view'),
+  asyncHandler(async (req, res) => {
+    const match = { businessId: req.businessId, createdAt: dateRange(req.query) };
+    if (req.query.productId) {
+      const { isValidUuid } = require('../db/helpers');
+      if (isValidUuid(req.query.productId)) {
+        match.product = req.query.productId;
+      }
     }
 
-    const transactions = await Transaction.find(query)
-      .populate('product', 'name sku category')
-      .sort({ createdAt: -1 });
+    const rows = await Transaction.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: '$product',
+          stockIn: { $sum: { $cond: [{ $eq: ['$type', 'stock_in'] }, '$quantity', 0] } },
+          stockOut: { $sum: { $cond: [{ $eq: ['$type', 'stock_out'] }, '$quantity', 0] } },
+          adjustments: { $sum: { $cond: [{ $eq: ['$type', 'adjustment'] }, 1, 0] } },
+          revenue: { $sum: { $cond: [{ $eq: ['$type', 'stock_out'] }, '$totalValue', 0] } },
+          transactionCount: { $sum: 1 },
+        },
+      },
+      { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product' } },
+      { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
+      { $sort: { stockOut: -1 } },
+    ]);
 
-    const grouped = transactions.reduce((acc, t) => {
-      const key = t.product._id.toString();
-      if (!acc[key]) {
-        acc[key] = {
-          product: {
-            id: t.product._id,
-            name: t.product.name,
-            sku: t.product.sku,
-            category: t.product.category
-          },
-          stockIn: 0,
-          stockOut: 0,
-          adjustments: 0,
-          transactions: []
-        };
-      }
-
-      if (t.type === 'stock_in') acc[key].stockIn += t.quantity;
-      else if (t.type === 'stock_out') acc[key].stockOut += t.quantity;
-      else if (t.type === 'adjustment') acc[key].adjustments += 1;
-
-      acc[key].transactions.push({
-        id: t._id,
-        type: t.type,
-        quantity: t.quantity,
-        date: t.createdAt
-      });
-
-      return acc;
-    }, {});
-
-    res.json(Object.values(grouped));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+    res.json(
+      rows.map((row) => ({
+        product: {
+          id: row._id,
+          name: row.product?.name || 'Deleted product',
+          sku: row.product?.sku || '—',
+          category: row.product?.category || 'Other',
+          unit: row.product?.unit || 'kg',
+        },
+        stockIn: round2(row.stockIn),
+        stockOut: round2(row.stockOut),
+        adjustments: row.adjustments,
+        revenue: round2(row.revenue),
+        transactionCount: row.transactionCount,
+      }))
+    );
+  })
+);
 
 // @route   GET /api/reports/bi-analytics
-// @desc    Get comprehensive BI analytics
+// @desc    Category mix, daily trends and top performers
 // @access  Private
-router.get('/bi-analytics', auth, async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    const dateFilter = {};
+router.get(
+  '/bi-analytics',
+  auth,
+  requireCapability('reports.view'),
+  asyncHandler(async (req, res) => {
+    const biz = req.businessId;
+    const range = dateRange(req.query, 90);
 
-    if (startDate || endDate) {
-      dateFilter.createdAt = {};
-      if (startDate) dateFilter.createdAt.$gte = new Date(startDate);
-      if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
-    } else {
-      // Default to last 90 days
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-      dateFilter.createdAt = { $gte: ninetyDaysAgo };
-    }
+    const [categoryAnalysis, transactionTrends, categoryRevenue, topProducts, totals] =
+      await Promise.all([
+        Product.aggregate(
+          [
+            { $match: { isActive: true } },
+            {
+              $group: {
+                _id: '$category',
+                totalStock: { $sum: '$currentStock' },
+                totalValue: { $sum: { $multiply: ['$currentStock', '$costPrice'] } },
+                totalPotentialValue: { $sum: { $multiply: ['$currentStock', '$sellingPrice'] } },
+                productCount: { $sum: 1 },
+              },
+            },
+            { $sort: { totalValue: -1 } },
+          ],
+          { businessId: biz }
+        ),
 
-    // Category-wise stock value
-    const products = await Product.find({ isActive: true });
-    const categoryAnalysis = products.reduce((acc, p) => {
-      if (!acc[p.category]) {
-        acc[p.category] = {
-          category: p.category,
-          totalStock: 0,
-          totalValue: 0,
-          totalPotentialValue: 0,
-          productCount: 0
-        };
-      }
-      acc[p.category].totalStock += p.currentStock;
-      acc[p.category].totalValue += p.currentStock * p.costPrice;
-      acc[p.category].totalPotentialValue += p.currentStock * p.sellingPrice;
-      acc[p.category].productCount += 1;
-      return acc;
-    }, {});
+        Transaction.aggregate([
+          { $match: { businessId: biz, createdAt: range } },
+          {
+            $group: {
+              _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+              stock_in: { $sum: { $cond: [{ $eq: ['$type', 'stock_in'] }, '$quantity', 0] } },
+              stock_out: { $sum: { $cond: [{ $eq: ['$type', 'stock_out'] }, '$quantity', 0] } },
+              revenue: { $sum: { $cond: [{ $eq: ['$type', 'stock_out'] }, '$totalValue', 0] } },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ]),
 
-    // Transaction trends by type
-    const transactions = await Transaction.find(dateFilter).populate('product', 'name category');
+        Transaction.aggregate([
+          { $match: { businessId: biz, createdAt: range, type: 'stock_out' } },
+          { $lookup: { from: 'products', localField: 'product', foreignField: '_id', as: 'product' } },
+          { $unwind: '$product' },
+          {
+            $group: {
+              _id: '$product.category',
+              revenue: { $sum: '$totalValue' },
+              quantity: { $sum: '$quantity' },
+            },
+          },
+          { $sort: { revenue: -1 } },
+        ]),
 
-    const transactionTrends = {};
-    const categoryRevenue = {};
+        Transaction.aggregate([
+          { $match: { businessId: biz, createdAt: range, type: 'stock_out' } },
+          {
+            $group: {
+              _id: '$product',
+              totalQuantitySold: { $sum: '$quantity' },
+              totalRevenue: { $sum: '$totalValue' },
+              transactionCount: { $sum: 1 },
+            },
+          },
+          { $sort: { totalRevenue: -1 } },
+          { $limit: 10 },
+          { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product' } },
+          { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
+        ]),
 
-    transactions.forEach(t => {
-      // Trend by date
-      const dateKey = new Date(t.createdAt).toISOString().split('T')[0];
-      if (!transactionTrends[dateKey]) {
-        transactionTrends[dateKey] = { date: dateKey, stock_in: 0, stock_out: 0, revenue: 0 };
-      }
-      if (t.type === 'stock_in') transactionTrends[dateKey].stock_in += t.quantity;
-      if (t.type === 'stock_out') {
-        transactionTrends[dateKey].stock_out += t.quantity;
-        transactionTrends[dateKey].revenue += t.totalValue || 0;
-      }
+        Transaction.aggregate([
+          { $match: { businessId: biz, createdAt: range } },
+          {
+            $group: {
+              _id: null,
+              totalTransactions: { $sum: 1 },
+              totalRevenue: { $sum: { $cond: [{ $eq: ['$type', 'stock_out'] }, '$totalValue', 0] } },
+            },
+          },
+        ]),
 
-      // Revenue by category
-      if (t.type === 'stock_out' && t.product) {
-        const cat = t.product.category;
-        if (!categoryRevenue[cat]) categoryRevenue[cat] = { category: cat, revenue: 0, quantity: 0 };
-        categoryRevenue[cat].revenue += t.totalValue || 0;
-        categoryRevenue[cat].quantity += t.quantity;
-      }
-    });
+      ]);
 
-    // Top performing products
-    const productPerformance = {};
-    transactions.filter(t => t.type === 'stock_out').forEach(t => {
-      const key = t.product._id.toString();
-      if (!productPerformance[key]) {
-        productPerformance[key] = {
-          id: t.product._id,
-          name: t.product.name,
-          category: t.product.category,
-          totalQuantitySold: 0,
-          totalRevenue: 0,
-          transactionCount: 0
-        };
-      }
-      productPerformance[key].totalQuantitySold += t.quantity;
-      productPerformance[key].totalRevenue += t.totalValue || 0;
-      productPerformance[key].transactionCount += 1;
-    });
+    const inventoryValue = await Product.aggregate(
+      [
+        { $match: { isActive: true } },
+        { $group: { _id: null, value: { $sum: { $multiply: ['$currentStock', '$costPrice'] } }, count: { $sum: 1 } } },
+      ],
+      { businessId: biz }
+    );
 
-    const topProducts = Object.values(productPerformance)
-      .sort((a, b) => b.totalRevenue - a.totalRevenue)
-      .slice(0, 10);
+    const inv = inventoryValue[0] || { value: 0, count: 0 };
+    const tot = totals[0] || { totalTransactions: 0, totalRevenue: 0 };
 
     res.json({
-      categoryAnalysis: Object.values(categoryAnalysis),
-      transactionTrends: Object.values(transactionTrends).sort((a, b) => a.date.localeCompare(b.date)),
-      categoryRevenue: Object.values(categoryRevenue),
-      topProducts,
+      categoryAnalysis: categoryAnalysis.map((c) => ({
+        category: c._id,
+        totalStock: round2(c.totalStock),
+        totalValue: round2(c.totalValue),
+        totalPotentialValue: round2(c.totalPotentialValue),
+        productCount: c.productCount,
+      })),
+      transactionTrends: transactionTrends.map((t) => ({
+        date: t._id,
+        stock_in: round2(t.stock_in),
+        stock_out: round2(t.stock_out),
+        revenue: round2(t.revenue),
+      })),
+      categoryRevenue: categoryRevenue.map((c) => ({
+        category: c._id,
+        revenue: round2(c.revenue),
+        quantity: round2(c.quantity),
+      })),
+      topProducts: topProducts.map((p) => ({
+        id: p._id,
+        name: p.product?.name || 'Deleted product',
+        category: p.product?.category || 'Other',
+        unit: p.product?.unit || 'kg',
+        totalQuantitySold: round2(p.totalQuantitySold),
+        totalRevenue: round2(p.totalRevenue),
+        transactionCount: p.transactionCount,
+      })),
       summary: {
-        totalProducts: products.length,
-        totalInventoryValue: products.reduce((sum, p) => sum + (p.currentStock * p.costPrice), 0),
-        totalRevenue: transactions
-          .filter(t => t.type === 'stock_out')
-          .reduce((sum, t) => sum + (t.totalValue || 0), 0),
-        totalTransactions: transactions.length
-      }
+        totalProducts: inv.count,
+        totalInventoryValue: round2(inv.value),
+        totalRevenue: round2(tot.totalRevenue),
+        totalTransactions: tot.totalTransactions,
+      },
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+  })
+);
 
 // @route   GET /api/reports/profit-analysis
-// @desc    Get profit and margin analysis
+// @desc    Margin per sale over a period
 // @access  Private
-router.get('/profit-analysis', auth, async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    const dateFilter = {};
+router.get(
+  '/profit-analysis',
+  auth,
+  requireCapability('reports.view'),
+  asyncHandler(async (req, res) => {
+    const sales = await Transaction.find(
+      { businessId: req.businessId, type: 'stock_out', createdAt: dateRange(req.query) },
+      { limit: 1000 }
+    );
 
-    if (startDate || endDate) {
-      dateFilter.createdAt = {};
-      if (startDate) dateFilter.createdAt.$gte = new Date(startDate);
-      if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
-    }
-
-    const salesTransactions = await Transaction.find({
-      ...dateFilter,
-      type: 'stock_out'
-    }).populate('product', 'name category costPrice sellingPrice');
-
-    const profitAnalysis = salesTransactions.map(t => {
-      const costPrice = t.product.costPrice || 0;
-      const sellingPrice = t.price || t.product.sellingPrice || 0;
+    const transactions = sales.map((t) => {
+      const costPrice = t.product?.costPrice || 0;
+      const sellingPrice = t.price || t.product?.sellingPrice || 0;
+      const revenue = t.totalValue ?? sellingPrice * t.quantity;
       const profit = (sellingPrice - costPrice) * t.quantity;
-      const profitMargin = costPrice > 0 ? ((sellingPrice - costPrice) / sellingPrice) * 100 : 0;
 
       return {
         transactionId: t._id,
-        productName: t.product.name,
-        category: t.product.category,
+        productName: t.product?.name || 'Deleted product',
+        category: t.product?.category || 'Other',
         quantity: t.quantity,
+        unit: t.unit,
         costPrice,
         sellingPrice,
-        revenue: t.totalValue || (sellingPrice * t.quantity),
-        profit: Math.round(profit * 100) / 100,
-        profitMargin: Math.round(profitMargin * 100) / 100,
-        date: t.createdAt
+        revenue: round2(revenue),
+        profit: round2(profit),
+        // Margin is profit over revenue; guard the zero-revenue case.
+        profitMargin: sellingPrice > 0 ? round2(((sellingPrice - costPrice) / sellingPrice) * 100) : 0,
+        date: t.createdAt,
       };
     });
 
-    const totalRevenue = profitAnalysis.reduce((sum, t) => sum + t.revenue, 0);
-    const totalProfit = profitAnalysis.reduce((sum, t) => sum + t.profit, 0);
-    const avgMargin = profitAnalysis.length > 0
-      ? profitAnalysis.reduce((sum, t) => sum + t.profitMargin, 0) / profitAnalysis.length
-      : 0;
+    const totalRevenue = transactions.reduce((sum, t) => sum + t.revenue, 0);
+    const totalProfit = transactions.reduce((sum, t) => sum + t.profit, 0);
 
     res.json({
-      transactions: profitAnalysis,
+      transactions,
       summary: {
-        totalRevenue: Math.round(totalRevenue * 100) / 100,
-        totalProfit: Math.round(totalProfit * 100) / 100,
-        averageMargin: Math.round(avgMargin * 100) / 100,
-        transactionCount: profitAnalysis.length
-      }
+        totalRevenue: round2(totalRevenue),
+        totalProfit: round2(totalProfit),
+        // Weighted by revenue rather than a flat mean, so one tiny sale can't
+        // swing the headline margin.
+        averageMargin: totalRevenue > 0 ? round2((totalProfit / totalRevenue) * 100) : 0,
+        transactionCount: transactions.length,
+      },
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+  })
+);
 
 module.exports = router;

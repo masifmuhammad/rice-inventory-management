@@ -1,95 +1,83 @@
-// Currency formatting utilities for Pakistani Rupees (PKR)
+// Money and quantity formatting. Pakistani Rupees by default; the symbol is
+// configurable so a business can change it in Settings without a code change.
+
+const DEFAULT_SYMBOL = 'Rs.';
+
+const toNumber = (value) => {
+  const n = typeof value === 'string' ? parseFloat(value) : value;
+  return Number.isFinite(n) ? n : null;
+};
 
 /**
- * Format number as Pakistani Rupees
- * @param {number} amount - Amount to format
- * @param {boolean} showSymbol - Whether to show currency symbol
- * @returns {string} Formatted currency string
+ * Formats an amount as currency.
+ * Invalid input formats as zero rather than rendering "NaN" in the UI.
  */
-export const formatPKR = (amount, showSymbol = true) => {
-  if (amount === null || amount === undefined || isNaN(amount)) {
-    return showSymbol ? 'Rs. 0.00' : '0.00';
-  }
+export const formatMoney = (amount, symbol = DEFAULT_SYMBOL, showSymbol = true) => {
+  const value = toNumber(amount) ?? 0;
 
-  const formatted = Number(amount).toLocaleString('en-PK', {
+  const formatted = value.toLocaleString('en-PK', {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   });
 
-  return showSymbol ? `Rs. ${formatted}` : formatted;
+  return showSymbol ? `${symbol} ${formatted}` : formatted;
 };
 
-/**
- * Format number as compact PKR (e.g., 1.5M, 2.3K)
- * @param {number} amount - Amount to format
- * @returns {string} Compact formatted currency string
- */
-export const formatCompactPKR = (amount) => {
-  if (amount === null || amount === undefined || isNaN(amount)) {
-    return 'Rs. 0';
-  }
+export const formatPKR = (amount, showSymbol = true) =>
+  formatMoney(amount, DEFAULT_SYMBOL, showSymbol);
 
-  const absAmount = Math.abs(amount);
+/**
+ * Short form for stat cards, using the South Asian scale that Pakistani
+ * businesses actually read in: thousands, Lac (100k) and Crore (10m).
+ */
+export const formatCompactMoney = (amount, symbol = DEFAULT_SYMBOL) => {
+  const value = toNumber(amount) ?? 0;
+  const magnitude = Math.abs(value);
+
   let formatted;
+  if (magnitude >= 10000000) formatted = `${(value / 10000000).toFixed(2)} Cr`;
+  else if (magnitude >= 100000) formatted = `${(value / 100000).toFixed(2)} Lac`;
+  else if (magnitude >= 1000) formatted = `${(value / 1000).toFixed(1)}K`;
+  else formatted = value.toFixed(2);
 
-  if (absAmount >= 10000000) {
-    // 10 Million+
-    formatted = (amount / 10000000).toFixed(2) + ' Cr';
-  } else if (absAmount >= 100000) {
-    // 100 Thousand+
-    formatted = (amount / 100000).toFixed(2) + ' Lac';
-  } else if (absAmount >= 1000) {
-    // 1 Thousand+
-    formatted = (amount / 1000).toFixed(1) + 'K';
-  } else {
-    formatted = amount.toFixed(2);
-  }
-
-  return `Rs. ${formatted}`;
+  return `${symbol} ${formatted}`;
 };
 
-/**
- * Parse PKR string to number
- * @param {string} pkrString - PKR formatted string
- * @returns {number} Parsed number
- */
-export const parsePKR = (pkrString) => {
-  if (!pkrString) return 0;
+export const formatCompactPKR = (amount) => formatCompactMoney(amount, DEFAULT_SYMBOL);
 
-  // Remove currency symbol and commas
-  const cleaned = pkrString.replace(/Rs\.?|,|\s/g, '');
-  return parseFloat(cleaned) || 0;
+/** Parses a formatted string back to a number. */
+export const parseMoney = (value) => {
+  if (typeof value === 'number') return value;
+  if (!value) return 0;
+  return parseFloat(String(value).replace(/[^0-9.-]/g, '')) || 0;
 };
 
-/**
- * Format quantity with unit
- * @param {number} quantity - Quantity value
- * @param {string} unit - Unit of measurement
- * @returns {string} Formatted quantity string
- */
-export const formatQuantity = (quantity, unit) => {
-  if (quantity === null || quantity === undefined || isNaN(quantity)) {
-    return `0 ${unit}`;
-  }
+export const parsePKR = parseMoney;
 
-  const formatted = Number(quantity).toLocaleString('en-PK', {
+/** Quantity with its unit, trimming trailing zeros (`12 kg`, not `12.00 kg`). */
+export const formatQuantity = (quantity, unit = '') => {
+  const value = toNumber(quantity) ?? 0;
+
+  const formatted = value.toLocaleString('en-PK', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   });
 
-  return `${formatted} ${unit}`;
+  return unit ? `${formatted} ${unit}` : formatted;
 };
 
-/**
- * Format percentage
- * @param {number} value - Percentage value
- * @param {number} decimals - Number of decimal places
- * @returns {string} Formatted percentage string
- */
-export const formatPercentage = (value, decimals = 2) => {
-  if (value === null || value === undefined || isNaN(value)) {
-    return '0%';
-  }
+export const formatNumber = (value, maximumFractionDigits = 0) =>
+  (toNumber(value) ?? 0).toLocaleString('en-PK', { maximumFractionDigits });
 
-  return `${Number(value).toFixed(decimals)}%`;
+export const formatPercentage = (value, decimals = 1) => {
+  const n = toNumber(value);
+  return n === null ? '0%' : `${n.toFixed(decimals)}%`;
+};
+
+/** Profit margin as a percentage of the selling price. */
+export const marginPercent = (costPrice, sellingPrice) => {
+  const cost = toNumber(costPrice) ?? 0;
+  const sell = toNumber(sellingPrice) ?? 0;
+  if (sell <= 0) return 0;
+  return ((sell - cost) / sell) * 100;
 };

@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
-package-lock.json
+# package-lock.json is intentionally NOT ignored: committing it is what lets
+# `npm ci` reproduce the exact dependency tree in Docker and in CI.
 
 # Environment variables
 .env

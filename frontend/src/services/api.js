@@ -1,29 +1,148 @@
 import axios from 'axios';
 
+export const TOKEN_KEY = 'rim.token';
+export const USER_KEY = 'rim.user';
+export const CAPABILITIES_KEY = 'rim.capabilities';
+
+/**
+ * Same-origin by default: the Docker image serves the API and this app together,
+ * and `package.json` proxies `/api` to :5000 during local development.
+ * REACT_APP_API_URL is only needed for split hosting (e.g. Vercel + a separate API).
+ */
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: process.env.REACT_APP_API_URL || '/api',
+  timeout: 25000,
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Add token to requests if available
-const token = localStorage.getItem('token');
-if (token) {
-  api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-}
+/* ------------------------------------------------------------ token storage */
 
-// Response interceptor for error handling
+export const getToken = () => {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null; // private browsing / storage disabled
+  }
+};
+
+export const setToken = (token) => {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* non-fatal: the session just won't survive a refresh */
+  }
+};
+
+export const getCachedUser = () => {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const setCachedUser = (user) => {
+  try {
+    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+    else localStorage.removeItem(USER_KEY);
+  } catch {
+    /* non-fatal */
+  }
+};
+
+export const getCachedCapabilities = () => {
+  try {
+    const raw = localStorage.getItem(CAPABILITIES_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const setCachedCapabilities = (capabilities) => {
+  try {
+    if (capabilities) localStorage.setItem(CAPABILITIES_KEY, JSON.stringify(capabilities));
+    else localStorage.removeItem(CAPABILITIES_KEY);
+  } catch {
+    /* non-fatal */
+  }
+};
+
+/* ------------------------------------------------------------- interceptors */
+
+// Read the token per request rather than pinning it to axios defaults, so a
+// login or logout in another tab is picked up immediately.
+api.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+/** Endpoints where a 401 means "wrong password", not "session over". */
+const isCredentialRequest = (url = '') =>
+  url.includes('/auth/login') || url.includes('/auth/register');
+
+export const AUTH_EXPIRED_EVENT = 'rim:auth-expired';
+export const PASSWORD_CHANGE_EVENT = 'rim:password-change-required';
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      delete api.defaults.headers.common['Authorization'];
-      window.location.href = '/login';
+    const status = error.response?.status;
+
+    if (status === 401 && !isCredentialRequest(error.config?.url)) {
+      setToken(null);
+      setCachedUser(null);
+      setCachedCapabilities(null);
+      window.dispatchEvent(
+        new CustomEvent(AUTH_EXPIRED_EVENT, {
+          detail: { message: error.response?.data?.message },
+        })
+      );
     }
+
+    if (
+      status === 403 &&
+      error.response?.data?.code === 'PASSWORD_CHANGE_REQUIRED' &&
+      !window.location.pathname.startsWith('/change-password')
+    ) {
+      const cached = getCachedUser();
+      if (cached) {
+        setCachedUser({ ...cached, mustChangePassword: true });
+      }
+      window.dispatchEvent(new CustomEvent(PASSWORD_CHANGE_EVENT));
+    }
+
     return Promise.reject(error);
   }
 );
+
+/* ------------------------------------------------------------------ helpers */
+
+/** True when a request was deliberately aborted, which should never surface as an error. */
+export const isCancel = (error) =>
+  axios.isCancel(error) || error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError';
+
+/**
+ * Turns any axios failure into one sentence worth showing a user.
+ * Server messages win; network and timeout cases get plain language.
+ */
+export const getErrorMessage = (error, fallback = 'Something went wrong. Please try again.') => {
+  if (!error) return fallback;
+
+  const data = error.response?.data;
+  if (data?.message) return data.message;
+  if (Array.isArray(data?.errors) && data.errors[0]?.message) return data.errors[0].message;
+
+  if (error.code === 'ECONNABORTED') return 'That took too long. Check your connection and try again.';
+  if (error.code === 'ERR_NETWORK' || !error.response) {
+    return 'Cannot reach the server. Check your internet connection.';
+  }
+  if (error.response.status >= 500) return 'The server had a problem. Please try again in a moment.';
+
+  return error.message || fallback;
+};
 
 export default api;

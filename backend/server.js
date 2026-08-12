@@ -1,61 +1,196 @@
+const path = require('path');
+const fs = require('fs');
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
-require('dotenv').config();
+const helmet = require('helmet');
+const compression = require('compression');
+
+const env = require('./config/env');
+const { connectDB, closeDB, isDbReady } = require('./config/db');
+const { apiLimiter } = require('./middleware/rateLimiters');
+const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
-// Middleware
+// Render/Fly/Railway all sit behind a proxy; without this, rate limiting and
+// req.ip see the proxy address instead of the client.
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+/* ------------------------------------------------------------------ security */
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        // React writes styles through the CSSOM, but Tailwind's preflight and the
+        // chart library still need inline <style> blocks.
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        fontSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'", ...env.corsOrigins],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'self'"],
+        baseUri: ["'self'"],
+      },
+    },
+    // The SPA fetches its own PDFs as blobs; COEP would block them.
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'same-site' },
+  })
+);
+
+/* ---------------------------------------------------------------------- cors */
+
+// When the API and the SPA ship in one container they share an origin and CORS is
+// a no-op. CORS_ORIGINS is only needed for split deployments (e.g. Vercel + API).
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Allow localhost for development
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      return callback(null, true);
-    }
-    
-    // Allow all Vercel deployments
-    if (origin.includes('vercel.app')) {
-      return callback(null, true);
-    }
-    
-    // Allow other common hosting platforms
-    if (origin.includes('netlify.app') || origin.includes('railway.app') || origin.includes('render.com')) {
-      return callback(null, true);
-    }
-    
-    callback(null, true); // Allow all origins for now (you can restrict this later)
+  origin(origin, callback) {
+    if (!origin) return callback(null, true); // curl, health checks, native apps
+    if (env.corsOrigins.length === 0) return callback(null, true);
+    if (env.corsOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`Origin ${origin} is not allowed by CORS`));
   },
-  credentials: true
+  credentials: true,
+  maxAge: 86400,
 };
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Routes
+/* -------------------------------------------------------------------- basics */
+
+app.use(compression());
+// Business logos are uploaded as base64 data URLs, so the default 100kb is too small.
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+/* ------------------------------------------------------------------ /api/* */
+
+app.get('/api/health', (req, res) => {
+  const ready = isDbReady();
+  res.status(ready ? 200 : 503).json({
+    status: ready ? 'OK' : 'DEGRADED',
+    database: ready ? 'connected' : 'disconnected',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.use('/api', apiLimiter);
+
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/businesses', require('./routes/businesses'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/cash-book', require('./routes/cashBook'));
+// Superseded by /api/cash-book; kept so older clients keep working.
 app.use('/api/cash-withdrawals', require('./routes/cashWithdrawals'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/admin', require('./routes/admin'));
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Rice Inventory API is running' });
+app.use('/api', notFound);
+
+/* ----------------------------------------------------------- static frontend */
+
+const resolveClientBuild = () => {
+  const candidates = [
+    env.clientBuildPath,
+    path.join(__dirname, 'public'), // Docker layout
+    path.join(__dirname, '..', 'frontend', 'build'), // local dev layout
+  ].filter(Boolean);
+
+  return candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html'))) || null;
+};
+
+const clientBuild = resolveClientBuild();
+
+if (clientBuild) {
+  console.log(`📦 Serving frontend from ${clientBuild}`);
+
+  // Hashed filenames are immutable; index.html must never be cached or users get
+  // a stale shell pointing at deleted chunks after a deploy.
+  app.use(
+    express.static(clientBuild, {
+      index: false,
+      maxAge: '1y',
+      setHeaders(res, filePath) {
+        if (path.basename(filePath) === 'index.html') {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+      },
+    })
+  );
+
+  app.get('*', (req, res, next) => {
+    // Only client routes get the SPA shell. A missing asset must 404 honestly:
+    // answering a request for `main.abc123.js` with index.html makes the browser
+    // parse HTML as JavaScript ("Unexpected token '<'"), which takes down the
+    // whole page instead of one file. That is exactly what happens to a tab that
+    // was open across a deploy, when the chunk it asks for has been renamed.
+    if (req.path.startsWith('/static/') || path.extname(req.path)) {
+      return next();
+    }
+
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(clientBuild, 'index.html'));
+  });
+
+  app.use((req, res) => {
+    res.status(404).type('text/plain').send('Not found');
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({ message: 'Rice Inventory API', health: '/api/health' });
+  });
+  app.use(notFound);
+}
+
+app.use(errorHandler);
+
+/* ------------------------------------------------------------------- startup */
+
+let server;
+
+const start = async () => {
+  // Connect before listening so the first request never races the database.
+  await connectDB();
+
+  server = app.listen(env.port, () => {
+    console.log(`🚀 Server running on port ${env.port} (${env.isProduction ? 'production' : 'development'})`);
+  });
+};
+
+const shutdown = (signal) => () => {
+  console.log(`\n${signal} received, shutting down gracefully...`);
+  const done = () => process.exit(0);
+
+  if (!server) return done();
+
+  server.close(async () => {
+    try {
+      await closeDB();
+    } catch (_) {
+      /* already closed */
+    }
+    done();
+  });
+
+  // Don't let a stuck connection hold the container open forever.
+  setTimeout(() => process.exit(1), 10000).unref();
+};
+
+process.on('SIGTERM', shutdown('SIGTERM'));
+process.on('SIGINT', shutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason) => {
+  console.error('❌ Unhandled promise rejection:', reason);
 });
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/rice-inventory', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('✅ Connected to MongoDB'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+start().catch((error) => {
+  console.error('❌ Failed to start server:', error.message);
+  process.exit(1);
 });
+
+module.exports = app;

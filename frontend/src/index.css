@@ -2,35 +2,489 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  /**
+   * Semantic surface/content tokens. Components reference these (`bg-surface-1`,
+   * `text-content-muted`) instead of raw grays, so a component styled once is
+   * correct in both themes — there is no way to write a light-only class.
+   */
+  :root {
+    /* Native controls — date pickers, selects, scrollbars — follow this. */
+    color-scheme: light;
+
+    /* Default brand ramp (emerald). SettingsContext overwrites at runtime. */
+    --color-primary-50: 236 253 245;
+    --color-primary-100: 209 250 229;
+    --color-primary-200: 167 243 208;
+    --color-primary-300: 110 231 183;
+    --color-primary-400: 52 211 153;
+    --color-primary-500: 16 185 129;
+    --color-primary-600: 5 150 105;
+    --color-primary-700: 4 120 87;
+    --color-primary-800: 6 95 70;
+    --color-primary-900: 6 78 59;
+
+    --app-header-height: 3.5rem;
+    /* Floating tab bar: inner height + bottom margin */
+    --app-tabbar-height: 5.5rem;
+
+    /* Light theme: elevation rises toward white. */
+    --surface-base: 247 247 248;
+    --surface-1: 255 255 255;
+    --surface-2: 255 255 255;
+    --surface-3: 243 243 245;
+    --surface-sunken: 244 244 246;
+
+    /* Hairlines and overlays are one colour at varying alpha. */
+    --hairline: 9 9 11;
+    --hairline-weak: 0.07;
+    --hairline-strong: 0.12;
+
+    --content: 24 24 27;
+    --content-muted: 106 106 116;
+    --content-subtle: 148 148 158;
+
+    /* Tint strength of the brand glow behind the page. */
+    --glow: 0.1;
+    --card-tint: 0;
+    --card-shadow: 0 1px 2px rgb(9 9 11 / 0.05), 0 1px 3px rgb(9 9 11 / 0.04);
+    --card-shadow-hover: 0 4px 12px -2px rgb(9 9 11 / 0.08), 0 2px 6px -2px rgb(9 9 11 / 0.05);
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    /**
+     * Dark is a lit room, not an inverted document. Two things carry that:
+     *
+     * The ladder below is a real one. Elevation in dark UI is read almost
+     * entirely as lightness, so base → card has to be a step you can actually
+     * see; the previous 3% made every card dissolve into the page.
+     *
+     * And the greys carry two to six points of blue. That is far below where it
+     * reads as a colour, but without it neutral grey on near-black goes sepia.
+     */
+    --surface-base: 9 9 11;
+    --surface-1: 22 22 26;
+    --surface-2: 31 31 36;
+    --surface-3: 44 44 50;
+    --surface-sunken: 5 5 7;
+
+    --hairline: 255 255 255;
+    --hairline-weak: 0.08;
+    --hairline-strong: 0.14;
+
+    /* Near-white, not white: #fff on near-black glares and smears the stems. */
+    --content: 244 244 246;
+    --content-muted: 163 163 174;
+    --content-subtle: 138 138 149;
+
+    --glow: 0.06;
+    --card-tint: 0;
+    /* Shadows do work on dark. They just have to be darker and much softer. */
+    --card-shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.7);
+    --card-shadow-hover: 0 1px 2px rgb(0 0 0 / 0.5), 0 16px 40px -16px rgb(0 0 0 / 0.8);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    /* Anchor links and focus jumps land softly instead of teleporting. */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    @apply bg-surface-base text-content antialiased;
+    font-family: theme('fontFamily.sans');
+    scrollbar-gutter: stable;
+
+    /* A brand-tinted glow anchored to the top of the viewport gives the page
+       depth instead of a flat slab. Fixed so it does not tile while scrolling. */
+    background-image: radial-gradient(
+      125% 70% at 50% -10%,
+      rgb(var(--color-primary-500) / var(--glow)),
+      transparent 62%
+    );
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
+  /* Never let a wide table push the whole document sideways on a phone. */
+  body,
+  #root {
+    overflow-x: clip;
+  }
+
+  code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  }
+
+  /* A visible focus ring for keyboard users, without the permanent outline that
+     makes mouse users think something is stuck. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-primary-500));
+    outline-offset: 2px;
+  }
+
+  /* Selection picks up the brand instead of the browser's default blue. */
+  ::selection {
+    background-color: rgb(var(--color-primary-500) / 0.3);
+  }
+
+  /* Numbers in tables and stat cards should not jitter as digits change. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    /* Tailwind/CSS animations only — Framer Motion uses its own reduced-motion path. */
+    .animate-pulse,
+    .animate-spin,
+    .animate-fade-in,
+    .animate-fade-up,
+    .skeleton-appear {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+
+  /* Translucency is decorative; when it is unwelcome, go frosted-solid instead. */
+  @media (prefers-reduced-transparency: reduce) {
+    .chrome-blur,
+    .chrome-raised {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .chrome-blur {
+      background-color: rgb(var(--surface-base));
+    }
+
+    .chrome-raised {
+      background-color: rgb(var(--surface-1));
+    }
+  }
+
+  /* High contrast wants defined edges over soft elevation. */
+  @media (prefers-contrast: more) {
+    :root {
+      --hairline-weak: 0.22;
+      --hairline-strong: 0.34;
+      --content-muted: 68 68 76;
+      --content-subtle: 92 92 102;
+      --glow: 0;
+    }
+
+    .dark {
+      --hairline-weak: 0.28;
+      --hairline-strong: 0.42;
+      --content-muted: 214 214 222;
+      --content-subtle: 184 184 194;
+      --glow: 0;
+    }
+
+    .surface-card,
+    .dark .surface-card {
+      background-image: none;
+      box-shadow: none;
+    }
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@layer components {
+  .scroll-x {
+    @apply overflow-x-auto overscroll-x-contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-surface-1 focus:text-content focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500;
+  }
+
+  /**
+   * The one card surface. Elevation comes from a lighter fill plus a soft
+   * shadow; the hairline only defines the edge. In dark mode a whisper of brand
+   * tint and an inset top highlight keep it from reading as flat charcoal.
+   */
+  .surface-card {
+    background-color: rgb(var(--surface-1));
+    background-image: linear-gradient(
+      180deg,
+      rgb(var(--color-primary-400) / var(--card-tint)),
+      rgb(var(--color-primary-400) / 0) 60%
+    );
+    border: 1px solid rgb(var(--hairline) / var(--hairline-weak));
+    box-shadow: var(--card-shadow);
+  }
+
+  /**
+   * A dark card needs what a light card gets for free from a drop shadow: a
+   * light source. The gradient is brightest along the top edge and the inset
+   * hairline reads as that edge catching the light — which is the whole
+   * difference between a material and a grey rectangle.
+   */
+  .dark .surface-card {
+    background-image: linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.05),
+      rgb(255 255 255 / 0.012) 42%,
+      rgb(255 255 255 / 0) 100%
+    );
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.06), var(--card-shadow);
+  }
+
+  .dark .surface-card-hover:hover {
+    background-color: rgb(var(--surface-2));
+    border-color: rgb(var(--hairline) / var(--hairline-strong));
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.09), var(--card-shadow-hover);
+  }
+
+  .surface-card-hover {
+    transition: box-shadow 200ms ease-out, border-color 200ms ease-out;
+  }
+
+  .surface-card-hover:hover {
+    box-shadow: var(--card-shadow-hover);
+    border-color: rgb(var(--hairline) / var(--hairline-strong));
+  }
+
+  /* A recessed well, for grouped rows and inline stat blocks. */
+  .surface-sunken {
+    background-color: rgb(var(--surface-sunken));
+    border: 1px solid rgb(var(--hairline) / var(--hairline-weak));
+  }
+
+  /**
+   * Headline stats read as one instrument panel rather than four competing
+   * boxes: a single surface split by hairlines. Two columns on a phone,
+   * four across from xl, with the trailing edges left open.
+   */
+  .stat-grid {
+    @apply grid grid-cols-2 xl:grid-cols-4;
+  }
+
+  .stat-grid > * {
+    border-color: rgb(var(--hairline) / var(--hairline-weak));
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+  }
+
+  /* Last cell in each row of two, and the final row, need no trailing edge. */
+  .stat-grid > *:nth-child(2n) {
+    border-right-width: 0;
+  }
+
+  .stat-grid > *:nth-last-child(-n + 2) {
+    border-bottom-width: 0;
+  }
+
+  @media (min-width: 1280px) {
+    .stat-grid > * {
+      border-right-width: 1px;
+      border-bottom-width: 0;
+    }
+
+    .stat-grid > *:nth-child(2n) {
+      border-right-width: 1px;
+    }
+
+    .stat-grid > *:last-child {
+      border-right-width: 0;
+    }
+  }
+
+  /* Form controls — one definition, correct in both themes. */
+  .field-control {
+    @apply w-full rounded-xl text-base sm:text-sm text-content
+      placeholder:text-content-subtle
+      transition-[border-color,box-shadow,background-color] duration-150
+      focus:outline-none focus:ring-2 focus:ring-primary-500/35 focus:border-primary-500;
+    background-color: rgb(var(--surface-1));
+    border: 1px solid rgb(var(--hairline) / var(--hairline-strong));
+  }
+
+  .field-control:hover:not(:disabled):not(:focus) {
+    border-color: rgb(var(--hairline) / 0.2);
+  }
+
+  .field-control:disabled {
+    background-color: rgb(var(--surface-3));
+    @apply text-content-subtle cursor-not-allowed;
+  }
+
+  .field-control-invalid {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500/30;
+  }
+
+  /* iOS-style segmented control: translucent track, solid pill for the active item. */
+  .segmented {
+    @apply inline-flex items-center gap-0.5 p-1 rounded-full;
+    background-color: rgb(var(--hairline) / 0.06);
+    border: 1px solid rgb(var(--hairline) / var(--hairline-weak));
+  }
+
+  .segmented-item {
+    @apply relative px-3.5 min-h-[36px] inline-flex items-center justify-center
+      rounded-full text-xs sm:text-sm font-medium whitespace-nowrap
+      text-content-muted transition-colors duration-150
+      hover:text-content
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500;
+  }
+
+  .segmented-item-active {
+    @apply text-content;
+  }
+
+  /* The sliding indicator behind the active segment. */
+  .segmented-thumb {
+    background-color: rgb(var(--surface-1));
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+    transition: box-shadow 150ms ease-out;
+  }
+
+  .dark .segmented-thumb {
+    background-color: rgb(var(--surface-3));
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.07), 0 1px 2px rgb(0 0 0 / 0.4);
+  }
+
+  .dark .segmented-thumb-held {
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.07), 0 4px 12px -2px rgb(0 0 0 / 0.55);
+  }
+
+  /* Lifts while a finger is on it, so the pill reads as picked up. */
+  .segmented-thumb-held {
+    box-shadow: 0 3px 10px -2px rgb(0 0 0 / 0.22);
+  }
+
+  /**
+   * The sidebar is a wall, not a floating panel. It sits at canvas level and is
+   * separated by its hairline alone, so the cards are the only things that lift
+   * off the page — previously it was two steps lighter than the canvas it
+   * bordered, which inverted the whole hierarchy.
+   */
+  .sidebar-surface {
+    background-color: rgb(var(--surface-1) / 0.82);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  .dark .sidebar-surface {
+    background-color: rgb(var(--surface-base));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* Frosted chrome for the header and floating tab bar. */
+  .chrome-blur {
+    background-color: rgb(var(--surface-base) / 0.72);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  .chrome-raised {
+    background-color: rgb(var(--surface-1) / 0.82);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  .app-gradient {
+    /* The glow lives on <body> so it never tiles; this stays transparent. */
+    background-color: transparent;
+  }
+
+  .sidebar-gradient {
+    background-image: linear-gradient(
+      90deg,
+      rgb(var(--color-primary-500) / 0.08),
+      transparent 100%
+    );
+  }
 }
 
-/* Custom scrollbar */
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  /* Placeholders fade up rather than snapping in, so that on the rare occasion
+     data lands just as one appears, the flash is a faint one. */
+  @keyframes skeleton-appear {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .skeleton-appear {
+    animation: skeleton-appear 180ms ease-out both;
+  }
+
+  /* Hairline dividers that follow the theme. */
+  .divide-hairline > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgb(var(--hairline) / var(--hairline-weak));
+  }
+
+  /* Headline figures scale with the viewport and cap out, so a long number
+     shrinks to fit instead of truncating to an ellipsis. */
+  .stat-figure {
+    font-size: clamp(1.625rem, 7.5vw, 2.25rem);
+    line-height: 1;
+    letter-spacing: -0.025em;
+  }
+
+  .stat-figure-sm {
+    font-size: clamp(1.25rem, 6vw, 1.75rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Scrollbars: slim and quiet, but still grabbable. */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+  background: rgb(var(--hairline) / 0.2);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: rgb(var(--hairline) / 0.32);
+  background-clip: content-box;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--hairline) / 0.2) transparent;
+}
+
+/* Recharts renders an SVG that reports its own size; without this it can grab a
+   focus outline on click and flash a rectangle over the chart. */
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
 }

@@ -1,187 +1,280 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { AnimatePresence, motion } from 'framer-motion';
+import { FiEye, FiEyeOff, FiLock, FiMail, FiUser } from 'react-icons/fi';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { FiPackage, FiMail, FiLock, FiUser, FiLoader } from 'react-icons/fi';
+import { useSettings } from '../context/SettingsContext';
+import { getErrorMessage } from '../services/api';
+import BrandLogo from '../components/BrandLogo';
+import Button from '../components/ui/Button';
+import { Input, Select } from '../components/ui/Field';
+import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
+import { iconSwap, staggerContainer, staggerItem, staggerItemReduced, springUI } from '../utils/motion';
 
-const Login = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-  });
+export default function Login() {
+  const [mode, setMode] = useState('login');
+  const [form, setForm] = useState({ name: '', email: '', password: '', businessId: '' });
+  const [businesses, setBusinesses] = useState([]);
+  const [loadingBusinesses, setLoadingBusinesses] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('');
-  const { login, register } = useAuth();
-  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError('');
+  const { login, register } = useAuth();
+  const { businessName, settings } = useSettings();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const firstFieldRef = useRef(null);
+
+  const isLogin = mode === 'login';
+  const redirectTo = location.state?.from?.pathname || '/';
+  const reducedMotion = usePrefersReducedMotion();
+  const item = reducedMotion ? staggerItemReduced : staggerItem;
+
+  useEffect(() => {
+    if (mode !== 'register') return;
+    setLoadingBusinesses(true);
+    axios
+      .get('/api/businesses/public')
+      .then(({ data }) => setBusinesses(data || []))
+      .catch(() => setBusinesses([]))
+      .finally(() => setLoadingBusinesses(false));
+  }, [mode]);
+
+  useEffect(() => {
+    firstFieldRef.current?.focus();
+  }, [mode]);
+
+  const update = (field) => (event) => {
+    setForm((current) => ({ ...current, [field]: event.target.value }));
+    if (error) setError('');
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (submitting) return;
+
     setError('');
-    setLoading(true);
-    setLoadingMessage(isLogin ? 'Signing you in...' : 'Creating your account...');
+    setSubmitting(true);
 
     try {
       if (isLogin) {
-        await login(formData.email, formData.password);
-        setLoadingMessage('Welcome back!');
+        const data = await login(form.email.trim(), form.password);
+        toast.success('Welcome back');
+        const target = data.user?.mustChangePassword
+          ? '/change-password'
+          : redirectTo;
+        navigate(target, { replace: true });
       } else {
-        if (!formData.name) {
-          setError('Name is required');
-          setLoading(false);
+        if (!form.businessId) {
+          setError('Please select which business you want to work for');
+          setSubmitting(false);
           return;
         }
-        await register(formData.name, formData.email, formData.password);
-        setLoadingMessage('Account created!');
+        const data = await register(form.name.trim(), form.email.trim(), form.password, form.businessId);
+        toast.success(data.message || 'Account request sent');
+        setMode('login');
+        setForm({ name: '', email: form.email.trim(), password: '', businessId: '' });
       }
-
-      // Small delay for smooth transition
-      setTimeout(() => {
-        navigate('/');
-      }, 300);
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred');
-      setLoading(false);
+      setError(getErrorMessage(err, 'Could not sign you in. Please try again.'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const switchMode = () => {
+    setMode(isLogin ? 'register' : 'login');
+    setError('');
+    setForm({ name: '', email: '', password: '', businessId: '' });
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center mb-4">
-              <img 
-                src="/hm-logo.jpg" 
-                alt="HM Logo" 
-                className="h-20 w-20 object-contain"
-                onError={(e) => { 
-                  // Try PNG if JPG fails
-                  if (e.target.src.includes('.jpg')) {
-                    e.target.src = '/hm-logo.png';
-                  } else {
-                    e.target.style.display = 'none';
-                    if (e.target.nextSibling) {
-                      e.target.nextSibling.style.display = 'flex';
-                    }
-                  }
-                }}
-              />
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full" style={{display: 'none'}}>
-                <FiPackage className="w-8 h-8 text-primary-600" />
-              </div>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900">Haji Muhammad Rice Mills</h1>
-            <p className="text-gray-600 mt-2">Inventory Management System</p>
+    <div className="min-h-[100dvh] flex items-center justify-center p-4 py-10">
+      <motion.div
+        className="w-full max-w-md"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={item} className="text-center mb-6">
+          <div className="inline-flex items-center justify-center mb-4">
+            <BrandLogo size={64} rounded="rounded-2xl" className="shadow-sm border border-hairline/[0.07]" />
           </div>
+          <h1 className="text-xl sm:text-2xl font-display font-bold text-content tracking-[-0.02em] text-balance">
+            {businessName}
+          </h1>
+          <p className="text-sm text-content-subtle mt-1">
+            {settings?.tagline || 'Inventory Management System'}
+          </p>
+        </motion.div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <motion.div variants={item} className="surface-card rounded-card p-6 sm:p-7">
+          <h2 className="text-lg font-semibold text-content">
+            {isLogin ? 'Sign in' : 'Create your account'}
+          </h2>
+          <p className="text-sm text-content-muted mt-1 mb-5">
+            {isLogin
+              ? 'Enter your details to open the dashboard.'
+              : 'Request an account. An administrator must approve it before you can sign in.'}
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Enter your name"
-                    required={!isLogin}
-                  />
-                </div>
-              </div>
+              <>
+                <Input
+                  ref={firstFieldRef}
+                  label="Full name"
+                  required
+                  icon={FiUser}
+                  name="name"
+                  autoComplete="name"
+                  placeholder="Your name"
+                  value={form.name}
+                  onChange={update('name')}
+                  disabled={submitting}
+                />
+                <Select
+                  label="Business"
+                  required
+                  name="businessId"
+                  value={form.businessId}
+                  onChange={update('businessId')}
+                  disabled={submitting || loadingBusinesses}
+                  hint={loadingBusinesses ? undefined : 'Choose where you will work'}
+                >
+                  {loadingBusinesses ? (
+                    <option value="">Loading businesses…</option>
+                  ) : (
+                    <>
+                      <option value="">Select a business</option>
+                      {businesses.map((business) => (
+                        <option key={business.id} value={business.id}>
+                          {business.name}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </Select>
+              </>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Enter your email"
-                  required
-                />
-              </div>
+            <Input
+              ref={isLogin ? firstFieldRef : undefined}
+              label="Email address"
+              required
+              type="email"
+              icon={FiMail}
+              name="email"
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
+              spellCheck="false"
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={update('email')}
+              disabled={submitting}
+            />
+
+            <div className="relative">
+              <Input
+                label="Password"
+                required
+                type={showPassword ? 'text' : 'password'}
+                icon={FiLock}
+                name="password"
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
+                placeholder={isLogin ? 'Your password' : 'At least 6 characters'}
+                minLength={6}
+                value={form.password}
+                onChange={update('password')}
+                disabled={submitting}
+                className="[&_input]:pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-1 top-[26px] h-[44px] w-11 grid place-items-center rounded-well
+                  text-content-subtle hover:text-content transition-colors"
+                tabIndex={-1}
+              >
+                <AnimatePresence initial={false} mode="popLayout">
+                  <motion.span
+                    key={showPassword ? 'hide' : 'show'}
+                    initial={iconSwap.initial}
+                    animate={iconSwap.animate}
+                    exit={iconSwap.exit}
+                    transition={reducedMotion ? { duration: 0.12 } : iconSwap.transition}
+                  >
+                    {showPassword ? (
+                      <FiEyeOff className="w-[18px] h-[18px]" />
+                    ) : (
+                      <FiEye className="w-[18px] h-[18px]" />
+                    )}
+                  </motion.span>
+                </AnimatePresence>
+              </button>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Enter your password"
-                  required
-                  minLength={6}
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <FiLoader className="w-5 h-5 mr-2 animate-spin" />
-                  {loadingMessage}
-                </span>
-              ) : (
-                isLogin ? 'Sign In' : 'Create Account'
+            <AnimatePresence initial={false}>
+              {error && (
+                <motion.div
+                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0, y: -4 }}
+                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, height: 'auto', y: 0 }}
+                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0, y: -4 }}
+                  transition={reducedMotion ? { duration: 0.15 } : springUI}
+                  className="overflow-hidden"
+                >
+                  <div
+                    className="rounded-well border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-500"
+                    role="alert"
+                  >
+                    {error}
+                  </div>
+                </motion.div>
               )}
-            </button>
+            </AnimatePresence>
+
+            <Button type="submit" size="lg" fullWidth loading={submitting}>
+              {submitting
+                ? isLogin
+                  ? 'Signing in…'
+                  : 'Creating account…'
+                : isLogin
+                ? 'Sign in'
+                : 'Create account'}
+            </Button>
           </form>
 
-          {/* Toggle */}
-          <div className="mt-6 text-center">
+          <div className="mt-5 pt-5 border-t border-hairline/[0.07] text-center">
             <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError('');
-                setFormData({ name: '', email: '', password: '' });
-              }}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+              type="button"
+              onClick={switchMode}
+              disabled={submitting}
+              className="text-sm text-content-muted hover:text-content transition-colors disabled:opacity-50"
             >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : 'Already have an account? Sign in'}
+              {isLogin ? (
+                <>
+                  Don&apos;t have an account?{' '}
+                  <span className="font-medium text-primary-600">Sign up</span>
+                </>
+              ) : (
+                <>
+                  Already have an account?{' '}
+                  <span className="font-medium text-primary-600">Sign in</span>
+                </>
+              )}
             </button>
           </div>
-        </div>
-      </div>
+        </motion.div>
+
+        <motion.p variants={item} className="text-center text-xs text-content-subtle mt-6">
+          Inventory, sales and cash — in one place.
+        </motion.p>
+      </motion.div>
     </div>
   );
-};
-
-export default Login;
+}

@@ -1,437 +1,710 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
-  FiPackage,
-  FiTrendingUp,
-  FiAlertCircle,
-  FiDollarSign,
   FiActivity,
+  FiAlertCircle,
+  FiArrowRight,
+  FiClock,
+  FiDollarSign,
+  FiDownload,
+  FiPackage,
   FiShoppingCart,
-  FiPieChart,
-  FiBarChart2,
-  FiDownload
+  FiTrendingUp,
 } from 'react-icons/fi';
 import {
-  BarChart,
   Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
+  CartesianGrid,
   Cell,
+  ComposedChart,
+  Legend,
+  Line,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  Area,
-  AreaChart
 } from 'recharts';
-import { formatPKR, formatCompactPKR } from '../utils/currency';
-import { generateInventoryReportPDF } from '../utils/pdfGenerator';
 
-const Dashboard = () => {
-  const [stats, setStats] = useState(null);
-  const [biAnalytics, setBiAnalytics] = useState(null);
-  const [profitAnalysis, setProfitAnalysis] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
-  const [selectedDateRange, setSelectedDateRange] = useState('30');
+import api from '../services/api';
+import useApi from '../hooks/useApi';
+import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
+import { formatCompactMoney, formatMoney, formatNumber, formatQuantity } from '../utils/currency';
+import PageHeader from '../components/PageHeader';
+import PillFilter from '../components/ui/PillFilter';
+import Button from '../components/ui/Button';
+import Card, { CardBody, CardHeader } from '../components/ui/Card';
+import StatCard, { StatGrid } from '../components/ui/StatCard';
+import AnimatedValue from '../components/ui/AnimatedValue';
+import { EmptyState, ErrorState, InlineError } from '../components/ui/States';
+import { SkeletonChart, SkeletonGate, SkeletonStatCards, Skeleton } from '../components/ui/Skeleton';
+import { RefetchSection } from '../components/ui/RefetchIndicator';
+import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
+import { staggerContainer, staggerItem as staggerItemVariants, staggerItemReduced } from '../utils/motion';
 
-  useEffect(() => {
-    fetchAllData();
-  }, [selectedDateRange]);
+const RANGES = [
+  { value: '7', label: '1W', full: 'Last 7 days' },
+  { value: '30', label: '1M', full: 'Last 30 days' },
+  { value: '90', label: '3M', full: 'Last 90 days' },
+  { value: '180', label: '6M', full: 'Last 6 months' },
+  { value: '365', label: '1Y', full: 'Last year' },
+];
 
-  const fetchAllData = async () => {
-    try {
-      setLoading(true);
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - parseInt(selectedDateRange));
+const CHART_COLORS = ['#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444'];
 
-      const [dashboardRes, biRes, profitRes] = await Promise.all([
-        api.get('/reports/dashboard'),
-        api.get('/reports/bi-analytics', {
-          params: {
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString()
-          }
-        }),
-        api.get('/reports/profit-analysis', {
-          params: {
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString()
-          }
-        })
-      ]);
+/** Charts need a parent with a real height or ResponsiveContainer collapses to 0. */
+function ChartFrame({ height = 280, loading, empty, emptyLabel, children }) {
+  if (loading) return <SkeletonChart height={height} />;
 
-      setStats(dashboardRes.data);
-      setBiAnalytics(biRes.data);
-      setProfitAnalysis(profitRes.data);
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExportReport = async () => {
-    try {
-      setExporting(true);
-      console.log('Fetching stock value report...');
-
-      const response = await api.get('/reports/stock-value');
-      console.log('Report data received:', response.data);
-
-      if (!response.data.products || response.data.products.length === 0) {
-        alert('No products found to generate report');
-        setExporting(false);
-        return;
-      }
-
-      // Add small delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      const success = await generateInventoryReportPDF(response.data.products, response.data.summary, {
-        name: 'Haji Muhammad Rice Mills Inventory',
-        address: 'Pakistan'
-      });
-
-      if (success) {
-        console.log('Report generated successfully');
-      }
-
-      setTimeout(() => {
-        setExporting(false);
-      }, 500);
-    } catch (error) {
-      console.error('Error generating report:', error);
-      alert(`Failed to generate report: ${error.message || 'Unknown error'}`);
-      setExporting(false);
-    }
-  };
-
-  if (loading) {
+  if (empty) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading analytics...</p>
-        </div>
+      <div className="flex items-center justify-center text-sm text-content-subtle" style={{ height }}>
+        {emptyLabel}
       </div>
     );
   }
 
-  const COLORS = ['#0284c7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+  return (
+    <div style={{ height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        {children}
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
-  const statCards = [
-    {
-      title: 'Total Inventory Value',
-      value: formatCompactPKR(stats?.totalStockValue || 0),
-      fullValue: formatPKR(stats?.totalStockValue || 0),
-      icon: FiDollarSign,
-      color: 'bg-green-500',
-      bgColor: 'bg-gradient-to-br from-green-50 to-green-100',
-      change: '+12.5%',
-      trend: 'up'
-    },
-    {
-      title: 'Total Products',
-      value: stats?.totalProducts || 0,
-      icon: FiPackage,
-      color: 'bg-blue-500',
-      bgColor: 'bg-gradient-to-br from-blue-50 to-blue-100',
-      change: '+3',
-      trend: 'up'
-    },
-    {
-      title: 'Total Revenue',
-      value: formatCompactPKR(profitAnalysis?.summary?.totalRevenue || 0),
-      fullValue: formatPKR(profitAnalysis?.summary?.totalRevenue || 0),
-      icon: FiShoppingCart,
-      color: 'bg-purple-500',
-      bgColor: 'bg-gradient-to-br from-purple-50 to-purple-100',
-      change: `${profitAnalysis?.summary?.transactionCount || 0} sales`,
-      trend: 'up'
-    },
-    {
-      title: 'Low Stock Alerts',
-      value: stats?.lowStockCount || 0,
-      icon: FiAlertCircle,
-      color: 'bg-red-500',
-      bgColor: 'bg-gradient-to-br from-red-50 to-red-100',
-      change: 'Needs attention',
-      trend: stats?.lowStockCount > 0 ? 'down' : 'neutral'
-    },
-  ];
+/** Zero-fill missing days so sparse data still reads as a full timeline. */
+function fillTrendDates(trends, dayCount) {
+  const map = new Map((trends || []).map((row) => [row.date, row]));
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+  const start = new Date(end);
+  start.setDate(start.getDate() - dayCount + 1);
+
+  const filled = [];
+  for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+    const key = cursor.toISOString().slice(0, 10);
+    const row = map.get(key);
+    filled.push({
+      date: key,
+      stock_in: row?.stock_in ?? 0,
+      stock_out: row?.stock_out ?? 0,
+      revenue: row?.revenue ?? 0,
+    });
+  }
+  return filled;
+}
+
+function formatChartDate(value) {
+  const text = String(value);
+  const date = new Date(`${text}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return text.slice(5);
+  return date.toLocaleDateString('en-PK', { month: 'short', day: 'numeric' });
+}
+
+function MovementTooltip({ active, payload, label, currencySymbol }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+  if (!row) return null;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Business Intelligence Dashboard</h1>
-          <p className="text-gray-600 mt-1">Comprehensive analytics and insights for Haji Muhammad Rice Mills inventory</p>
-        </div>
-        <div className="flex items-center space-x-3 mt-4 md:mt-0">
-          <select
-            value={selectedDateRange}
-            onChange={(e) => setSelectedDateRange(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          >
-            <option value="7">Last 7 Days</option>
-            <option value="30">Last 30 Days</option>
-            <option value="90">Last 90 Days</option>
-            <option value="180">Last 6 Months</option>
-            <option value="365">Last Year</option>
-          </select>
-          <button
-            onClick={handleExportReport}
-            disabled={exporting}
-            className={`flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg ${exporting ? 'opacity-70 cursor-wait' : ''}`}
-          >
-            {exporting ? (
-              <>
-                <FiDownload className="mr-2 animate-bounce" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <FiDownload className="mr-2" />
-                Export Report
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={index}
-              className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wider">{stat.title}</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-3" title={stat.fullValue}>
-                    {stat.value}
-                  </p>
-                  <p className={`text-sm mt-2 flex items-center ${
-                    stat.trend === 'up' ? 'text-green-600' : stat.trend === 'down' ? 'text-red-600' : 'text-gray-600'
-                  }`}>
-                    {stat.trend === 'up' && <FiTrendingUp className="mr-1" />}
-                    {stat.change}
-                  </p>
-                </div>
-                <div className={`${stat.bgColor} p-4 rounded-xl`}>
-                  <Icon className={`w-7 h-7 ${stat.color.replace('bg-', 'text-')}`} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Stock Movement & Top Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Stock Movement Chart */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center">
-              <FiBarChart2 className="w-5 h-5 text-primary-600 mr-2" />
-              Stock Movement Trends
-            </h2>
-          </div>
-          {biAnalytics?.transactionTrends?.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={biAnalytics.transactionTrends}>
-                <defs>
-                  <linearGradient id="colorStockIn" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorStockOut" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{fontSize: 12}} />
-                <YAxis tick={{fontSize: 12}} />
-                <Tooltip />
-                <Legend />
-                <Area type="monotone" dataKey="stock_in" stroke="#10b981" fillOpacity={1} fill="url(#colorStockIn)" name="Stock In" />
-                <Area type="monotone" dataKey="stock_out" stroke="#ef4444" fillOpacity={1} fill="url(#colorStockOut)" name="Stock Out" />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-gray-500 text-center py-12">No data available</p>
-          )}
-        </div>
-
-        {/* Top Products */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center">
-              <FiTrendingUp className="w-5 h-5 text-primary-600 mr-2" />
-              Top Performing Products
-            </h2>
-          </div>
-          <div className="p-6">
-            {biAnalytics?.topProducts?.length > 0 ? (
-              <div className="space-y-4">
-                {biAnalytics.topProducts.slice(0, 5).map((product, index) => (
-                  <div
-                    key={product.id}
-                    className="flex items-center justify-between p-4 bg-gradient-to-r from-primary-50 to-transparent rounded-lg hover:from-primary-100 transition-colors"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0 w-10 h-10 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{product.name}</p>
-                        <p className="text-sm text-gray-600">{product.category}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-primary-600">{formatPKR(product.totalRevenue)}</p>
-                      <p className="text-xs text-gray-500">{product.totalQuantitySold.toFixed(2)} units sold</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-12">No data available</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Low Stock & Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Low Stock Products */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center">
-              <FiAlertCircle className="w-5 h-5 text-red-500 mr-2" />
-              Low Stock Alerts
-            </h2>
-          </div>
-          <div className="p-6">
-            {stats?.lowStockProducts?.length > 0 ? (
-              <div className="space-y-3">
-                {stats.lowStockProducts.slice(0, 5).map((product) => (
-                  <div
-                    key={product.id}
-                    className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200 hover:bg-red-100 transition-colors"
-                  >
-                    <div>
-                      <p className="font-semibold text-gray-900">{product.name}</p>
-                      <p className="text-sm text-gray-600">{product.sku || 'No SKU'}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-red-600">
-                        {product.currentStock} / {product.minStockLevel}
-                      </p>
-                      <p className="text-xs text-gray-500">Current / Min</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <FiPackage className="w-8 h-8 text-green-600" />
-                </div>
-                <p className="text-gray-600 font-medium">All products are well stocked!</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Activity Summary */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center">
-              <FiActivity className="w-5 h-5 text-primary-600 mr-2" />
-              Activity Summary
-            </h2>
-          </div>
-          <div className="p-6">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                    <FiTrendingUp className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">Stock In</p>
-                    <p className="text-sm text-gray-600">Incoming inventory</p>
-                  </div>
-                </div>
-                <p className="text-xl font-bold text-green-600">
-                  {stats?.recentActivity?.stockIn?.toLocaleString('en-PK', { maximumFractionDigits: 2 })} kg
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                    <FiTrendingUp className="w-6 h-6 text-red-600 rotate-180" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">Stock Out</p>
-                    <p className="text-sm text-gray-600">Outgoing inventory</p>
-                  </div>
-                </div>
-                <p className="text-xl font-bold text-red-600">
-                  {stats?.recentActivity?.stockOut?.toLocaleString('en-PK', { maximumFractionDigits: 2 })} kg
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
-                    <FiActivity className="w-6 h-6 text-primary-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">Total Transactions</p>
-                    <p className="text-sm text-gray-600">All activities</p>
-                  </div>
-                </div>
-                <p className="text-xl font-bold text-primary-600">
-                  {stats?.recentActivity?.transactions || 0}
-                </p>
-              </div>
-
-              {stats?.recentActivity?.totalWithdrawn > 0 && (
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                      <FiDollarSign className="w-6 h-6 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">Cash Withdrawn</p>
-                      <p className="text-sm text-gray-600">{stats?.recentActivity?.cashWithdrawals || 0} withdrawals</p>
-                    </div>
-                  </div>
-                  <p className="text-xl font-bold text-orange-600">
-                    {formatPKR(stats?.recentActivity?.totalWithdrawn || 0)}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+    <div className="rounded-well border border-hairline/[0.07] bg-surface-1 px-3 py-2.5 text-sm shadow-lg">
+      <p className="font-medium text-content mb-1.5">{formatChartDate(label)}</p>
+      <div className="space-y-1 text-xs">
+        <p className="text-emerald-500 tabular-nums">Stock in: {formatNumber(row.stock_in, 2)} kg</p>
+        <p className="text-red-500 tabular-nums">Stock out: {formatNumber(row.stock_out, 2)} kg</p>
+        <p className="text-primary-600 dark:text-primary-400 tabular-nums">Revenue: {formatMoney(row.revenue, currencySymbol)}</p>
       </div>
     </div>
   );
-};
+}
 
-export default Dashboard;
+function CategoryTooltip({ active, payload, currencySymbol }) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  return (
+    <div className="rounded-well border border-hairline/[0.07] bg-surface-1 px-3 py-2 text-sm shadow-lg">
+      <p className="font-medium text-content">{item.name}</p>
+      <p className="text-content-muted tabular-nums mt-0.5">
+        {formatMoney(item.value, currencySymbol)}
+      </p>
+    </div>
+  );
+}
+
+export default function Dashboard() {
+  const { currencySymbol, settings } = useSettings();
+  const { isDark } = useTheme();
+  const [range, setRange] = useState('30');
+  const [exporting, setExporting] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
+  const staggerItem = reducedMotion ? staggerItemReduced : staggerItemVariants;
+
+  const chartTheme = useMemo(
+    () => ({
+      grid: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(9,9,11,0.07)',
+      axis: isDark ? '#8a8a95' : '#8e8e97',
+      legend: isDark ? '#9f9faa' : '#6a6a74',
+    }),
+    [isDark]
+  );
+
+  const rangeParams = useMemo(() => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(range, 10));
+    return { startDate: startDate.toISOString(), endDate: endDate.toISOString() };
+  }, [range]);
+
+  // Three independent requests, three independent failure modes. One slow
+  // analytics query should not blank out the headline numbers.
+  const stats = useApi(
+    (signal) => api.get('/reports/dashboard', { signal }).then((r) => r.data),
+    [],
+    { keepPreviousData: true }
+  );
+
+  const analytics = useApi(
+    (signal) => api.get('/reports/bi-analytics', { params: rangeParams, signal }).then((r) => r.data),
+    [rangeParams],
+    { keepPreviousData: true }
+  );
+
+  const profit = useApi(
+    (signal) => api.get('/reports/profit-analysis', { params: rangeParams, signal }).then((r) => r.data),
+    [rangeParams],
+    { keepPreviousData: true }
+  );
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    const toastId = toast.loading('Building your report…');
+
+    try {
+      const { data } = await api.get('/reports/stock-value');
+
+      if (!data.products?.length) {
+        toast.error('There are no products to report on yet.', { id: toastId });
+        return;
+      }
+
+      // jsPDF is ~350KB. Loading it on demand keeps it out of the main bundle.
+      const { generateInventoryReportPDF } = await import('../utils/pdfGenerator');
+      await generateInventoryReportPDF(data.products, data.summary, settings);
+
+      toast.success('Report downloaded', { id: toastId });
+    } catch (error) {
+      toast.error('Could not build the report. Please try again.', { id: toastId });
+    } finally {
+      setExporting(false);
+    }
+  }, [settings]);
+
+  const trends = stats.data?.trends || {};
+  const activity = stats.data?.recentActivity || {};
+
+  const categoryChart = useMemo(
+    () =>
+      (analytics.data?.categoryAnalysis || [])
+        .map((c) => ({
+          name: c.category,
+          value: c.totalValue > 0 ? c.totalValue : c.totalPotentialValue || 0,
+          stock: c.totalStock || 0,
+        }))
+        .filter((c) => c.value > 0 || c.stock > 0)
+        .sort((a, b) => b.value - a.value),
+    [analytics.data]
+  );
+
+  const trendChartData = useMemo(
+    () => fillTrendDates(analytics.data?.transactionTrends, parseInt(range, 10)),
+    [analytics.data, range]
+  );
+
+  const trendTotals = useMemo(
+    () =>
+      trendChartData.reduce(
+        (acc, row) => ({
+          stockIn: acc.stockIn + row.stock_in,
+          stockOut: acc.stockOut + row.stock_out,
+          revenue: acc.revenue + row.revenue,
+        }),
+        { stockIn: 0, stockOut: 0, revenue: 0 }
+      ),
+    [trendChartData]
+  );
+
+  const hasMovement = trendTotals.stockIn > 0 || trendTotals.stockOut > 0 || trendTotals.revenue > 0;
+
+  // The headline numbers are the page. If they fail, there is nothing to show.
+  if (stats.error && !stats.data) {
+    return (
+      <ErrorState
+        title="Could not load the dashboard"
+        message={stats.error}
+        onRetry={stats.refetch}
+      />
+    );
+  }
+
+  const loadingStats = stats.loading && !stats.data;
+  const refetchingAnalytics = analytics.loading && Boolean(analytics.data);
+  const refetchingProfit = profit.loading && Boolean(profit.data);
+  const loadingProfit = profit.loading && !profit.data;
+
+  return (
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div variants={staggerItem}>
+      <PageHeader
+        title="Dashboard"
+        description="Stock, sales and cash at a glance."
+        actions={
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <PillFilter
+              options={RANGES.map((r) => ({ value: r.value, label: r.label }))}
+              value={range}
+              onChange={setRange}
+              ariaLabel="Reporting period"
+            />
+            <Button icon={FiDownload} onClick={handleExport} loading={exporting} className="sm:shrink-0">
+              Export report
+            </Button>
+          </div>
+        }
+      />
+      </motion.div>
+
+      {/* Headline numbers */}
+      <motion.div variants={staggerItem}>
+      {loadingStats ? (
+        <SkeletonStatCards />
+      ) : (
+        <StatGrid>
+          <StatCard
+            title="Inventory value"
+            rawValue={stats.data?.totalStockValue}
+            valueType="compactMoney"
+            currencySymbol={currencySymbol}
+            fullValue={formatMoney(stats.data?.totalStockValue, currencySymbol)}
+            hint={`${formatNumber(stats.data?.totalStockQuantity, 2)} units in stock`}
+            icon={FiDollarSign}
+          />
+          <StatCard
+            title="Products"
+            rawValue={stats.data?.totalProducts}
+            hint={`${formatCompactMoney(stats.data?.totalPotentialValue, currencySymbol)} at retail`}
+            icon={FiPackage}
+          />
+          <StatCard
+            title="Revenue (30 days)"
+            rawValue={activity.revenue}
+            valueType="compactMoney"
+            currencySymbol={currencySymbol}
+            fullValue={formatMoney(activity.revenue, currencySymbol)}
+            change={trends.revenue}
+            changeLabel="vs previous 30 days"
+            icon={FiShoppingCart}
+          />
+          <StatCard
+            title="Low stock alerts"
+            rawValue={stats.data?.lowStockCount}
+            hint={
+              stats.data?.lowStockCount > 0 ? 'Needs restocking' : 'Everything is above minimum'
+            }
+            icon={FiAlertCircle}
+            tone={stats.data?.lowStockCount > 0 ? 'danger' : 'neutral'}
+          />
+        </StatGrid>
+      )}
+      </motion.div>
+
+      {analytics.error && (
+        <InlineError message={`Analytics: ${analytics.error}`} onRetry={analytics.refetch} />
+      )}
+
+      {/* Trends + category mix */}
+      <motion.div variants={staggerItem}>
+      <RefetchSection active={refetchingAnalytics}>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <Card className="xl:col-span-2">
+          <CardHeader
+            title="Stock movement"
+            subtitle={RANGES.find((r) => r.value === range)?.full}
+            icon={FiActivity}
+          />
+          <CardBody className="pt-2">
+            {!analytics.loading && analytics.data && (
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+                {[
+                  { label: 'Stock in', value: `${formatNumber(trendTotals.stockIn, 1)} kg`, tone: 'text-emerald-500' },
+                  { label: 'Stock out', value: `${formatNumber(trendTotals.stockOut, 1)} kg`, tone: 'text-red-500' },
+                  { label: 'Revenue', value: formatCompactMoney(trendTotals.revenue, currencySymbol), tone: 'text-primary-600 dark:text-primary-400' },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-lg bg-surface-sunken px-3 py-2">
+                    <p className="text-[10px] sm:text-xs font-medium text-content-subtle uppercase tracking-wide">{item.label}</p>
+                    <p className={`text-sm sm:text-base font-semibold tabular-nums mt-0.5 ${item.tone}`}>{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <ChartFrame
+              height={300}
+              loading={analytics.loading && !analytics.data}
+              empty={!hasMovement}
+              emptyLabel="No stock movement in this period"
+            >
+              <ComposedChart data={trendChartData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11, fill: chartTheme.axis }}
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={28}
+                  tickFormatter={formatChartDate}
+                />
+                <YAxis
+                  yAxisId="qty"
+                  tick={{ fontSize: 11, fill: chartTheme.axis }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={44}
+                  tickFormatter={(v) => formatNumber(v, 0)}
+                />
+                <YAxis
+                  yAxisId="money"
+                  orientation="right"
+                  tick={{ fontSize: 11, fill: chartTheme.axis }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={52}
+                  tickFormatter={(v) => formatCompactMoney(v, currencySymbol)}
+                />
+                <Tooltip content={<MovementTooltip currencySymbol={currencySymbol} />} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 8, color: chartTheme.legend }} />
+                <Bar yAxisId="qty" dataKey="stock_in" name="Stock in" fill="#10b981" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                <Bar yAxisId="qty" dataKey="stock_out" name="Stock out" fill="#fca5a5" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                <Line
+                  yAxisId="money"
+                  type="monotone"
+                  dataKey="revenue"
+                  name="Revenue"
+                  stroke="#0284c7"
+                  strokeWidth={2}
+                  dot={{ r: 2, fill: '#0284c7' }}
+                  activeDot={{ r: 4 }}
+                />
+              </ComposedChart>
+            </ChartFrame>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader title="Value by category" icon={FiPackage} />
+          <CardBody className="pt-2">
+            <ChartFrame
+              height={300}
+              loading={analytics.loading && !analytics.data}
+              empty={!categoryChart.length}
+              emptyLabel="No stock to break down yet"
+            >
+              <PieChart>
+                <Pie
+                  data={categoryChart}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius="52%"
+                  outerRadius="78%"
+                  paddingAngle={2}
+                  stroke="none"
+                  label={({ name, percent }) => (percent >= 0.08 ? `${name} ${(percent * 100).toFixed(0)}%` : '')}
+                  labelLine={false}
+                >
+                  {categoryChart.map((entry, index) => (
+                    <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CategoryTooltip currencySymbol={currencySymbol} />} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: chartTheme.legend }} />
+              </PieChart>
+            </ChartFrame>
+          </CardBody>
+        </Card>
+      </div>
+      </RefetchSection>
+      </motion.div>
+      <motion.div variants={staggerItem}>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader
+            title="Top selling products"
+            subtitle="By revenue in the selected period"
+            icon={FiTrendingUp}
+            action={
+              <Link
+                to="/reports"
+                className="text-sm font-medium text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
+              >
+                Reports <FiArrowRight className="w-4 h-4" />
+              </Link>
+            }
+          />
+          {analytics.loading && !analytics.data ? (
+            <CardBody>
+              <SkeletonGate className="space-y-3">
+                {[0, 1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                ))}
+              </SkeletonGate>
+            </CardBody>
+          ) : analytics.data?.topProducts?.length ? (
+            <ul className="divide-y divide-hairline">
+              {analytics.data.topProducts.slice(0, 5).map((product, index) => (
+                <li
+                  key={product.id}
+                  className="flex items-center gap-3 px-4 sm:px-6 py-3.5 hover:bg-hairline/[0.05] transition-colors"
+                >
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500/12 text-primary-600 dark:text-primary-400 text-xs font-semibold flex items-center justify-center tabular-nums">
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-content truncate">{product.name}</p>
+                    <p className="text-xs text-content-subtle">
+                      {formatQuantity(product.totalQuantitySold, product.unit)} sold ·{' '}
+                      {product.category}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold text-content tabular-nums whitespace-nowrap">
+                    {formatMoney(product.totalRevenue, currencySymbol)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              icon={FiTrendingUp}
+              title="No sales yet"
+              description="Record a stock-out transaction and your best sellers will appear here."
+              action={
+                <Link to="/transactions">
+                  <Button size="sm" variant="secondary">
+                    Record a sale
+                  </Button>
+                </Link>
+              }
+            />
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader title="Last 30 days" icon={FiActivity} />
+          <CardBody>
+            {loadingStats ? (
+              <SkeletonGate className="space-y-4">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </SkeletonGate>
+            ) : (
+              <dl className="divide-y divide-hairline">
+                {[
+                  {
+                    label: 'Stock in',
+                    detail: 'Received into the warehouse',
+                    value: activity.stockIn,
+                    suffix: 'units',
+                    tone: 'text-emerald-500',
+                  },
+                  {
+                    label: 'Stock out',
+                    detail: 'Sold or issued',
+                    value: activity.stockOut,
+                    suffix: 'units',
+                    tone: 'text-red-500',
+                  },
+                  {
+                    label: 'Transactions',
+                    detail: 'All movements recorded',
+                    value: activity.transactions,
+                    tone: 'text-content',
+                  },
+                  {
+                    label: 'Cash withdrawn',
+                    detail: `${formatNumber(activity.cashWithdrawals)} withdrawals`,
+                    value: activity.totalWithdrawn,
+                    type: 'compactMoney',
+                    tone: 'text-amber-500',
+                  },
+                ].map((row) => (
+                  <div key={row.label} className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0">
+                    <div className="min-w-0">
+                      <dt className="text-sm font-medium text-content">{row.label}</dt>
+                      <dd className="text-xs text-content-subtle truncate">{row.detail}</dd>
+                    </div>
+                    <dd className={`text-sm font-semibold tabular-nums whitespace-nowrap ${row.tone}`}>
+                      <AnimatedValue
+                        value={row.value}
+                        type={row.type || 'number'}
+                        symbol={currencySymbol}
+                        figureClassName="font-semibold"
+                        unitClassName="text-content-subtle font-normal"
+                      />
+                      {row.suffix && <span className="text-content-subtle font-normal ml-1">{row.suffix}</span>}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </CardBody>
+        </Card>
+      </div>
+      </motion.div>
+
+      {/* Attention needed */}
+      <motion.div variants={staggerItem}>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader
+            title="Low stock"
+            subtitle="At or below the minimum level"
+            icon={FiAlertCircle}
+            action={
+              <Link
+                to="/products"
+                className="text-sm font-medium text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
+              >
+                Products <FiArrowRight className="w-4 h-4" />
+              </Link>
+            }
+          />
+          {loadingStats ? (
+            <CardBody>
+              <SkeletonGate className="space-y-3">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
+              </SkeletonGate>
+            </CardBody>
+          ) : stats.data?.lowStockProducts?.length ? (
+            <ul className="divide-y divide-hairline">
+              {stats.data.lowStockProducts.map((product) => (
+                <li key={product.id} className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-content truncate">{product.name}</p>
+                    <p className="text-xs text-content-subtle">{product.sku || 'No SKU'}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-semibold text-red-500 tabular-nums">
+                      {formatQuantity(product.currentStock, product.unit)}
+                    </p>
+                    <p className="text-xs text-content-subtle tabular-nums">
+                      min {formatQuantity(product.minStockLevel, product.unit)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              icon={FiPackage}
+              title="Everything is well stocked"
+              description="No product is at or below its minimum level."
+            />
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader title="Expiring soon" subtitle="Within the next 30 days" icon={FiClock} />
+          {loadingStats ? (
+            <CardBody>
+              <SkeletonGate className="space-y-3">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
+              </SkeletonGate>
+            </CardBody>
+          ) : stats.data?.expiringSoon?.length ? (
+            <ul className="divide-y divide-hairline">
+              {stats.data.expiringSoon.map((product) => (
+                <li key={product.id} className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-content truncate">{product.name}</p>
+                    <p className="text-xs text-content-subtle">
+                      {formatQuantity(product.currentStock, product.unit)} in stock
+                    </p>
+                  </div>
+                  <p className="text-sm font-medium text-amber-500 flex-shrink-0 tabular-nums">
+                    {new Date(product.expiryDate).toLocaleDateString('en-PK', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              icon={FiClock}
+              title="Nothing expiring soon"
+              description="Products with an expiry date in the next 30 days will show up here."
+            />
+          )}
+        </Card>
+      </div>
+      </motion.div>
+
+      {loadingProfit ? (
+        <Card>
+          <CardHeader title="Profit" subtitle={RANGES.find((r) => r.value === range)?.label} icon={FiDollarSign} />
+          <CardBody>
+            <SkeletonGate className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full rounded-lg" />
+              ))}
+            </SkeletonGate>
+          </CardBody>
+        </Card>
+      ) : profit.error ? (
+        <InlineError message={`Profit: ${profit.error}`} onRetry={profit.refetch} />
+      ) : profit.data?.summary?.transactionCount > 0 ? (
+        <RefetchSection active={refetchingProfit}>
+        <Card>
+          <CardHeader title="Profit" subtitle={RANGES.find((r) => r.value === range)?.label} icon={FiDollarSign} />
+          <CardBody>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: 'Revenue', value: profit.data.summary.totalRevenue, type: 'compactMoney' },
+                { label: 'Profit', value: profit.data.summary.totalProfit, type: 'compactMoney' },
+                { label: 'Average margin', value: profit.data.summary.averageMargin ?? 0, suffix: '%' },
+              ].map((item) => (
+                <div key={item.label} className="rounded-well bg-surface-sunken px-4 py-3">
+                  <p className="text-xs font-medium text-content-subtle uppercase tracking-wide">{item.label}</p>
+                  <p className="text-lg font-semibold text-content mt-1 tabular-nums">
+                    <AnimatedValue
+                      value={item.value}
+                      type={item.type || 'decimal'}
+                      symbol={currencySymbol}
+                      figureClassName="font-semibold"
+                      unitClassName="text-content-subtle text-sm font-medium"
+                    />
+                    {item.suffix && <span className="text-content-subtle font-medium">{item.suffix}</span>}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+        </RefetchSection>
+      ) : null}
+    </motion.div>
+  );
+}
