@@ -28,18 +28,25 @@ app.use(
         scriptSrc: ["'self'"],
         // React writes styles through the CSSOM, but Tailwind's preflight and the
         // chart library still need inline <style> blocks.
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         imgSrc: ["'self'", 'data:', 'blob:'],
-        fontSrc: ["'self'", 'data:'],
+        fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
         connectSrc: ["'self'", ...env.corsOrigins],
         objectSrc: ["'none'"],
         frameAncestors: ["'self'"],
         baseUri: ["'self'"],
+        // Serving over plain http://PUBLIC_IP until HTTPS is set up. Helmet's
+        // default upgrade-insecure-requests would force script/CSS to https://
+        // and leave a blank page.
+        upgradeInsecureRequests: null,
       },
     },
     // The SPA fetches its own PDFs as blobs; COEP would block them.
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'same-site' },
+    // HSTS only helps once we terminate TLS; sending it on raw HTTP confuses
+    // browsers after a failed HTTPS attempt.
+    hsts: false,
   })
 );
 

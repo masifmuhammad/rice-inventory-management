@@ -1,13 +1,38 @@
-import React, { forwardRef, useId } from 'react';
+import React, { Children, forwardRef, isValidElement, useId, useMemo } from 'react';
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
+import { FiCheck, FiChevronDown } from 'react-icons/fi';
 
-// `.field-control` carries the themed surface, border, and focus ring so a
-// field is never accidentally styled for one theme only.
-const sizing = 'px-3.5 py-2.5 min-h-[44px]';
+// Flat controls (filters, bare selects) keep the older single-line chrome.
+const flatSizing = 'px-3.5 py-2.5 min-h-[44px]';
 
 const controlClasses = (invalid, extra = '') =>
   ['field-control', invalid ? 'field-control-invalid' : '', extra].filter(Boolean).join(' ');
 
+const shellClasses = (invalid, extra = '') =>
+  ['field-shell', invalid ? 'field-shell-invalid' : '', extra].filter(Boolean).join(' ');
+
+/** Hint / error sit under the shell so the control height stays predictable. */
+function FieldMessage({ error, hint }) {
+  if (error) {
+    return (
+      <p className="mt-1.5 text-sm text-red-500" role="alert">
+        {error}
+      </p>
+    );
+  }
+  if (hint) {
+    return <p className="mt-1.5 text-xs text-content-subtle">{hint}</p>;
+  }
+  return null;
+}
+
+/**
+ * Revolut-style stacked field: label lives inside the control, not above it.
+ * Saves a full row of vertical space on every input — critical on phone sheets.
+ */
 export function Field({ label, htmlFor, required, hint, error, className = '', children }) {
+  // Legacy external-label layout — kept for any caller that still wraps children
+  // manually. Prefer Input / Select / Textarea which own the shell themselves.
   return (
     <div className={className}>
       {label && (
@@ -21,16 +46,22 @@ export function Field({ label, htmlFor, required, hint, error, className = '', c
         </label>
       )}
       {children}
-      {/* Reserve the message row only when there is something to say, and keep
-          hint and error in the same slot so nothing jumps as you type. */}
-      {error ? (
-        <p className="mt-1.5 text-sm text-red-500" role="alert">
-          {error}
-        </p>
-      ) : hint ? (
-        <p className="mt-1.5 text-xs text-content-subtle">{hint}</p>
-      ) : null}
+      <FieldMessage error={error} hint={hint} />
     </div>
+  );
+}
+
+function ShellLabel({ htmlFor, label, required, as: Tag = 'label' }) {
+  if (!label) return null;
+  return (
+    <Tag {...(Tag === 'label' ? { htmlFor } : {})} className="field-shell-label">
+      {label}
+      {required && (
+        <span className="text-red-500 ml-0.5" aria-hidden="true">
+          *
+        </span>
+      )}
+    </Tag>
   );
 }
 
@@ -41,66 +72,217 @@ export const Input = forwardRef(function Input(
   const generatedId = useId();
   const inputId = id || generatedId;
 
-  return (
-    <Field label={label} htmlFor={inputId} required={required} hint={hint} error={error} className={className}>
-      <div className="relative">
-        {Icon && (
-          <Icon
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-content-subtle"
-            aria-hidden="true"
+  // No label → flat control (search bars, compact toolbars).
+  if (!label) {
+    return (
+      <div className={className}>
+        <div className="relative">
+          {Icon && (
+            <Icon
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-content-subtle"
+              aria-hidden="true"
+            />
+          )}
+          {prefix && (
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-content-subtle">
+              {prefix}
+            </span>
+          )}
+          <input
+            ref={ref}
+            id={inputId}
+            aria-invalid={error ? 'true' : undefined}
+            className={controlClasses(error, `${flatSizing} ${Icon || prefix ? 'pl-11' : ''}`)}
+            {...props}
           />
-        )}
-        {prefix && (
-          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-content-subtle">
-            {prefix}
-          </span>
-        )}
-        <input
-          ref={ref}
-          id={inputId}
-          aria-invalid={error ? 'true' : undefined}
-          className={controlClasses(error, `${sizing} ${Icon || prefix ? 'pl-11' : ''}`)}
-          {...props}
-        />
+        </div>
+        <FieldMessage error={error} hint={hint} />
       </div>
-    </Field>
+    );
+  }
+
+  return (
+    <div className={className}>
+      <div className={shellClasses(error)}>
+        <ShellLabel htmlFor={inputId} label={label} required={required} />
+        <div className="relative flex items-center min-h-[1.5rem]">
+          {Icon && (
+            <Icon
+              className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-content-subtle"
+              aria-hidden="true"
+            />
+          )}
+          {prefix && (
+            <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-sm font-medium text-content-subtle tabular-nums">
+              {prefix}
+            </span>
+          )}
+          <input
+            ref={ref}
+            id={inputId}
+            aria-invalid={error ? 'true' : undefined}
+            className={`field-shell-control ${Icon || prefix ? 'pl-7' : ''}`}
+            {...props}
+          />
+        </div>
+      </div>
+      <FieldMessage error={error} hint={hint} />
+    </div>
   );
 });
 
+/** Pull `<option>` nodes out of Select children (including mapped arrays). */
+function flattenOptions(nodes) {
+  return Children.toArray(nodes).flatMap((child) => {
+    if (!isValidElement(child)) return [];
+    if (child.type === 'option') {
+      const text = Children.toArray(child.props.children)
+        .map((part) => (typeof part === 'string' || typeof part === 'number' ? String(part) : ''))
+        .join('')
+        .trim();
+      return [
+        {
+          value: child.props.value == null ? '' : String(child.props.value),
+          label: text || String(child.props.value ?? ''),
+          disabled: Boolean(child.props.disabled),
+        },
+      ];
+    }
+    if (child.props?.children) return flattenOptions(child.props.children);
+    return [];
+  });
+}
+
+const CHEVRON_BG =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23949499' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E\")";
+
 export const Select = forwardRef(function Select(
-  { label, hint, error, required, bare = false, selectClassName = '', className = '', id, children, ...props },
+  {
+    label,
+    hint,
+    error,
+    required,
+    bare = false,
+    selectClassName = '',
+    className = '',
+    id,
+    children,
+    value,
+    onChange,
+    disabled,
+    name,
+    ...props
+  },
   ref
 ) {
   const generatedId = useId();
   const selectId = id || generatedId;
+  const options = useMemo(() => flattenOptions(children), [children]);
 
-  const selectEl = (
-    <select
-      ref={ref}
-      id={selectId}
-      aria-invalid={error ? 'true' : undefined}
-      className={controlClasses(
-        error,
-        `${sizing} appearance-none pr-10 bg-no-repeat ${selectClassName}`.trim()
-      )}
-      style={{
-        backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23949499' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E\")",
-        backgroundPosition: 'right 0.75rem center',
-        backgroundSize: '1.25rem',
-      }}
-      {...props}
-    >
-      {children}
-    </select>
-  );
+  const chevronStyle = {
+    backgroundImage: CHEVRON_BG,
+    backgroundPosition: 'right 0.75rem center',
+    backgroundSize: '1.25rem',
+  };
 
-  if (bare) return selectEl;
+  // Filters / toolbars keep the native control — compact and fine outside forms.
+  if (bare || !label) {
+    const selectEl = (
+      <select
+        ref={ref}
+        id={selectId}
+        name={name}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        aria-invalid={error ? 'true' : undefined}
+        className={controlClasses(
+          error,
+          `${flatSizing} appearance-none pr-10 bg-no-repeat ${selectClassName}`.trim()
+        )}
+        style={chevronStyle}
+        {...props}
+      >
+        {children}
+      </select>
+    );
+
+    if (bare) return selectEl;
+
+    return (
+      <div className={className}>
+        {selectEl}
+        <FieldMessage error={error} hint={hint} />
+      </div>
+    );
+  }
+
+  const selected = options.find((option) => option.value === String(value ?? '')) || null;
+  const display = selected?.label || 'Select…';
+  const placeholderLike = !selected || selected.value === '';
+
+  const emitChange = (next) => {
+    if (typeof onChange !== 'function') return;
+    onChange({ target: { value: next, name: name || undefined }, currentTarget: { value: next } });
+  };
 
   return (
-    <Field label={label} htmlFor={selectId} required={required} hint={hint} error={error} className={className}>
-      {selectEl}
-    </Field>
+    <div className={className}>
+      <Listbox value={String(value ?? '')} onChange={emitChange} disabled={disabled} name={name}>
+        <div className="relative">
+          <ListboxButton
+            ref={ref}
+            id={selectId}
+            aria-invalid={error ? 'true' : undefined}
+            className={`${shellClasses(error, 'relative w-full text-left cursor-pointer')}
+              data-[open]:ring-2 data-[open]:ring-primary-500/35 data-[open]:border-primary-500/55
+              disabled:cursor-not-allowed disabled:opacity-65`}
+          >
+            <ShellLabel as="span" label={label} required={required} />
+            <span
+              className={`field-shell-control block pr-7 truncate ${
+                placeholderLike ? 'text-content-subtle' : ''
+              } ${selectClassName}`.trim()}
+            >
+              {display}
+            </span>
+            <FiChevronDown
+              className="pointer-events-none absolute right-3.5 bottom-3 w-4 h-4 text-content-subtle"
+              aria-hidden="true"
+            />
+          </ListboxButton>
+
+          <ListboxOptions
+            anchor="bottom start"
+            transition
+            className="z-[80] w-[var(--button-width)] !max-h-60 overflow-auto rounded-well
+              border border-hairline/[0.1] bg-surface-1 p-1.5 shadow-xl outline-none
+              origin-top transition duration-150 ease-out
+              data-[closed]:scale-95 data-[closed]:opacity-0
+              [--anchor-gap:6px]"
+          >
+            {options.map((option) => (
+              <ListboxOption
+                key={`${option.value}::${option.label}`}
+                value={option.value}
+                disabled={option.disabled}
+                className="group flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 min-h-[44px]
+                  text-sm text-content select-none outline-none
+                  data-[focus]:bg-primary-500/10 data-[selected]:bg-primary-500/12
+                  data-[disabled]:opacity-40 data-[disabled]:cursor-not-allowed"
+              >
+                <span className="min-w-0 flex-1 truncate group-data-[selected]:font-medium">{option.label}</span>
+                <FiCheck
+                  className="w-4 h-4 shrink-0 text-primary-600 dark:text-primary-400 opacity-0 group-data-[selected]:opacity-100"
+                  aria-hidden="true"
+                />
+              </ListboxOption>
+            ))}
+          </ListboxOptions>
+        </div>
+      </Listbox>
+      <FieldMessage error={error} hint={hint} />
+    </div>
   );
 });
 
@@ -111,17 +293,37 @@ export const Textarea = forwardRef(function Textarea(
   const generatedId = useId();
   const textareaId = id || generatedId;
 
+  if (!label) {
+    return (
+      <div className={className}>
+        <textarea
+          ref={ref}
+          id={textareaId}
+          rows={rows}
+          aria-invalid={error ? 'true' : undefined}
+          className={controlClasses(error, 'px-3.5 py-2.5 resize-y')}
+          {...props}
+        />
+        <FieldMessage error={error} hint={hint} />
+      </div>
+    );
+  }
+
   return (
-    <Field label={label} htmlFor={textareaId} required={required} hint={hint} error={error} className={className}>
-      <textarea
-        ref={ref}
-        id={textareaId}
-        rows={rows}
-        aria-invalid={error ? 'true' : undefined}
-        className={controlClasses(error, 'px-3.5 py-2.5 resize-y')}
-        {...props}
-      />
-    </Field>
+    <div className={className}>
+      <div className={shellClasses(error)}>
+        <ShellLabel htmlFor={textareaId} label={label} required={required} />
+        <textarea
+          ref={ref}
+          id={textareaId}
+          rows={rows}
+          aria-invalid={error ? 'true' : undefined}
+          className="field-shell-control resize-y min-h-[4.5rem] py-0.5"
+          {...props}
+        />
+      </div>
+      <FieldMessage error={error} hint={hint} />
+    </div>
   );
 });
 

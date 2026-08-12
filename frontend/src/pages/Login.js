@@ -121,7 +121,7 @@ export default function Login() {
               : 'Request an account. An administrator must approve it before you can sign in.'}
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <form onSubmit={handleSubmit} className="space-y-2.5" noValidate>
             {!isLogin && (
               <>
                 <Input
@@ -191,13 +191,13 @@ export default function Login() {
                 value={form.password}
                 onChange={update('password')}
                 disabled={submitting}
-                className="[&_input]:pr-12"
+                className="[&_.field-shell-control]:pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-1 top-[26px] h-[44px] w-11 grid place-items-center rounded-well
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-10 w-10 grid place-items-center rounded-well
                   text-content-subtle hover:text-content transition-colors"
                 tabIndex={-1}
               >

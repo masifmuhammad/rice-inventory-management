@@ -192,7 +192,7 @@ export default function Businesses() {
           <h2 className="text-lg font-display font-semibold text-content mb-4 flex items-center gap-2">
             <FiPlus aria-hidden="true" /> Add a business
           </h2>
-          <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+          <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-2xl">
             <Input
               label="Business name"
               required

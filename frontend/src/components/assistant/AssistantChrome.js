@@ -98,8 +98,9 @@ export function AssistantFabTrigger({ onClick, expanded }) {
         bg-zinc-950 text-white
         shadow-[0_8px_28px_-6px_rgb(0_0_0/0.45),inset_0_1px_0_rgb(255_255_255/0.12)]
         hover:bg-zinc-900
-        dark:bg-zinc-950 dark:hover:bg-black
-        transition-[background-color,box-shadow,transform] duration-150 ease-[cubic-bezier(0.2,0,0,1)]
+        dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100
+        dark:shadow-[0_8px_28px_-6px_rgb(0_0_0/0.55),inset_0_1px_0_rgb(0_0_0/0.06)]
+        transition-[background-color,box-shadow,transform,color] duration-150 ease-[cubic-bezier(0.2,0,0,1)]
         active:scale-[0.96] motion-reduce:active:scale-100
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 dark:focus-visible:ring-white
         focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base"

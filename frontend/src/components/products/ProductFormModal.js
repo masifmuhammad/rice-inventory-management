@@ -168,10 +168,10 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
         </div>
       }
     >
-      <form id="product-form" onSubmit={handleSubmit} className="space-y-6" noValidate>
-        <section className="space-y-4">
+      <form id="product-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <section className="space-y-2.5">
           <h3 className="text-xs font-semibold text-content-subtle uppercase tracking-wide">Basics</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Input
               label="Product name"
               required
@@ -253,9 +253,9 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
           </div>
         </section>
 
-        <section className="space-y-4 pt-5 border-t border-hairline/[0.07]">
+        <section className="space-y-2.5 pt-4 border-t border-hairline/[0.07]">
           <h3 className="text-xs font-semibold text-content-subtle uppercase tracking-wide">Stock</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <Input
               label="Current stock"
               required
@@ -295,11 +295,11 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
           </div>
         </section>
 
-        <section className="space-y-4 pt-5 border-t border-hairline/[0.07]">
+        <section className="space-y-2.5 pt-4 border-t border-hairline/[0.07]">
           <h3 className="text-xs font-semibold text-content-subtle uppercase tracking-wide">
             Pricing (per {values.unit})
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Input
               label="Cost price"
               required
@@ -345,9 +345,9 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
           )}
         </section>
 
-        <section className="space-y-4 pt-5 border-t border-hairline/[0.07]">
+        <section className="space-y-2.5 pt-4 border-t border-hairline/[0.07]">
           <h3 className="text-xs font-semibold text-content-subtle uppercase tracking-wide">Details</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Input
               label="Storage location"
               value={values.location}

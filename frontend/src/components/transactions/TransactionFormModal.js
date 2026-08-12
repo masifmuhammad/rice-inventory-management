@@ -160,7 +160,7 @@ export default function TransactionFormModal({
         </div>
       }
     >
-      <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <form id="transaction-form" onSubmit={handleSubmit} className="space-y-2.5" noValidate>
         <Select label="Type" required value={values.type} onChange={set('type')}>
           {TYPES.map((option) => (
             <option key={option.value} value={option.value}>
@@ -187,7 +187,7 @@ export default function TransactionFormModal({
             ))}
         </Select>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <Input
             label={values.type === 'adjustment' ? 'Corrected stock level' : 'Quantity'}
             required

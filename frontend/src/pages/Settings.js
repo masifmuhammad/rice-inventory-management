@@ -189,8 +189,8 @@ export default function Settings() {
       <Card>
         <CardHeader title="Business details" subtitle="Shown on receipts and reports" icon={FiBriefcase} />
         <CardBody>
-          <form onSubmit={handleSaveBusiness} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={handleSaveBusiness} className="space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <Input
                 label="Business name"
                 required
@@ -384,8 +384,8 @@ export default function Settings() {
       <Card>
         <CardHeader title="Your account" icon={FiUser} />
         <CardBody>
-          <form onSubmit={handleSaveProfile} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={handleSaveProfile} className="space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <Input
                 label="Name"
                 value={profile.name}
@@ -411,7 +411,7 @@ export default function Settings() {
       <Card>
         <CardHeader title="Password" subtitle="Change the password you sign in with" icon={FiLock} />
         <CardBody>
-          <form onSubmit={handleChangePassword} className="space-y-4">
+          <form onSubmit={handleChangePassword} className="space-y-2.5">
             <Input
               label="Current password"
               type="password"
@@ -420,7 +420,7 @@ export default function Settings() {
               value={passwords.currentPassword}
               onChange={(event) => setPasswords((p) => ({ ...p, currentPassword: event.target.value }))}
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <Input
                 label="New password"
                 type="password"

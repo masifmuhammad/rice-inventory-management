@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import { animate, motion, useDragControls, useMotionValue } from 'framer-motion';
 import { FiX } from 'react-icons/fi';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
+import useVisualViewport from '../../hooks/useVisualViewport';
 import { springSheet, reducedTransition } from '../../utils/motion';
 
 const sizes = {
@@ -11,6 +12,8 @@ const sizes = {
   lg: 'sm:max-w-2xl',
   xl: 'sm:max-w-4xl',
 };
+
+const FOCUSABLE_FIELD = 'INPUT, SELECT, TEXTAREA';
 
 /**
  * Headless UI supplies focus trap, escape-to-close, scroll lock, and aria-modal.
@@ -35,12 +38,37 @@ export default function Modal({
   const dragControls = useDragControls();
   const y = useMotionValue(0);
   const snapTransition = reducedMotion ? reducedTransition : springSheet;
+  const bodyRef = useRef(null);
+  const viewport = useVisualViewport(open);
 
   // A dismissed sheet keeps whatever offset it was flung to. Reset on reopen so
   // the next modal does not mount already pushed down the screen.
   useEffect(() => {
     if (open) y.set(0);
   }, [open, y]);
+
+  // When the soft keyboard opens, keep the focused control in the visible pane
+  // above the footer — browsers often only scroll the page, not the sheet body.
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const body = bodyRef.current;
+    if (!body) return undefined;
+
+    const keepFieldVisible = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.matches(FOCUSABLE_FIELD)) return;
+
+      // Wait a frame so visualViewport has settled after focus.
+      requestAnimationFrame(() => {
+        const shell = target.closest('.field-shell') || target;
+        shell.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' });
+      });
+    };
+
+    body.addEventListener('focusin', keepFieldVisible);
+    return () => body.removeEventListener('focusin', keepFieldVisible);
+  }, [open, reducedMotion, viewport.keyboard]);
 
   const handleDragEnd = (event, info) => {
     const dismissable = !disableClose && !busy;
@@ -54,6 +82,21 @@ export default function Modal({
     animate(y, 0, snapTransition);
   };
 
+  // Bind the overlay to the visual viewport so the sheet rides up with the
+  // keyboard instead of being covered by it on iOS/Android.
+  const overlayStyle =
+    open && viewport.height
+      ? {
+          top: viewport.offsetTop,
+          height: viewport.height,
+        }
+      : undefined;
+
+  const sheetMaxHeight =
+    open && viewport.height
+      ? `${Math.min(viewport.height * 0.92, viewport.height - 8)}px`
+      : undefined;
+
   return (
     <Dialog
       open={open}
@@ -66,8 +109,8 @@ export default function Modal({
           data-[closed]:opacity-0 data-[closed]:backdrop-blur-none motion-reduce:duration-150"
       />
 
-      <div className="fixed inset-0 overflow-y-auto">
-        <div className="flex min-h-full items-end justify-center sm:items-center sm:p-4">
+      <div className="fixed inset-x-0 overflow-hidden" style={overlayStyle || { inset: 0 }}>
+        <div className="flex h-full items-end justify-center sm:items-center sm:p-4">
           {/* Blur and scale animate together so the panel arrives as a material
               rather than a flat opacity fade. */}
           <DialogPanel
@@ -88,7 +131,7 @@ export default function Modal({
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={{ top: 0.1, bottom: 1 }}
               onDragEnd={handleDragEnd}
-              style={{ y }}
+              style={{ y, maxHeight: sheetMaxHeight }}
               className="bg-surface-1 shadow-2xl rounded-t-card sm:rounded-card
                 max-h-[92vh] sm:max-h-[88vh] flex flex-col"
             >
@@ -125,7 +168,8 @@ export default function Modal({
               </div>
 
               <div
-                className={`overflow-y-auto overscroll-contain px-5 sm:px-6 py-5 flex-1 transition-opacity duration-150 ${
+                ref={bodyRef}
+                className={`overflow-y-auto overscroll-contain px-5 sm:px-6 py-4 sm:py-5 flex-1 transition-opacity duration-150 ${
                   busy ? 'opacity-60 pointer-events-none' : ''
                 }`}
                 aria-busy={busy || undefined}
@@ -134,7 +178,7 @@ export default function Modal({
               </div>
 
               {footer && (
-                <div className="flex-shrink-0 px-5 sm:px-6 py-4 border-t border-hairline/[0.07] bg-surface-sunken rounded-b-2xl pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4">
+                <div className="flex-shrink-0 px-5 sm:px-6 py-3.5 sm:py-4 border-t border-hairline/[0.07] bg-surface-sunken rounded-b-2xl pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:pb-4">
                   {footer}
                 </div>
               )}

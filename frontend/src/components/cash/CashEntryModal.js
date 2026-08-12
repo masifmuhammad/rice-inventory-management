@@ -138,7 +138,7 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
         </div>
       }
     >
-      <form id="cash-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <form id="cash-form" onSubmit={handleSubmit} className="space-y-2.5" noValidate>
         {/* A two-way switch rather than a dropdown: direction is the single most
             consequential choice on this form, so it should be impossible to miss. */}
         <div className="grid grid-cols-2 gap-2 p-1 bg-surface-sunken rounded-xl">
@@ -167,7 +167,7 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
           })}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <Input
             label="Amount"
             required
@@ -219,7 +219,7 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
           placeholder={copy.purposePlaceholder}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <Input
             label={copy.partyLabel}
             value={values.party}

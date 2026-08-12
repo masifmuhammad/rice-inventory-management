@@ -77,7 +77,7 @@ export default function ChangePassword() {
             Your account was created with a temporary password. Choose a new one before using the app.
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <form onSubmit={handleSubmit} className="space-y-2.5" noValidate>
             <Input
               label="Current password"
               required
@@ -112,13 +112,13 @@ export default function ChangePassword() {
                 value={form.confirmPassword}
                 onChange={update('confirmPassword')}
                 disabled={submitting}
-                className="[&_input]:pr-12"
+                className="[&_.field-shell-control]:pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-1 top-[26px] h-[44px] px-3 flex items-center rounded-lg text-content-subtle hover:text-content transition-colors"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-10 w-10 grid place-items-center rounded-well text-content-subtle hover:text-content transition-colors"
                 tabIndex={-1}
               >
                 {showPassword ? <FiEyeOff className="w-[18px] h-[18px]" /> : <FiEye className="w-[18px] h-[18px]" />}

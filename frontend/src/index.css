@@ -344,6 +344,62 @@
     @apply border-red-400 focus:border-red-500 focus:ring-red-500/30;
   }
 
+  /**
+   * Revolut-style stacked field: label + value share one compact shell so forms
+   * pack tighter on phone sheets without losing the field name.
+   */
+  .field-shell {
+    @apply w-full rounded-well px-3.5 pt-2 pb-2 min-h-[56px] flex flex-col justify-center gap-0.5
+      transition-[border-color,box-shadow,background-color] duration-150;
+    background-color: rgb(var(--surface-sunken));
+    border: 1px solid rgb(var(--hairline) / var(--hairline-weak));
+  }
+
+  .dark .field-shell {
+    background-color: rgb(var(--surface-base));
+    border-color: rgb(var(--hairline) / 0.08);
+  }
+
+  .field-shell:hover:not(:focus-within):not(:has(:disabled)) {
+    border-color: rgb(var(--hairline) / 0.2);
+  }
+
+  .field-shell:focus-within {
+    @apply ring-2 ring-primary-500/35;
+    border-color: rgb(var(--color-primary-500) / 0.55);
+  }
+
+  .field-shell-invalid {
+    @apply border-red-400;
+  }
+
+  .field-shell-invalid:focus-within {
+    @apply ring-red-500/30 border-red-500;
+  }
+
+  .field-shell-label {
+    @apply block text-[11px] leading-tight font-medium text-content-subtle truncate;
+  }
+
+  .field-shell-control {
+    @apply w-full bg-transparent border-0 p-0 m-0 text-base sm:text-sm text-content
+      placeholder:text-content-subtle
+      focus:outline-none focus:ring-0
+      disabled:text-content-subtle disabled:cursor-not-allowed;
+    min-height: 1.5rem;
+    /* iOS date/time inputs otherwise inflate the shell. */
+    max-width: 100%;
+  }
+
+  .field-shell-control::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+
+  .field-shell:has(:disabled) {
+    opacity: 0.65;
+  }
+
   /* iOS-style segmented control: translucent track, solid pill for the active item. */
   .segmented {
     @apply inline-flex items-center gap-0.5 p-1 rounded-full;
