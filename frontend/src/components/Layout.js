@@ -33,7 +33,7 @@ import ProfileSheet from './ProfileSheet';
 import UserAvatar from './UserAvatar';
 import { lazyPage } from '../utils/lazyPage';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
-import { iconSwap, springSnappy } from '../utils/motion';
+import { iconSwap, springUI, withReducedMotion } from '../utils/motion';
 
 const AssistantShell = lazyPage(() => import('./assistant/AssistantShell'), 'assistant');
 
@@ -55,10 +55,11 @@ const ADMIN_NAV = [
 const linkClasses = ({ isActive }) =>
   [
     'group relative flex items-center gap-3 px-3 py-2.5 rounded-well text-sm font-medium min-h-[44px]',
-    'transition-colors duration-150',
+    'transition-colors duration-150 ease-out',
+    'active:scale-[0.98] motion-reduce:active:scale-100 transition-transform',
     isActive
-      ? 'bg-primary-500/12 text-primary-600 dark:text-primary-400'
-      : 'text-content-muted hover:bg-hairline/[0.05] hover:text-content',
+      ? 'text-primary-600 dark:text-primary-400'
+      : 'text-content-muted hover:text-content',
   ].join(' ');
 
 function NavigationLinks({ onNavigate, sections, navId }) {
@@ -66,6 +67,7 @@ function NavigationLinks({ onNavigate, sections, navId }) {
   const navigate = useNavigate();
   const location = useLocation();
   const reducedMotion = usePrefersReducedMotion();
+  const pillTransition = withReducedMotion(springUI, reducedMotion);
 
   const handleNav = useCallback(
     (href, end) => (event) => {
@@ -103,25 +105,29 @@ function NavigationLinks({ onNavigate, sections, navId }) {
               >
                 {({ isActive }) => (
                   <>
-                    {/* One rail per nav instance slides between links. Centred with
-                        `my-auto` rather than `-translate-y-1/2`, because a transform
-                        class on a `layoutId` element is overwritten by projection.
-                        `navId` keeps the sidebar and drawer copies from claiming
-                        the same shared element while both are mounted. */}
+                    {/* Sliding solid thumb — same vocabulary as the mobile tab bar */}
                     {isActive && (
                       <motion.span
-                        layoutId={`sidebar-active-${navId}`}
-                        transition={reducedMotion ? { duration: 0 } : springSnappy}
-                        className="absolute left-0 inset-y-0 my-auto w-0.5 h-5 rounded-full bg-primary-500"
+                        layoutId={`sidebar-active-thumb-${navId}`}
+                        transition={pillTransition}
+                        className="absolute inset-0 rounded-well segmented-thumb
+                          ring-1 ring-black/[0.04] dark:ring-white/[0.06]"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {!isActive && (
+                      <span
+                        className="absolute inset-0 rounded-well opacity-0 group-hover:opacity-100
+                          bg-hairline/[0.05] transition-opacity duration-150"
                         aria-hidden="true"
                       />
                     )}
                     <Icon
-                      className="w-[18px] h-[18px] flex-shrink-0"
+                      className="relative z-10 w-[18px] h-[18px] flex-shrink-0"
                       strokeWidth={isActive ? 2.3 : 1.9}
                       aria-hidden="true"
                     />
-                    <span className="truncate">{name}</span>
+                    <span className="relative z-10 truncate">{name}</span>
                   </>
                 )}
               </NavLink>
@@ -189,6 +195,27 @@ function SidebarFooter({ onSignOut, preference, onCycleTheme, isDark, reducedMot
   );
 }
 
+function SidebarBrandHeader({ businessName, onClose }) {
+  return (
+    <div className="flex items-center gap-3 h-14 px-4 border-b border-hairline/[0.07] sidebar-gradient flex-shrink-0">
+      <BrandLogo size={32} />
+      <span className="font-display font-semibold text-content text-sm leading-tight line-clamp-2 min-w-0 flex-1">
+        {businessName}
+      </span>
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close navigation"
+          className="-mr-2 p-2 rounded-well text-content-muted hover:bg-hairline/[0.06] hover:text-content min-h-[44px] min-w-[44px] transition-colors flex-shrink-0"
+        >
+          <FiX className="w-5 h-5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -251,12 +278,7 @@ export default function Layout() {
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
 
       <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 sidebar-surface border-r border-hairline/[0.07]">
-        <div className="flex items-center gap-3 h-14 px-4 border-b border-hairline/[0.07] sidebar-gradient">
-          <BrandLogo size={32} />
-          <span className="font-display font-semibold text-content text-sm leading-tight line-clamp-2">
-            {businessName}
-          </span>
-        </div>
+        <SidebarBrandHeader businessName={businessName} />
         <NavigationLinks sections={navSections} navId="sidebar" />
         <SidebarFooter
           onSignOut={handleSignOut}
@@ -277,26 +299,11 @@ export default function Layout() {
         <div className="fixed inset-0 overflow-hidden">
           <DialogPanel
             transition
-            className="fixed inset-y-0 left-0 flex w-[min(17rem,85vw)] flex-col bg-surface-1 shadow-2xl
+            className="fixed inset-y-0 left-0 flex w-[min(17rem,85vw)] flex-col sidebar-surface shadow-2xl
               transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
               data-[closed]:-translate-x-full pt-[env(safe-area-inset-top)] motion-reduce:duration-150"
           >
-            <div className="flex items-center justify-between gap-2 h-14 px-4 border-b border-hairline/[0.07] sidebar-gradient">
-              <div className="flex items-center gap-3 min-w-0">
-                <BrandLogo size={32} />
-                <span className="font-display font-semibold text-content text-sm truncate">
-                  {businessName}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={closeDrawer}
-                aria-label="Close navigation"
-                className="-mr-2 p-2 rounded-well text-content-muted hover:bg-hairline/[0.06] hover:text-content min-h-[44px] min-w-[44px] transition-colors"
-              >
-                <FiX className="w-5 h-5" />
-              </button>
-            </div>
+            <SidebarBrandHeader businessName={businessName} onClose={closeDrawer} />
             <NavigationLinks sections={navSections} onNavigate={closeDrawer} navId="drawer" />
             <SidebarFooter
               onSignOut={handleSignOut}

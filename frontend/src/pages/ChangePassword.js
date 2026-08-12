@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { FiEye, FiEyeOff, FiLock } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';

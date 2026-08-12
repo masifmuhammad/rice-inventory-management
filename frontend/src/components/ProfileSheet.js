@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiCamera, FiSettings, FiTrash2 } from 'react-icons/fi';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { useAuth } from '../context/AuthContext';
 import api, { getErrorMessage } from '../services/api';
 import UserAvatar from './UserAvatar';

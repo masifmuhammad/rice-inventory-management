@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { FiBriefcase, FiPlus } from 'react-icons/fi';
 import api, { getErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';

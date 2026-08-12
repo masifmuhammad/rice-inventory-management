@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import {
   FiActivity,
   FiAlertCircle,
@@ -195,7 +195,7 @@ export default function Dashboard() {
       const { generateInventoryReportPDF } = await import('../utils/pdfGenerator');
       await generateInventoryReportPDF(data.products, data.summary, settings);
 
-      toast.success('Report downloaded', { id: toastId });
+      toast.success('Report downloaded', { id: toastId, feedback: 'download' });
     } catch (error) {
       toast.error('Could not build the report. Please try again.', { id: toastId });
     } finally {

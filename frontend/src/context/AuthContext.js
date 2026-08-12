@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import api, {
   AUTH_EXPIRED_EVENT,
   PASSWORD_CHANGE_EVENT,

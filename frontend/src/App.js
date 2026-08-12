@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -14,6 +14,7 @@ import ChangePassword from './pages/ChangePassword';
 import InstallPrompt from './components/InstallPrompt';
 import AuthShellSkeleton from './components/skeletons/AuthShellSkeleton';
 import { lazyPage } from './utils/lazyPage';
+import { unlockFeedbackAudio } from './utils/feedback';
 
 const Dashboard = lazyPage(() => import('./pages/Dashboard'), 'dashboard');
 const Products = lazyPage(() => import('./pages/Products'), 'products page');
@@ -138,6 +139,16 @@ function AppRoutes() {
 }
 
 export default function App() {
+  useEffect(() => {
+    const unlock = () => unlockFeedbackAudio();
+    window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <BrowserRouter>

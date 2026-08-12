@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { fetchAiStatus } from '../services/assistantApi';
 
 const AssistantContext = createContext(null);

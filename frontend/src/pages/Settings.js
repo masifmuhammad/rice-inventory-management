@@ -1,17 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
-import { FiBriefcase, FiCheck, FiImage, FiLock, FiMoon, FiTrash2, FiUser } from 'react-icons/fi';
+import { toast } from '../utils/toast';
+import { FiBriefcase, FiCheck, FiImage, FiLock, FiMoon, FiTrash2, FiUser, FiVolume2 } from 'react-icons/fi';
 
 import api, { getErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { useTheme } from '../context/ThemeContext';
 import { applyPalette } from '../utils/color';
+import {
+  feedbackSuccess,
+  getFeedbackPrefs,
+  getHapticsSupportHint,
+  setFeedbackPrefs,
+  unlockFeedbackAudio,
+} from '../utils/feedback';
 import PageHeader from '../components/PageHeader';
 import SettingsSkeleton from '../components/skeletons/SettingsSkeleton';
 import Button from '../components/ui/Button';
 import Card, { CardBody, CardHeader } from '../components/ui/Card';
-import { Input, Select } from '../components/ui/Field';
+import { Checkbox, Input, Select } from '../components/ui/Field';
 
 const PRESET_COLORS = [
   { hex: '#0284c7', name: 'Sky' },
@@ -28,6 +35,13 @@ export default function Settings() {
   const { user, updateUser } = useAuth();
   const { settings, updateSettings } = useSettings();
   const { preference, setTheme } = useTheme();
+  const [feedbackPrefs, setFeedbackPrefsState] = useState(() => getFeedbackPrefs());
+
+  useEffect(() => {
+    const sync = () => setFeedbackPrefsState(getFeedbackPrefs());
+    window.addEventListener('ui-feedback-prefs', sync);
+    return () => window.removeEventListener('ui-feedback-prefs', sync);
+  }, []);
 
   const [business, setBusiness] = useState(null);
   const [savingBusiness, setSavingBusiness] = useState(false);
@@ -377,6 +391,45 @@ export default function Settings() {
               </button>
             ))}
           </div>
+        </CardBody>
+      </Card>
+
+      {/* Feedback */}
+      <Card>
+        <CardHeader
+          title="Sound & haptics"
+          subtitle="Soft cues when you save, download, or hit an error"
+          icon={FiVolume2}
+        />
+        <CardBody className="space-y-3">
+          <Checkbox
+            label="Sound effects"
+            description="Short chimes on success and errors — the most reliable cue on iPhone"
+            checked={feedbackPrefs.sound}
+            onChange={(e) => {
+              unlockFeedbackAudio();
+              setFeedbackPrefs({ sound: e.target.checked });
+              setFeedbackPrefsState(getFeedbackPrefs());
+              if (e.target.checked) feedbackSuccess();
+            }}
+          />
+          <Checkbox
+            label="Haptic vibration"
+            description={
+              getHapticsSupportHint() === 'vibrate'
+                ? 'Uses the Vibration API on this device (typical on Android).'
+                : getHapticsSupportHint() === 'ios-switch'
+                  ? 'iPhone still blocks the normal vibration API — even as a Home Screen app. We try Apple’s switch haptic when the OS allows it; keep Sound on as backup.'
+                  : 'Not available in this browser. Sound effects still work.'
+            }
+            checked={feedbackPrefs.haptics}
+            onChange={(e) => {
+              unlockFeedbackAudio();
+              setFeedbackPrefs({ haptics: e.target.checked });
+              setFeedbackPrefsState(getFeedbackPrefs());
+              if (e.target.checked) feedbackSuccess();
+            }}
+          />
         </CardBody>
       </Card>
 

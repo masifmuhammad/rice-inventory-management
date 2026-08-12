@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import {
   FiBarChart2,
   FiDollarSign,
@@ -127,7 +127,7 @@ export default function Reports() {
       const { generateInventoryReportPDF } = await import('../utils/pdfGenerator');
       await generateInventoryReportPDF(products, stockValue.data.summary, settings);
 
-      toast.success('Report downloaded', { id: toastId });
+      toast.success('Report downloaded', { id: toastId, feedback: 'download' });
     } catch (error) {
       toast.error('Could not build the report. Please try again.', { id: toastId });
     } finally {

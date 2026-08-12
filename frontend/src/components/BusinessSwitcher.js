@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FiChevronDown } from 'react-icons/fi';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../services/api';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';

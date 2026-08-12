@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { format } from 'date-fns';
 import {
   FiArrowRight,
