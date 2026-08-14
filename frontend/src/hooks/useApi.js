@@ -94,7 +94,14 @@ export default function useApi(fetcher, deps = [], options = {}) {
       execute({ keepPreviousData: true });
     };
     window.addEventListener('rim:business-changed', onBusinessChanged);
-    return () => window.removeEventListener('rim:business-changed', onBusinessChanged);
+    // Pull-to-refresh reuses the same path: every query mounted on the page
+    // refetches without blanking, so the screen updates in place rather than
+    // flashing back through its skeletons.
+    window.addEventListener('rim:refresh', onBusinessChanged);
+    return () => {
+      window.removeEventListener('rim:business-changed', onBusinessChanged);
+      window.removeEventListener('rim:refresh', onBusinessChanged);
+    };
   }, [execute]);
 
   return { data, error, loading, refetch: execute, setData };

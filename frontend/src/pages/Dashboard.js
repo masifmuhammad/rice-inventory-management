@@ -36,6 +36,7 @@ import { useTheme } from '../context/ThemeContext';
 import { formatCompactMoney, formatMoney, formatNumber, formatQuantity } from '../utils/currency';
 import { toDateInput } from '../utils/date';
 import PageHeader from '../components/PageHeader';
+import MobileQuickActions from '../components/MobileQuickActions';
 import PillFilter from '../components/ui/PillFilter';
 import Button from '../components/ui/Button';
 import Card, { CardBody, CardHeader } from '../components/ui/Card';
@@ -310,6 +311,12 @@ export default function Dashboard() {
           </div>
         }
       />
+      </motion.div>
+
+      {/* On a phone the point of this screen is doing the next job, not reading
+          a summary — so the jobs come first, above the figures. */}
+      <motion.div variants={staggerItem}>
+        <MobileQuickActions />
       </motion.div>
 
       {/* Headline numbers */}

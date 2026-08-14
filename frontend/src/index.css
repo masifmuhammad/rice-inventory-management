@@ -116,6 +116,43 @@
    * press on a product name or a link must still offer Copy / Look Up / Open in
    * New Tab, which is what makes it feel like Safari rather than a kiosk.
    */
+  /**
+   * On a phone, use the platform's own UI face.
+   *
+   * Inter Tight is the right choice on a desktop dashboard, but on iOS every
+   * piece of chrome around this app is San Francisco — and SF is not just a
+   * different shape, it is optically sized: tighter apertures and looser
+   * tracking at small sizes, which is precisely where a list of transactions
+   * lives. A web font sitting next to the system keyboard, share sheet and
+   * status bar is one of the strongest tells that something is a web page, and
+   * no amount of layout work compensates for it.
+   *
+   * `system-ui` resolves to SF on iOS and Roboto on Android, so each platform
+   * gets its own. Headings keep a touch of negative tracking because SF at
+   * display sizes is set tighter than its default.
+   */
+  @media (hover: none) and (pointer: coarse) {
+    body,
+    .font-display,
+    input,
+    textarea,
+    select,
+    button {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      /* SF is already tracked for UI at these sizes; Inter Tight's -0.011em on
+         top of it reads as cramped. */
+      letter-spacing: normal;
+    }
+
+    .font-display,
+    h1, h2, h3 {
+      letter-spacing: -0.02em;
+    }
+  }
+
   @media (hover: none) and (pointer: coarse) {
     /**
      * Selection is off by default on a touchscreen.

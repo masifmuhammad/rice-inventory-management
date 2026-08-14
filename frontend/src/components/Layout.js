@@ -30,6 +30,7 @@ import BusinessSwitchOverlay from './BusinessSwitchOverlay';
 import AppHeader from './AppHeader';
 import PageTransition from './PageTransition';
 import ProfileSheet from './ProfileSheet';
+import PullToRefresh from './PullToRefresh';
 import { lazyPage } from '../utils/lazyPage';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import useDrawerEdgeSwipe from '../hooks/useDrawerEdgeSwipe';
@@ -314,6 +315,8 @@ export default function Layout() {
         className="lg:hidden fixed inset-y-0 left-0 w-3 pointer-events-none"
         style={{ touchAction: 'none' }}
       />
+
+      <PullToRefresh />
 
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
 
