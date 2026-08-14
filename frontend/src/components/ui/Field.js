@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { Children, forwardRef, isValidElement, useId, useMemo } from 'react';
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 import { FiCheck, FiChevronDown } from 'react-icons/fi';
@@ -229,7 +230,21 @@ export const Select = forwardRef(function Select(
   return (
     <div className={className}>
       <Listbox value={String(value ?? '')} onChange={emitChange} disabled={disabled} name={name}>
+        {({ open }) => (
         <div className="relative">
+          {/* Dim behind the sheet so the choice is the only thing in focus.
+              Portaled to the body: rendered in place it would be trapped inside
+              the modal's transform and cover only the card. */}
+          {open &&
+            createPortal(
+              <div
+                aria-hidden="true"
+                className="sm:hidden fixed inset-0 z-[75] bg-black/45
+                  animate-[fadeIn_160ms_ease-out]"
+              />,
+              document.body
+            )}
+
           <ListboxButton
             ref={ref}
             id={selectId}
@@ -249,6 +264,8 @@ export const Select = forwardRef(function Select(
                 : shellClasses(error, 'relative w-full text-left cursor-pointer')
             }
               data-[open]:ring-2 data-[open]:ring-primary-500/35 data-[open]:border-primary-500/55
+              active:scale-[0.99] transition-transform duration-100 ease-out
+              motion-reduce:active:scale-100
               disabled:cursor-not-allowed disabled:opacity-65`}
           >
             <ShellLabel as="span" label={label} required={required} />
@@ -270,21 +287,58 @@ export const Select = forwardRef(function Select(
           <ListboxOptions
             anchor="bottom start"
             transition
-            className="z-[80] w-[var(--button-width)] !max-h-60 overflow-auto rounded-well
-              border border-hairline/[0.1] bg-surface-1 p-1.5 shadow-xl outline-none
-              origin-top transition duration-150 ease-out
-              data-[closed]:scale-95 data-[closed]:opacity-0
+            /**
+             * A phone gets a sheet, not a dropdown.
+             *
+             * A 240px scrolling list inside a bottom sheet is two scroll
+             * containers competing for the same finger, which is why picking a
+             * category felt unresponsive — the gesture was being arbitrated
+             * rather than tracked. A sheet from the bottom edge has one scroll
+             * area, full-width targets, and comes from and returns to the same
+             * place, so the path in matches the path out.
+             *
+             * The `!` overrides beat the inline styles the positioning engine
+             * writes; it still portals out of the modal, which is what makes a
+             * viewport-anchored sheet possible from in here.
+             *
+             * On a pointer device it stays a dropdown, and now scales from the
+             * corner it is anchored to rather than its own top — flipping to
+             * `origin-bottom` when there is no room below and it opens upward.
+             */
+            className="z-[80] overflow-y-auto overscroll-contain outline-none bg-surface-1
+              border border-hairline/[0.1] shadow-2xl
+
+              max-sm:!fixed max-sm:!inset-x-0 max-sm:!left-0 max-sm:!right-0 max-sm:!top-auto
+              max-sm:!bottom-0 max-sm:!w-full max-sm:!max-w-none max-sm:!max-h-[70dvh]
+              max-sm:rounded-t-[28px] max-sm:border-x-0 max-sm:border-b-0 max-sm:p-2
+              max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]
+              max-sm:origin-bottom max-sm:transition-transform max-sm:duration-[320ms]
+              max-sm:ease-[cubic-bezier(0.32,0.72,0,1)]
+              max-sm:data-[closed]:translate-y-full max-sm:data-[closed]:opacity-100
+
+              sm:w-[var(--button-width)] sm:max-h-60 sm:rounded-well sm:p-1.5
+              sm:origin-top data-[anchor~=top]:sm:origin-bottom
+              sm:transition sm:duration-150 sm:ease-out
+              sm:data-[closed]:scale-95 sm:data-[closed]:opacity-0
               [--anchor-gap:6px]"
           >
+            {/* A grabber, so the sheet reads as something that came up from the
+                bottom and can go back down. */}
+            <div className="sm:hidden pt-1 pb-2 flex justify-center" aria-hidden="true">
+              <div className="w-9 h-1 rounded-full bg-hairline/[0.14]" />
+            </div>
+
             {options.map((option) => (
               <ListboxOption
                 key={`${option.value}::${option.label}`}
                 value={option.value}
                 disabled={option.disabled}
-                className="group flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 min-h-[44px]
+                className="group flex cursor-pointer items-center gap-2 rounded-lg px-3
+                  py-2.5 min-h-[44px] max-sm:min-h-[52px] max-sm:px-4 max-sm:text-[16px]
                   text-sm text-content select-none outline-none
                   data-[focus]:bg-primary-500/10 data-[selected]:bg-primary-500/12
-                  data-[disabled]:opacity-40 data-[disabled]:cursor-not-allowed"
+                  data-[disabled]:opacity-40 data-[disabled]:cursor-not-allowed
+                  active:bg-primary-500/[0.14] transition-colors duration-100"
               >
                 <span className="min-w-0 flex-1 truncate group-data-[selected]:font-medium">{option.label}</span>
                 <FiCheck
@@ -295,6 +349,7 @@ export const Select = forwardRef(function Select(
             ))}
           </ListboxOptions>
         </div>
+        )}
       </Listbox>
       <FieldMessage error={error} hint={hint} />
     </div>

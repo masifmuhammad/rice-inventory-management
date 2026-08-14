@@ -259,6 +259,17 @@
     overscroll-behavior: contain;
   }
 
+  /* The scrim behind a picker sheet. Dimming arrives quickly and leaves with
+     the sheet, so the two read as one movement. */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
   code {
     font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
   }
