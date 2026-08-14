@@ -7,12 +7,37 @@ const TABS = ['/', '/products', '/transactions', '/cash-book'];
 const indexOf = (pathname) =>
   TABS.findIndex((path) => (path === '/' ? pathname === '/' : pathname.startsWith(path)));
 
-/** Travel before a horizontal drag counts as a page change rather than a stray finger. */
-const DISTANCE = 60;
+/**
+ * Travel before a horizontal drag counts as a page change.
+ *
+ * Deliberately long. Changing page under someone who meant to scroll is far
+ * more annoying than a swipe that needs repeating, so this errs toward
+ * requiring intent.
+ */
+const DISTANCE = 96;
 /** A flick this fast counts even if it did not travel far. */
-const VELOCITY = 0.45;
+const VELOCITY = 0.6;
 /** How much more horizontal than vertical the movement has to be to be a swipe at all. */
-const AXIS_BIAS = 1.6;
+const AXIS_BIAS = 2;
+
+/**
+ * Neither screen edge belongs to this gesture.
+ *
+ * The left 28px is the drawer's, matching `useDrawerEdgeSwipe` — a rightward
+ * swipe from there opens navigation, and claiming it here meant one gesture
+ * both opened the drawer and changed tab. In a browser tab that same zone is
+ * also where iOS runs its own back-swipe, so a right swipe there really did
+ * "go to the previous page". Both edges are now left alone.
+ */
+const EDGE_PX = 28;
+
+/**
+ * Below this the gesture is a tap, however fast it was.
+ *
+ * Comfortably above the few pixels a thumb rolls while pressing a button, and
+ * below anything a person would consider a swipe.
+ */
+const MIN_TRAVEL = 44;
 
 /**
  * Swipe left and right to move between the tab-bar pages.
@@ -44,7 +69,12 @@ export default function useTabSwipe({ enabled = true } = {}) {
       const target = event.target;
       const claimed =
         target instanceof Element &&
-        target.closest('[data-swipeable], .scroll-x, [role="dialog"], input[type="range"], .segmented');
+        target.closest(
+          // `[role="listbox"]` matters even though the picker sits inside a
+          // dialog: it portals to the body, so it is not a DOM descendant of
+          // anything else here and would otherwise be seen as bare page.
+          '[data-swipeable], .scroll-x, [role="dialog"], [role="listbox"], [data-headlessui-portal], input[type="range"], .segmented'
+        );
 
       // A sheet open over the page owns the whole screen while it is up.
       if (claimed || document.querySelector('[data-headlessui-portal]')) {
@@ -53,6 +83,14 @@ export default function useTabSwipe({ enabled = true } = {}) {
       }
 
       const touch = event.touches[0];
+
+      // Both screen edges belong to someone else — see EDGE_PX.
+      const width = window.innerWidth;
+      if (touch.clientX <= EDGE_PX || touch.clientX >= width - EDGE_PX) {
+        start.current = null;
+        return;
+      }
+
       start.current = { x: touch.clientX, y: touch.clientY, at: Date.now() };
     };
 
@@ -66,6 +104,19 @@ export default function useTabSwipe({ enabled = true } = {}) {
 
       const dx = touch.clientX - origin.x;
       const dy = touch.clientY - origin.y;
+
+      /**
+       * A tap is not a swipe, whatever the arithmetic says.
+       *
+       * This gate was missing and it broke every button in the app. Velocity is
+       * distance over time, and a tap is a tiny distance over a tiny time — six
+       * pixels of thumb roll in eight milliseconds computes to 0.75, sailing
+       * past the flick threshold. So tapping a button navigated to the next tab
+       * instead, which is indistinguishable from "the buttons do not work".
+       *
+       * A flick has to actually travel before its speed means anything.
+       */
+      if (Math.abs(dx) < MIN_TRAVEL) return;
 
       // Vertical intent wins: this must never hijack a scroll.
       if (Math.abs(dx) < Math.abs(dy) * AXIS_BIAS) return;

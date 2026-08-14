@@ -198,12 +198,19 @@
       user-select: text;
     }
 
-    /* Long press still offers Copy / Look Up / Open in New Tab on real content —
-       `-webkit-touch-callout` is independent of selection, so turning selection
-       off above does not cost the context menu here. */
+    /**
+     * No long-press preview anywhere.
+     *
+     * This was enabled so links kept Copy / Open in New Tab, which is right for
+     * a document and wrong for an app: every row here is a link, so resting a
+     * thumb before scrolling popped an iOS preview card and offered to open the
+     * page a second time. A native app has no such menu, and nothing in this
+     * one is a destination worth opening twice.
+     */
     a,
-    img {
-      -webkit-touch-callout: default;
+    img,
+    [role='button'] {
+      -webkit-touch-callout: none;
     }
 
     /* Never double-tap-zoomed, so the browser can dispatch the click
