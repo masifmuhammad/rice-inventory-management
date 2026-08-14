@@ -29,6 +29,8 @@ import { Select } from '../components/ui/Field';
 import { EmptyState, ErrorState } from '../components/ui/States';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
+import Modal from '../components/ui/Modal';
+import SwipeAction from '../components/ui/SwipeAction';
 import TransactionFormModal from '../components/transactions/TransactionFormModal';
 
 const TYPE_FILTERS = [
@@ -46,6 +48,9 @@ const typeIcon = {
 };
 
 const LIMIT = 20;
+
+/** Just the given name — the row is tight and the surname adds nothing here. */
+const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || 'Unknown';
 
 export default function Transactions() {
   const { currencySymbol, settings } = useSettings();
@@ -85,6 +90,7 @@ export default function Transactions() {
   }, [location.pathname, location.state, navigate]);
 
   const [downloadingId, setDownloadingId] = useState(null);
+  const [detail, setDetail] = useState(null);
 
   const debouncedSearch = useDebounce(search, 350);
 
@@ -308,7 +314,26 @@ export default function Transactions() {
                 const Icon = typeIcon[transaction.type] || FiEdit;
 
                 return (
-                  <li key={transaction._id} className="p-4 sm:px-6 hover:bg-hairline/[0.05] transition-colors">
+                  <li key={transaction._id}>
+                  <SwipeAction label="Reverse" onAction={() => handleReverse(transaction)}>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={(event) => {
+                      // The row's own buttons sit inside it; a tap on one of
+                      // those is not a request to open the detail sheet.
+                      if (event.target.closest('button, a')) return;
+                      setDetail(transaction);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setDetail(transaction);
+                      }
+                    }}
+                    className="p-4 sm:px-6 hover:bg-hairline/[0.05] transition-colors cursor-pointer
+                      focus-visible:outline-none focus-visible:bg-hairline/[0.06]"
+                  >
                     <div className="flex items-start gap-3 sm:gap-4">
                       <span
                         className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -371,7 +396,7 @@ export default function Transactions() {
 
                         <p className="mt-2 text-xs text-content-subtle">
                           {formatSafe(transaction.createdAt, 'd MMM yyyy, h:mm a')} ·{' '}
-                          {transaction.createdBy?.name || 'Unknown'}
+                          {firstName(transaction.createdBy?.name)}
                         </p>
                       </div>
 
@@ -396,6 +421,8 @@ export default function Transactions() {
                         </button>
                       </div>
                     </div>
+                  </div>
+                  </SwipeAction>
                   </li>
                 );
               })}
@@ -411,6 +438,69 @@ export default function Transactions() {
           </>
         )}
       </Card>
+
+      {/* Detail sheet. Modal already carries the spring enter/exit, the drag
+          dismiss and the keyboard handling, so this is just its contents. */}
+      <Modal
+        open={Boolean(detail)}
+        onClose={() => setDetail(null)}
+        title={detail?.product?.name || 'Transaction'}
+        description={detail ? (transactionTone[detail.type] || transactionTone.adjustment).label : ''}
+        size="sm"
+        footer={
+          detail && (
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                icon={FiDownload}
+                fullWidth
+                loading={downloadingId === detail._id}
+                onClick={() => handleReceipt(detail)}
+              >
+                Receipt
+              </Button>
+              <Button
+                variant="dangerGhost"
+                icon={FiTrash2}
+                onClick={async () => {
+                  const target = detail;
+                  setDetail(null);
+                  await handleReverse(target);
+                }}
+                aria-label="Reverse transaction"
+              />
+            </div>
+          )
+        }
+      >
+        {detail && (
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-sm">
+            {[
+              ['Quantity', formatQuantity(detail.quantity, detail.unit)],
+              ['Unit price', detail.price ? formatMoney(detail.price, currencySymbol) : '—'],
+              ['Total', detail.totalValue ? formatMoney(detail.totalValue, currencySymbol) : '—'],
+              ['Stock after', formatQuantity(detail.stockAfter, detail.unit)],
+              ['Stock before', formatQuantity(detail.stockBefore, detail.unit)],
+              ['SKU', detail.product?.sku || '—'],
+              ['Reference', detail.reference || '—'],
+              [detail.type === 'stock_out' ? 'Customer' : 'Supplier', detail.customer || detail.supplier || '—'],
+              ['Recorded by', firstName(detail.createdBy?.name)],
+              ['When', formatSafe(detail.createdAt, 'd MMM yyyy, h:mm a')],
+            ].map(([label, value]) => (
+              <div key={label} className="min-w-0">
+                <dt className="text-xs text-content-subtle">{label}</dt>
+                <dd className="font-medium text-content tabular-nums break-words">{value}</dd>
+              </div>
+            ))}
+            {detail.notes && (
+              <div className="col-span-2 min-w-0">
+                <dt className="text-xs text-content-subtle">Notes</dt>
+                <dd className="text-content-muted break-words">{detail.notes}</dd>
+              </div>
+            )}
+          </dl>
+        )}
+      </Modal>
 
       <TransactionFormModal
         open={modalOpen}

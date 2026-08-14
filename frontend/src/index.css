@@ -127,6 +127,11 @@
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
+      /* Tells the browser this element will never be double-tap-zoomed, so it
+         can dispatch the click immediately instead of holding it back to see
+         whether a second tap is coming. That wait is most of what "not
+         responsive" feels like on a touchscreen. */
+      touch-action: manipulation;
     }
 
     /* Text, and links inside content, keep every native gesture. */

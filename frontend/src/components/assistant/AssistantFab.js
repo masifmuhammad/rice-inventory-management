@@ -137,8 +137,8 @@ export default function AssistantFab() {
         aria-hidden="true"
         className="fixed z-40 pointer-events-none
           left-4 right-4 sm:left-6 sm:right-6
-          top-[calc(var(--app-header-height)+env(safe-area-inset-top)+0.5rem)]
-          bottom-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom)+1rem)] lg:bottom-6"
+          top-[calc(var(--app-header-height)+3rem)]
+          bottom-[calc(var(--app-tabbar-height)+1.5rem)] lg:bottom-6"
       />
 
       <motion.div
@@ -152,7 +152,7 @@ export default function AssistantFab() {
         // all — without it the browser claims the gesture for scrolling.
         className="fixed z-50 flex flex-col items-end gap-3 pointer-events-none touch-none
           right-4 sm:right-6
-          bottom-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom)+1rem)] lg:bottom-6"
+          bottom-[calc(var(--app-tabbar-height)+1.5rem)] lg:bottom-6"
         onMouseEnter={() => !isMobile && setHovered(true)}
         onMouseLeave={() => !isMobile && !menuPinned && setHovered(false)}
       >

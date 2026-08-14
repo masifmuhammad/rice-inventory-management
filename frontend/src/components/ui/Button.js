@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { FiLoader } from 'react-icons/fi';
+import { feedbackTick } from '../../utils/feedback';
 
 const base =
   'inline-flex items-center justify-center gap-2 font-medium rounded-xl select-none ' +
@@ -42,16 +43,31 @@ const Button = forwardRef(function Button(
     children,
     disabled,
     type = 'button',
+    onPointerDown,
     ...props
   },
   ref
 ) {
+  /**
+   * Haptic on press, not on click.
+   *
+   * The tick has to land at the moment of contact to read as the button
+   * responding; fired from onClick it arrives after the handler and feels like
+   * a reaction to something that already happened. `feedbackTick` respects the
+   * user's haptics preference and no-ops where the API is unavailable.
+   */
+  const handlePointerDown = (event) => {
+    if (!disabled && !loading && event.pointerType === 'touch') feedbackTick();
+    onPointerDown?.(event);
+  };
+
   return (
     <button
       ref={ref}
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
+      onPointerDown={handlePointerDown}
       className={[
         base,
         !isStatic && press,
