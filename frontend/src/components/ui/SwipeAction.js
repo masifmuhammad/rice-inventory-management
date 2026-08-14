@@ -31,7 +31,9 @@ export default function SwipeAction({ children, onAction, label = 'Delete', disa
   const transition = reducedMotion ? reducedTransition : springUI;
 
   return (
-    <div className="relative overflow-hidden">
+    /* Marked so the page-level swipe knows to keep out: a horizontal drag that
+       starts on a row belongs to the row, not to navigation. */
+    <div className="relative overflow-hidden" data-swipeable="true">
       {/* Sits behind the row, revealed as it slides. `aria-hidden` because the
           row's own delete button is the accessible route to this action. */}
       <motion.div

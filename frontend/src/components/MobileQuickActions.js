@@ -108,13 +108,31 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
 
   if (!available.length) return null;
 
-  const ranked = order(available);
-  const [primary, ...rest] = ranked;
+  /**
+   * The first action never moves.
+   *
+   * Reordering it by usage was the wrong call: this is a tool people operate by
+   * muscle memory dozens of times a day, and a primary button that relocates
+   * makes them look before every tap — which costs more than the ordering ever
+   * saved. The three secondary actions still sort by use, where being wrong
+   * costs a glance rather than a mis-tap.
+   */
+  const [primary, ...secondary] = available;
+  const rest = order(secondary);
 
   const go = (action) => {
     record(action.id);
     navigate(action.to, { state: action.state });
   };
+
+  /**
+   * Something is actually out of stock, not merely near the reorder point.
+   * That is the difference between a note and an interruption: you cannot sell
+   * what you do not have, so it goes above the actions. A low-but-present
+   * product is worth knowing and can wait its turn below them.
+   */
+  const outOfStock = lowStock.filter((p) => Number(p.currentStock) <= 0).length;
+  const urgent = outOfStock > 0;
 
   // Entrances start from a visible offset, never from nothing — an element that
   // materialises out of zero reads as a glitch rather than an arrival.
@@ -127,8 +145,46 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
           transition: { duration: 0.26, ease: EASE_OUT, delay },
         };
 
+  /* Rendered only when there is something to act on — a panel that permanently
+     says "all good" trains people to stop reading it. */
+  const attention = lowStockCount > 0 && (
+        <motion.button
+          type="button"
+          {...rise(0.04)}
+          onClick={() => navigate('/products', { state: { lowStockOnly: true } })}
+          className={`w-full flex items-center gap-3 rounded-card px-4 py-3 text-left
+            active:scale-[0.985] transition-transform duration-150 ease-out
+            motion-reduce:active:scale-100 ${
+              urgent
+                ? 'bg-red-500/[0.09] shadow-[inset_0_0_0_1px_rgb(239_68_68/0.28)]'
+                : 'bg-amber-500/[0.08] shadow-[inset_0_0_0_1px_rgb(245_158_11/0.22)]'
+            }`}
+        >
+          <FiAlertCircle
+            className={`w-5 h-5 flex-shrink-0 ${urgent ? 'text-red-500' : 'text-amber-500'}`}
+            aria-hidden="true"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-medium text-content">
+              {urgent
+                ? `${outOfStock} ${outOfStock === 1 ? 'product is' : 'products are'} out of stock`
+                : `${lowStockCount} ${lowStockCount === 1 ? 'product is' : 'products are'} running low`}
+            </span>
+            <span className="block text-[13px] text-content-subtle truncate">
+              {lowStock
+                .slice(0, 2)
+                .map((p) => `${p.name} · ${formatQuantity(p.currentStock, p.unit)}`)
+                .join(' · ') || 'Tap to review'}
+            </span>
+          </span>
+          <FiChevronRight className="w-4 h-4 flex-shrink-0 text-content-subtle" aria-hidden="true" />
+        </motion.button>
+  );
+
   return (
     <div className="lg:hidden space-y-2.5">
+      {urgent && attention}
+
       {/* The most-used action gets its own row. The thing done fifty times a day
           should not be the same size as the thing done weekly. */}
       <Button
@@ -157,33 +213,7 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
         </div>
       )}
 
-      {/* Attention. Present only when there is something to act on — a panel
-          that permanently says "all good" trains people to stop reading it. */}
-      {lowStockCount > 0 && (
-        <motion.button
-          type="button"
-          {...rise(0.04)}
-          onClick={() => navigate('/products', { state: { lowStockOnly: true } })}
-          className="w-full flex items-center gap-3 rounded-card px-4 py-3 text-left
-            bg-amber-500/[0.08] shadow-[inset_0_0_0_1px_rgb(245_158_11/0.22)]
-            active:scale-[0.985] transition-transform duration-150 ease-out
-            motion-reduce:active:scale-100"
-        >
-          <FiAlertCircle className="w-5 h-5 flex-shrink-0 text-amber-500" aria-hidden="true" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-medium text-content">
-              {lowStockCount} {lowStockCount === 1 ? 'product is' : 'products are'} low on stock
-            </span>
-            <span className="block text-[13px] text-content-subtle truncate">
-              {lowStock
-                .slice(0, 2)
-                .map((p) => `${p.name} · ${formatQuantity(p.currentStock, p.unit)}`)
-                .join(' · ') || 'Tap to review'}
-            </span>
-          </span>
-          <FiChevronRight className="w-4 h-4 flex-shrink-0 text-content-subtle" aria-hidden="true" />
-        </motion.button>
-      )}
+      {!urgent && attention}
 
       {/* Last recorded, as one line. The full list lives on Transactions; this
           exists so a receipt for what was just entered is one tap away. */}

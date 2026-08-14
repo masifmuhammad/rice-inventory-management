@@ -51,17 +51,35 @@ export default function Modal({
   // visible area changes underneath it.
   const focusedFieldRef = useRef(null);
 
+  /**
+   * Scrolls the sheet body so the focused field is inside the visible pane.
+   *
+   * Deliberately not `scrollIntoView`. That delegates to the browser's own idea
+   * of "visible", which on iOS is the layout viewport — the one that does *not*
+   * shrink for the keyboard — so it happily concludes a field hidden behind the
+   * keyboard is already in view and does nothing. Measuring the body's own box
+   * and setting `scrollTop` is the only version that answers the question the
+   * user is actually asking: can I see what I am typing.
+   */
   const revealFocusedField = useCallback(() => {
     const target = focusedFieldRef.current;
-    if (!target?.isConnected) return;
+    const body = bodyRef.current;
+    if (!target?.isConnected || !body) return;
 
     const shell = target.closest('.field-shell') || target;
-    // `nearest`, not `center`: with the keyboard up the scroll container is only
-    // a field or two tall, and `center` fights the container's own bounds and
-    // can leave the field half under the footer.
-    shell.scrollIntoView({
-      block: 'nearest',
-      inline: 'nearest',
+    const fieldBox = shell.getBoundingClientRect();
+    const bodyBox = body.getBoundingClientRect();
+
+    // Centre it in whatever height the body actually has right now, clamped so a
+    // field taller than the pane pins to the top rather than scrolling past it.
+    const offset = fieldBox.top - bodyBox.top;
+    const room = Math.max(0, bodyBox.height - fieldBox.height);
+    const delta = offset - room / 2;
+
+    if (Math.abs(delta) < 2) return;
+
+    body.scrollTo({
+      top: body.scrollTop + delta,
       behavior: reducedMotion ? 'auto' : 'smooth',
     });
   }, [reducedMotion]);

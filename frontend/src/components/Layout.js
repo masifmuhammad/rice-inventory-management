@@ -34,6 +34,7 @@ import PullToRefresh from './PullToRefresh';
 import { lazyPage } from '../utils/lazyPage';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import useDrawerEdgeSwipe from '../hooks/useDrawerEdgeSwipe';
+import useTabSwipe from '../hooks/useTabSwipe';
 import { iconSwap, springUI, withReducedMotion } from '../utils/motion';
 
 const AssistantShell = lazyPage(() => import('./assistant/AssistantShell'), 'assistant');
@@ -275,6 +276,10 @@ export default function Layout() {
     onOpen: openDrawer,
     onClose: closeDrawer,
   });
+
+  // Swipe left and right to move between the tab-bar pages. Disabled while the
+  // drawer is open, which owns horizontal movement for as long as it is up.
+  useTabSwipe({ enabled: !drawerOpen });
 
   useEffect(() => {
     if (!drawerOpen) return undefined;
