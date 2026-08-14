@@ -27,15 +27,26 @@ export default function AppToaster() {
       // Desktop clears the header; mobile clears the notch and then some, so the
       // toast sits below the status bar rather than fighting it.
       offset={{ top: '3.75rem' }}
-      mobileOffset={{ top: 'calc(env(safe-area-inset-top) + 0.75rem)', left: '0.75rem', right: '0.75rem' }}
+      // The side gutters match the page's own (`px-4`). At 0.75rem the toast sat
+      // 4px wider than every card under it, and two near-aligned edges read as a
+      // mistake in a way one obviously different edge never would.
+      mobileOffset={{ top: 'calc(env(safe-area-inset-top) + 0.75rem)', left: '1rem', right: '1rem' }}
       // Swipe up to dismiss, matching the direction it arrived from — the same
       // spatial logic that makes a notification shade feel obvious.
       swipeDirections={isMobile ? ['top'] : ['right']}
       toastOptions={{
         classNames: {
+          // Every surface in this app is borderless, opaque and 28px-cornered,
+          // with depth coming from the shadow. This one was 18px, hairlined and
+          // blurred, which made the one panel that appears over the page the
+          // only one that didn't look like it came from here. Sonner styles the
+          // element at `[data-sonner-toast][data-styled]`, so each of these has
+          // to be `!` to reach it.
           toast:
-            'group !rounded-[18px] !bg-surface-1 !text-content !border !border-hairline/[0.1] ' +
-            '!shadow-2xl !w-full sm:!max-w-sm !backdrop-blur-xl !py-3.5 !px-4',
+            'group !rounded-card !border-0 !bg-surface-1 dark:!bg-surface-2 !text-content ' +
+            // `shadow:` type hint required — without it Tailwind reads a bare
+            // `var()` as a shadow *colour* and emits no box-shadow at all.
+            '!shadow-[shadow:var(--toast-shadow)] !backdrop-blur-none !w-full sm:!max-w-sm !py-4 !px-5',
           // A notification the user has half a second to read should not be set
           // smaller than the page behind it.
           title: '!text-[15px] !font-semibold !text-content !leading-snug',

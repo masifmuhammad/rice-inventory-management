@@ -65,6 +65,12 @@
     --card-shadow-hover:
       0 1px 2px rgb(0 0 0 / 0.04),
       0 14px 32px -12px rgb(0 0 0 / 0.1);
+    /* A toast floats over the page, so it needs the tab bar's depth rather than
+       a card's — same pair of shadows, so the two pieces of floating chrome
+       read as one family. */
+    --toast-shadow:
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 12px 32px -8px rgb(0 0 0 / 0.16);
   }
 
   .dark {
@@ -97,6 +103,7 @@
     /* Shadow does almost nothing on near-black; the tonal step carries it. */
     --card-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -14px rgb(0 0 0 / 0.6);
     --card-shadow-hover: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 36px -16px rgb(0 0 0 / 0.7);
+    --toast-shadow: 0 12px 40px -8px rgb(0 0 0 / 0.6);
   }
 
   /* The header grows to 4rem from `sm` up (see AppHeader's `h-[3.75rem] sm:h-16`). */
