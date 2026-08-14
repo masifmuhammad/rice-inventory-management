@@ -215,6 +215,8 @@ export default function Dashboard() {
           id: toastId,
           feedback: 'download',
         });
+      } else if (outcome === 'insecure') {
+        toast.error('Open the app over https to save files on iPhone', { id: toastId });
       } else if (outcome === 'opened') {
         toast.success('Report opened — use your browser’s share menu to save it', { id: toastId });
       } else {

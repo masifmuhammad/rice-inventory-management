@@ -189,6 +189,8 @@ export default function Transactions() {
           toast.dismiss();
         } else if (outcome === 'shared') {
           toast.success('Receipt ready — choose "Save to Files" to keep it', { feedback: 'download' });
+        } else if (outcome === 'insecure') {
+          toast.error('Open the app over https to save files on iPhone');
         } else if (outcome === 'opened') {
           toast.success('Receipt opened — use your browser’s share menu to save it');
         } else {

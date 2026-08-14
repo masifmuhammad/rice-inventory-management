@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import { animate, motion, useDragControls, useMotionValue } from 'framer-motion';
 import { FiX } from 'react-icons/fi';
@@ -47,28 +47,67 @@ export default function Modal({
     if (open) y.set(0);
   }, [open, y]);
 
-  // When the soft keyboard opens, keep the focused control in the visible pane
-  // above the footer — browsers often only scroll the page, not the sheet body.
+  // The field the user is currently in, so it can be re-revealed whenever the
+  // visible area changes underneath it.
+  const focusedFieldRef = useRef(null);
+
+  const revealFocusedField = useCallback(() => {
+    const target = focusedFieldRef.current;
+    if (!target?.isConnected) return;
+
+    const shell = target.closest('.field-shell') || target;
+    // `nearest`, not `center`: with the keyboard up the scroll container is only
+    // a field or two tall, and `center` fights the container's own bounds and
+    // can leave the field half under the footer.
+    shell.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: reducedMotion ? 'auto' : 'smooth',
+    });
+  }, [reducedMotion]);
+
+  // Remember which field is focused. Scrolling on focus alone is not enough —
+  // see the effect below.
   useEffect(() => {
     if (!open) return undefined;
 
     const body = bodyRef.current;
     if (!body) return undefined;
 
-    const keepFieldVisible = (event) => {
+    const onFocusIn = (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement) || !target.matches(FOCUSABLE_FIELD)) return;
-
-      // Wait a frame so visualViewport has settled after focus.
-      requestAnimationFrame(() => {
-        const shell = target.closest('.field-shell') || target;
-        shell.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' });
-      });
+      focusedFieldRef.current = target;
+      requestAnimationFrame(revealFocusedField);
     };
 
-    body.addEventListener('focusin', keepFieldVisible);
-    return () => body.removeEventListener('focusin', keepFieldVisible);
-  }, [open, reducedMotion, viewport.keyboard]);
+    const onFocusOut = (event) => {
+      if (event.target === focusedFieldRef.current) focusedFieldRef.current = null;
+    };
+
+    body.addEventListener('focusin', onFocusIn);
+    body.addEventListener('focusout', onFocusOut);
+    return () => {
+      body.removeEventListener('focusin', onFocusIn);
+      body.removeEventListener('focusout', onFocusOut);
+    };
+  }, [open, revealFocusedField]);
+
+  /**
+   * Re-reveal the focused field whenever the keyboard changes the visible area.
+   *
+   * This is the half that was missing. On iOS the sequence is focus first,
+   * keyboard second — so scrolling on `focusin` aims at a viewport that is about
+   * to shrink by ~300px, and the field the user just tapped ends up behind the
+   * keyboard anyway. Reacting to the resize as well is what actually keeps it in
+   * view, and it also covers rotating the device or the keyboard swapping to an
+   * emoji or predictive-text layout mid-entry.
+   */
+  useEffect(() => {
+    if (!open || !focusedFieldRef.current) return undefined;
+    const timer = setTimeout(revealFocusedField, 60);
+    return () => clearTimeout(timer);
+  }, [open, viewport.keyboard, viewport.height, revealFocusedField]);
 
   const handleDragEnd = (event, info) => {
     const dismissable = !disableClose && !busy;
@@ -96,6 +135,11 @@ export default function Modal({
     open && viewport.height
       ? `${Math.min(viewport.height * 0.92, viewport.height - 8)}px`
       : undefined;
+
+  // A soft keyboard is up. The sheet's chrome — grabber, description, generous
+  // padding, safe-area inset — is sized for reading; while typing it can eat two
+  // thirds of a ~300px visible pane and leave room for a single field.
+  const keyboardOpen = viewport.keyboard > 120;
 
   return (
     <Dialog
@@ -152,21 +196,37 @@ export default function Modal({
             >
               {/* Only the grabber starts a drag. A panel-wide listener would
                   swallow scrolling in the body below. */}
-              <div
-                className="sm:hidden pt-3 pb-1 flex justify-center flex-shrink-0 cursor-grab active:cursor-grabbing"
-                style={{ touchAction: 'none' }}
-                onPointerDown={(event) => dragControls.start(event)}
-                aria-hidden="true"
-              >
-                <div className="w-10 h-1 rounded-full bg-hairline/[0.08]" />
-              </div>
+              {/* The grabber is a drag affordance for a sheet the user is
+                  reading. While they are typing it is 16px of a ~300px pane
+                  spent on something they are not about to do. */}
+              {!keyboardOpen && (
+                <div
+                  className="sm:hidden pt-3 pb-1 flex justify-center flex-shrink-0 cursor-grab active:cursor-grabbing"
+                  style={{ touchAction: 'none' }}
+                  onPointerDown={(event) => dragControls.start(event)}
+                  aria-hidden="true"
+                >
+                  <div className="w-10 h-1 rounded-full bg-hairline/[0.08]" />
+                </div>
+              )}
 
-              <div className="flex items-start justify-between gap-4 px-5 sm:px-6 py-4 border-b border-hairline/[0.07] flex-shrink-0">
+              <div
+                className={`flex items-start justify-between gap-4 px-5 sm:px-6 border-b border-hairline/[0.07] flex-shrink-0 ${
+                  keyboardOpen ? 'py-2.5' : 'py-4'
+                }`}
+              >
                 <div className="min-w-0">
-                  <DialogTitle className="text-lg font-semibold text-content truncate">
+                  <DialogTitle
+                    className={`font-semibold text-content truncate ${
+                      keyboardOpen ? 'text-base' : 'text-lg'
+                    }`}
+                  >
                     {title}
                   </DialogTitle>
-                  {description && (
+                  {/* The description explains the form before you start. Once
+                      the keyboard is up it is costing two wrapped lines of the
+                      only space the fields have. */}
+                  {description && !keyboardOpen && (
                     <div className="mt-1 text-content-subtle">{description}</div>
                   )}
                 </div>
@@ -184,16 +244,23 @@ export default function Modal({
 
               <div
                 ref={bodyRef}
-                className={`overflow-y-auto overscroll-contain px-5 sm:px-6 py-4 sm:py-5 flex-1 transition-opacity duration-150 ${
-                  busy ? 'opacity-60 pointer-events-none' : ''
-                }`}
+                className={`overflow-y-auto overscroll-contain px-5 sm:px-6 flex-1 transition-opacity duration-150 ${
+                  keyboardOpen ? 'py-2.5' : 'py-4 sm:py-5'
+                } ${busy ? 'opacity-60 pointer-events-none' : ''}`}
                 aria-busy={busy || undefined}
               >
                 {children}
               </div>
 
               {footer && (
-                <div className="flex-shrink-0 px-5 sm:px-6 py-3.5 sm:py-4 border-t border-hairline/[0.06] rounded-b-2xl pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:pb-4">
+                /* The home-indicator inset is real estate the keyboard is
+                   already covering — reclaiming it while typing gives the
+                   fields another line, and it comes back on dismiss. */
+                <div
+                  className={`flex-shrink-0 px-5 sm:px-6 border-t border-hairline/[0.06] rounded-b-2xl sm:py-4 sm:pb-4 ${
+                    keyboardOpen ? 'py-2.5 pb-2.5' : 'py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))]'
+                  }`}
+                >
                   {footer}
                 </div>
               )}

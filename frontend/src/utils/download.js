@@ -23,6 +23,18 @@ const isAppleTouchDevice = () => {
   return /Macintosh/i.test(ua) && typeof document !== 'undefined' && 'ontouchend' in document;
 };
 
+/**
+ * The Web Share API is gated on a secure context.
+ *
+ * Over plain http:// — which is how this app was served before TLS — both
+ * `navigator.share` and `navigator.canShare` are simply undefined. The share
+ * path then silently falls through to `<a download>`, which iOS ignores, and the
+ * user gets the PDF opened as a page with no way to save it. That is a
+ * deployment problem wearing a download bug's clothes, so it is worth naming
+ * rather than degrading quietly.
+ */
+const isSecure = () => typeof window !== 'undefined' && window.isSecureContext;
+
 const canShareFile = (file) => {
   try {
     return Boolean(navigator.canShare?.({ files: [file] }) && navigator.share);
@@ -54,12 +66,22 @@ const downloadViaAnchor = (blob, filename) => {
 /**
  * Saves a Blob under `filename`.
  *
- * @returns 'saved' | 'shared' | 'cancelled' | 'opened'
+ * @returns 'saved' | 'shared' | 'cancelled' | 'opened' | 'insecure'
  *   'cancelled' means the user dismissed the share sheet — not an error, and the
  *   caller should not show a failure toast for it.
+ *   'insecure' means an iPhone was served over plain http, so the only route to
+ *   Files was unavailable. The caller should say so, because the fix is to open
+ *   the site over https rather than anything the user can do on this screen.
  */
 export const saveFile = async (blob, filename, { title, text } = {}) => {
   const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+
+  if (isAppleTouchDevice() && !isSecure()) {
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return 'insecure';
+  }
 
   if (isAppleTouchDevice() && canShareFile(file)) {
     try {
