@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FiDollarSign, FiFileText, FiMessageCircle, FiPackage } from 'react-icons/fi';
-import { AnimatePresence, motion, useMotionValue } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import useMediaQuery, { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { useAssistant } from '../../context/AssistantContext';
 import { springUI, withReducedMotion } from '../../utils/motion';
@@ -16,79 +16,26 @@ const DESKTOP_ACTIONS = [
 ];
 
 /**
- * Where the user last parked the button, as an offset from its default corner.
+ * The floating assistant button.
  *
- * Stored rather than reset each visit: a button that will not stay where it was
- * put is more irritating than one that cannot be moved at all.
+ * This was briefly draggable, because it floated over the last row of short
+ * lists and covered the delete control there. That solved the overlap and
+ * introduced a worse problem: a transform on a `position: fixed` element puts it
+ * on its own compositing layer, which iOS updates on a different cadence to the
+ * rest of the fixed content while the page scrolls — so the button visibly
+ * drifted against the tab bar beside it. Splitting the transform onto a child
+ * did not fix it either.
+ *
+ * The overlap never needed a gesture. The page's own bottom padding now reserves
+ * the space this button occupies (see Layout), so it cannot cover anything, and
+ * with no transform there is nothing to drift. Fewer moving parts, and nothing
+ * for the user to discover.
  */
-const OFFSET_KEY = 'rim.assistant-fab-offset';
-
-const readOffset = () => {
-  try {
-    const raw = localStorage.getItem(OFFSET_KEY);
-    if (!raw) return { x: 0, y: 0 };
-    const parsed = JSON.parse(raw);
-    return {
-      x: Number.isFinite(parsed?.x) ? parsed.x : 0,
-      y: Number.isFinite(parsed?.y) ? parsed.y : 0,
-    };
-  } catch {
-    return { x: 0, y: 0 };
-  }
-};
-
 export default function AssistantFab() {
   const isMobile = useMediaQuery('(max-width: 1023px)');
   const reducedMotion = usePrefersReducedMotion();
   const { enabled, hubOpen, setHubOpen, openPanel, menuPinned, setMenuPinned } = useAssistant();
   const [hovered, setHovered] = useState(false);
-
-  /* ----------------------------------------------------------- dragging ---
-     The button floats over the page, so on a short list it lands on top of the
-     last row's controls — which is exactly where a delete button tends to be.
-     Rather than guess at safe padding for every screen, let it be moved. */
-  const boundsRef = useRef(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  // Set while a real drag is in progress, so the click that framer-motion fires
-  // on release does not also open the assistant.
-  const draggedRef = useRef(false);
-
-  useEffect(() => {
-    const saved = readOffset();
-    x.set(saved.x);
-    y.set(saved.y);
-  }, [x, y]);
-
-  // A button parked against the right edge of a phone would sit off-screen on a
-  // desktop-width window, and vice versa. Snap it back into reach on resize.
-  useEffect(() => {
-    const clamp = () => {
-      const bounds = boundsRef.current?.getBoundingClientRect();
-      if (!bounds) return;
-      if (Math.abs(x.get()) > bounds.width) x.set(0);
-      if (Math.abs(y.get()) > bounds.height) y.set(0);
-    };
-    window.addEventListener('resize', clamp);
-    return () => window.removeEventListener('resize', clamp);
-  }, [x, y]);
-
-  const handleDragEnd = (event, info) => {
-    // A few pixels of travel is a tap with a shaky thumb, not a drag.
-    const moved = Math.hypot(info.offset.x, info.offset.y) > 6;
-    if (moved) {
-      try {
-        localStorage.setItem(OFFSET_KEY, JSON.stringify({ x: x.get(), y: y.get() }));
-      } catch {
-        /* storage disabled — the position just will not survive a reload */
-      }
-      // Outlive the synthetic click that follows pointer-up.
-      draggedRef.current = true;
-      setTimeout(() => {
-        draggedRef.current = false;
-      }, 80);
-    }
-  };
 
   const menuOpen = isMobile ? hubOpen : hovered || menuPinned;
 
@@ -99,9 +46,6 @@ export default function AssistantFab() {
   }, [setHubOpen, setMenuPinned]);
 
   const handleFabClick = () => {
-    // The user was repositioning the button, not asking for the assistant.
-    if (draggedRef.current) return;
-
     if (isMobile) {
       setHubOpen((v) => !v);
       return;
@@ -129,44 +73,15 @@ export default function AssistantFab() {
         />
       )}
 
-      {/* The area the button may be dragged within: below the header, above the
-          tab bar, inside the side gutters. framer-motion reads this element's
-          box for `dragConstraints`, so it never lands somewhere unreachable. */}
+      {/* Anchored in static units. `env(safe-area-inset-bottom)` changes as the
+          mobile browser toolbar collapses during scroll, which moves anything
+          positioned with it. */}
       <div
-        ref={boundsRef}
-        aria-hidden="true"
-        className="fixed z-40 pointer-events-none
-          left-4 right-4 sm:left-6 sm:right-6
-          top-[calc(var(--app-header-height)+3rem)]
-          bottom-[calc(var(--app-tabbar-height)+1.5rem)] lg:bottom-6"
-      />
-
-      {/* The fixed positioning and the drag transform are deliberately on two
-          different elements.
-
-          On one element, `position: fixed` plus a transform promotes it to its
-          own compositing layer, and iOS then updates that layer on a different
-          cadence to the rest of the fixed content while the page scrolls — so
-          the button visibly drifts and flickers against the tab bar beside it.
-          The outer element stays a plain fixed box; the inner one owns the
-          transform and moves relative to it. */}
-      <div
-        className="fixed z-50 pointer-events-none
+        className="fixed z-50 flex flex-col items-end gap-3 pointer-events-none
           right-4 sm:right-6
           bottom-[calc(var(--app-tabbar-height)+1.5rem)] lg:bottom-6"
         onMouseEnter={() => !isMobile && setHovered(true)}
         onMouseLeave={() => !isMobile && !menuPinned && setHovered(false)}
-      >
-      <motion.div
-        drag
-        dragConstraints={boundsRef}
-        dragMomentum={false}
-        dragElastic={0.04}
-        onDragEnd={handleDragEnd}
-        style={{ x, y }}
-        // `touch-action: none` is what lets a drag start on a touchscreen at
-        // all — without it the browser claims the gesture for scrolling.
-        className="flex flex-col items-end gap-3 pointer-events-none touch-none"
       >
         <AnimatePresence initial={false}>
           {!isMobile && menuOpen && (
@@ -197,7 +112,6 @@ export default function AssistantFab() {
         <div className="pointer-events-auto relative z-50">
           <AssistantFabTrigger onClick={handleFabClick} expanded={hubOpen || (menuOpen && !isMobile)} />
         </div>
-      </motion.div>
       </div>
 
       <AssistantHubSheet open={hubOpen} onClose={() => setHubOpen(false)} />

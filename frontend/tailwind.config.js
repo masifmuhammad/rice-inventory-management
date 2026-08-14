@@ -12,6 +12,18 @@ const primary = Object.fromEntries(
 );
 
 module.exports = {
+  /**
+   * Compile every `hover:` utility as `@media (hover: hover)`.
+   *
+   * Touchscreens apply `:hover` on contact and then *keep* it until something
+   * else is tapped. So dragging a finger down a list to scroll left every row it
+   * passed sitting highlighted behind it — read as the app randomly selecting
+   * things. It showed up on Transactions and the Cash Book because those are the
+   * screens whose rows carry a hover tint.
+   */
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   darkMode: 'class',
   content: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
   theme: {

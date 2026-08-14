@@ -375,7 +375,11 @@ export default function Layout() {
 
         <main
           id="main-content"
-          className={`px-4 sm:px-6 lg:px-7 py-5 sm:py-6 pb-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom))] lg:pb-[max(1.5rem,env(safe-area-inset-bottom))] transition-opacity duration-500 ease-[cubic-bezier(0.2,0,0,1)] ${
+          /* The bottom padding reserves the tab bar *and* the assistant button
+             that floats above it — 5rem covers the button's 3.5rem plus its
+             1.5rem gap. Without it the button sits on top of the last row of a
+             short list, which is exactly where a delete control lives. */
+          className={`px-4 sm:px-6 lg:px-7 py-5 sm:py-6 pb-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom)+5rem)] lg:pb-[max(1.5rem,env(safe-area-inset-bottom))] transition-opacity duration-500 ease-[cubic-bezier(0.2,0,0,1)] ${
             contentPulse ? 'opacity-70' : 'opacity-100'
           }`}
         >
