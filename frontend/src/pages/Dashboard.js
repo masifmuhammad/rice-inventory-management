@@ -299,13 +299,23 @@ export default function Dashboard() {
         description="Stock, sales and cash at a glance."
         actions={
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            {/* The range picker only drives the charts, so on a phone it lives
+                with them further down rather than occupying the top of the
+                screen — which is the space the actual work needs. There is room
+                for both up here from `sm` up. */}
             <PillFilter
               options={RANGES.map((r) => ({ value: r.value, label: r.label }))}
               value={range}
               onChange={setRange}
               ariaLabel="Reporting period"
+              className="hidden lg:flex"
             />
-            <Button icon={FiDownload} onClick={handleExport} loading={exporting} className="sm:shrink-0">
+            <Button
+              icon={FiDownload}
+              onClick={handleExport}
+              loading={exporting}
+              className="hidden lg:inline-flex sm:shrink-0"
+            >
               Export report
             </Button>
           </div>
@@ -377,6 +387,17 @@ export default function Dashboard() {
             subtitle={RANGES.find((r) => r.value === range)?.full}
             icon={FiActivity}
           />
+          {/* The picker sits with the chart it controls on a phone. Up here it
+              is obviously a chart control; at the top of the page it read as a
+              filter for the whole screen, which it never was. */}
+          <div className="lg:hidden px-4 sm:px-5 pb-1">
+            <PillFilter
+              options={RANGES.map((r) => ({ value: r.value, label: r.label }))}
+              value={range}
+              onChange={setRange}
+              ariaLabel="Reporting period"
+            />
+          </div>
           <CardBody className="pt-2">
             {!analytics.loading && analytics.data && (
               /* Stacked below 400px. Three columns at 320px leaves ~52px of

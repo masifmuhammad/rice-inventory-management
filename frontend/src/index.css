@@ -141,6 +141,26 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
+    /**
+     * One step up on phones.
+     *
+     * The scale was set against a desktop dashboard viewed at arm's length. On a
+     * phone held in one hand in a warehouse it reads as small — and 14px body
+     * copy is below what iOS itself uses for list rows. Figures are left alone:
+     * they are already large, and growing them costs the room the labels need.
+     */
+    .text-sm {
+      font-size: 0.9375rem;
+    }
+
+    .text-xs {
+      font-size: 0.8125rem;
+    }
+
+    .text-caption {
+      font-size: 0.875rem;
+    }
+
     body {
       /* SF is already tracked for UI at these sizes; Inter Tight's -0.011em on
          top of it reads as cramped. */

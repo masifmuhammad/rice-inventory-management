@@ -1,9 +1,16 @@
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowDownLeft, FiDownload, FiPackage, FiTrendingUp } from 'react-icons/fi';
+import {
+  FiArrowDownLeft,
+  FiArrowUpRight,
+  FiDownload,
+  FiPackage,
+  FiTrendingUp,
+} from 'react-icons/fi';
 
 import api, { getErrorMessage } from '../services/api';
 import useApi from '../hooks/useApi';
+import useActionUsage from '../hooks/useActionUsage';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { toast } from '../utils/toast';
@@ -13,28 +20,29 @@ import Card from './ui/Card';
 import Button from './ui/Button';
 
 /**
- * The jobs a phone user actually opens this app to do.
+ * The top of the home screen on a phone.
  *
- * On a desktop the sidebar makes every screen one click away, so the dashboard
- * can be a summary. On a phone reaching "record a sale" means opening the tab
- * bar, landing on a list, then finding the button — and reprinting a receipt for
- * something recorded a minute ago means the same trip again. Both belong on the
- * first screen, so this sits at the top of the dashboard on mobile only.
+ * A dashboard on a desktop can afford to be a summary, because the sidebar puts
+ * every screen one click away. On a phone the sidebar is a drawer and the tab
+ * bar only holds four things, so a summary-first home screen means the work
+ * always starts with navigation. This puts the jobs first and the figures below.
  *
- * The create buttons navigate with the `openCreate` state the target pages
- * already handle, so no new plumbing: the form opens on arrival.
+ * The shortcuts reorder themselves by use — someone recording forty sales a day
+ * should not have the same first button as someone who mostly receives
+ * deliveries. Ordering is per device and decays, so it follows current habit
+ * rather than being fixed by whatever the first busy week looked like.
  */
 export default function MobileQuickActions() {
   const navigate = useNavigate();
   const { can } = useAuth();
   const { currencySymbol, settings } = useSettings();
+  const { record, order } = useActionUsage();
   const [downloadingId, setDownloadingId] = useState(null);
 
-  // Just enough to reprint what was recorded in the last few minutes, which is
-  // what this is for — the Transactions screen is still the place to go looking.
+  // Enough to reprint what was recorded in the last few minutes, which is what
+  // this is for — Transactions is still where you go to look something up.
   const recent = useApi(
-    (signal) =>
-      api.get('/transactions', { params: { limit: 4 }, signal }).then((r) => r.data),
+    (signal) => api.get('/transactions', { params: { limit: 4 }, signal }).then((r) => r.data),
     [],
     { keepPreviousData: true }
   );
@@ -66,62 +74,87 @@ export default function MobileQuickActions() {
     [settings]
   );
 
-  const actions = [
+  const available = [
     can('transactions.create') && {
-      id: 'txn',
-      label: 'New sale',
+      id: 'sale',
+      label: 'Record sale',
       icon: FiTrendingUp,
       to: '/transactions',
-      variant: 'primary',
+      state: { openCreate: true },
     },
-    can('products.manage') && {
-      id: 'product',
-      label: 'Add product',
+    can('transactions.create') && {
+      id: 'stock-in',
+      label: 'Stock in',
       icon: FiPackage,
-      to: '/products',
-      variant: 'secondary',
+      to: '/transactions',
+      state: { openCreate: true },
     },
     can('cash.manage') && {
-      id: 'cash',
+      id: 'cash-in',
       label: 'Money in',
       icon: FiArrowDownLeft,
       to: '/cash-book',
       state: { openCreate: 'in' },
-      variant: 'secondary',
+    },
+    can('cash.manage') && {
+      id: 'cash-out',
+      label: 'Money out',
+      icon: FiArrowUpRight,
+      to: '/cash-book',
+      state: { openCreate: 'out' },
     },
   ].filter(Boolean);
 
-  if (!actions.length) return null;
+  if (!available.length) return null;
+
+  const ranked = order(available);
+  const [primary, ...rest] = ranked;
+
+  const go = (action) => {
+    record(action.id);
+    navigate(action.to, { state: action.state });
+  };
 
   const list = recent.data?.data || [];
 
   return (
     <div className="lg:hidden space-y-3">
-      <div className="grid grid-cols-2 gap-2.5">
-        {actions.map((action, index) => (
-          <Button
-            key={action.id}
-            variant={action.variant}
-            icon={action.icon}
-            fullWidth
-            // The primary action gets the full width above the other two, so the
-            // thing done fifty times a day is not the same size as the rest.
-            className={`${index === 0 ? 'col-span-2 min-h-[52px] text-base' : ''} justify-start`}
-            onClick={() => navigate(action.to, { state: action.state || { openCreate: true } })}
-          >
-            {action.label}
-          </Button>
-        ))}
-      </div>
+      {/* The most-used action gets its own full-width row. The thing done fifty
+          times a day should not be the same size as the thing done weekly. */}
+      <Button
+        variant="primary"
+        icon={primary.icon}
+        fullWidth
+        className="min-h-[54px] text-base justify-center"
+        onClick={() => go(primary)}
+      >
+        {primary.label}
+      </Button>
+
+      {rest.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {rest.map((action) => (
+            <Button
+              key={action.id}
+              variant="secondary"
+              icon={action.icon}
+              className="min-h-[46px] flex-col gap-1 !text-[13px] px-1"
+              onClick={() => go(action)}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {list.length > 0 && (
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-            <h2 className="text-sm font-semibold text-content">Just recorded</h2>
+            <h2 className="text-base font-semibold text-content">Just recorded</h2>
             <button
               type="button"
               onClick={() => navigate('/transactions')}
-              className="text-xs font-medium text-primary-600 dark:text-primary-400 min-h-[44px] px-2 -mr-2"
+              className="text-sm font-medium text-primary-600 dark:text-primary-400 min-h-[44px] px-2 -mr-2"
             >
               See all
             </button>
@@ -129,12 +162,12 @@ export default function MobileQuickActions() {
 
           <ul className="divide-y divide-hairline">
             {list.map((transaction) => (
-              <li key={transaction._id} className="flex items-center gap-3 px-4 py-2.5">
+              <li key={transaction._id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-content truncate">
+                  <p className="text-[15px] font-medium text-content truncate">
                     {transaction.product?.name || 'Deleted product'}
                   </p>
-                  <p className="text-xs text-content-subtle tabular-nums truncate">
+                  <p className="text-[13px] text-content-subtle tabular-nums truncate">
                     {formatQuantity(transaction.quantity, transaction.unit)}
                     {transaction.totalValue > 0
                       ? ` · ${formatMoney(transaction.totalValue, currencySymbol)}`

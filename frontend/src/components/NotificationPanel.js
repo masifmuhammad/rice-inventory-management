@@ -5,7 +5,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { FiBell, FiX } from 'react-icons/fi';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
+import useMediaQuery, { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { springSnappy, reducedTransition } from '../utils/motion';
 import Badge from './ui/Badge';
 
@@ -29,10 +29,27 @@ export default function NotificationPanel({ variant = 'default' }) {
   const buttonRef = useRef(null);
   const reducedMotion = usePrefersReducedMotion();
 
-  // The panel grows from the corner nearest the bell, so it reads as coming from
-  // the button rather than arriving out of nowhere.
-  const popoverFrom = reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -4 };
-  const popoverTo = reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 };
+  /**
+   * On a phone this drops in from the top edge like a system notification
+   * shade, rather than growing out of the bell as a small popover. A popover
+   * pinned under a 40px button is a 40px-wide mental model for a list of
+   * full sentences — it was cramped because it was the wrong shape.
+   *
+   * On desktop it stays a popover anchored to the bell, where the pointer is
+   * and where there is room beside it.
+   */
+  const isMobile = useMediaQuery('(max-width: 1023px)');
+
+  const sheetFrom = reducedMotion
+    ? { opacity: 0 }
+    : isMobile
+      ? // Anchored to the top edge, so it travels its own height — the shade
+        // motion people already know from the OS.
+        { opacity: 0, y: '-100%' }
+      : // Anchored under the bell, where a full-height slide would be a jump.
+        { opacity: 0, scale: 0.96, y: -4 };
+
+  const sheetTo = reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 };
   const popoverTransition = reducedMotion ? reducedTransition : springSnappy;
 
   const fetchNotifications = async (signal) => {
@@ -167,15 +184,15 @@ export default function NotificationPanel({ variant = 'default' }) {
               aria-modal="true"
               aria-labelledby="notifications-title"
               tabIndex={-1}
-              initial={popoverFrom}
-              animate={popoverTo}
-              exit={popoverFrom}
+              initial={sheetFrom}
+              animate={sheetTo}
+              exit={sheetFrom}
               transition={popoverTransition}
-              className="fixed inset-x-3 top-[calc(var(--app-header-height)+env(safe-area-inset-top)+0.5rem)] z-50 max-h-[min(70dvh,28rem)] overflow-hidden rounded-2xl border border-hairline/[0.07] bg-surface-1 shadow-xl flex flex-col origin-top
+              className="fixed inset-x-0 top-0 z-50 max-h-[85dvh] overflow-hidden rounded-b-3xl border-b border-hairline/[0.07] bg-surface-1 shadow-2xl flex flex-col pt-[env(safe-area-inset-top)]
                 lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-2 lg:w-96 lg:max-h-[28rem] lg:origin-top-right"
             >
             <div className="flex items-center justify-between px-4 py-3 border-b border-hairline/[0.07]">
-              <h2 id="notifications-title" className="text-sm font-semibold text-content">
+              <h2 id="notifications-title" className="text-base font-semibold text-content">
                 Recent activity
               </h2>
               <button
@@ -190,7 +207,7 @@ export default function NotificationPanel({ variant = 'default' }) {
 
             <div className="overflow-y-auto flex-1" aria-live="polite">
               {items.length === 0 ? (
-                <p className="px-4 py-8 text-sm text-center text-content-subtle">No recent changes</p>
+                <p className="px-5 py-10 text-[15px] text-center text-content-subtle">No recent changes</p>
               ) : (
                 <ul className="divide-y divide-hairline">
                   {items.slice(0, 25).map((item) => (
@@ -198,13 +215,13 @@ export default function NotificationPanel({ variant = 'default' }) {
                       <Link
                         to={item.href}
                         onClick={() => setOpen(false)}
-                        className="block px-4 py-3 hover:bg-hairline/[0.05] transition-colors"
+                        className="block px-5 py-3.5 hover:bg-hairline/[0.05] transition-colors"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm text-content">{item.summary}</p>
+                          <p className="text-[15px] leading-snug text-content">{item.summary}</p>
                           {item.tone === 'warning' && <Badge tone="warning">Pending</Badge>}
                         </div>
-                        <p className="text-xs text-content-subtle mt-1">
+                        <p className="text-[13px] text-content-subtle mt-1.5">
                           {item.userName}
                           {item.createdAt && (
                             <>
