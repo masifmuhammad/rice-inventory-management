@@ -259,6 +259,28 @@
     overflow-x: clip;
   }
 
+  /**
+   * The app owns horizontal gestures; the browser does not get to navigate.
+   *
+   * `overscroll-behavior-x: none` stops the Android overscroll-back, but it does
+   * nothing for the iOS edge swipe — including inside an installed PWA, where
+   * "back" from the first entry leaves the app with nowhere to return to.
+   * Declaring `pan-y` tells the browser this surface only pans vertically, so a
+   * horizontal drag is never handed to history.
+   *
+   * Genuinely horizontal panes opt back in below, and gesture handlers that need
+   * a free axis set `touch-action` on themselves.
+   */
+  #root {
+    touch-action: pan-y;
+  }
+
+  .scroll-x,
+  [data-scroll-pane],
+  [role='listbox'] {
+    touch-action: pan-x pan-y;
+  }
+
   /* Scrollable panes keep their own momentum and stop the page bouncing behind
      them when they hit an end — the give-away that a sheet is a web view. */
   .scroll-x,

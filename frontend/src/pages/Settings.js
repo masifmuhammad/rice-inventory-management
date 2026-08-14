@@ -96,20 +96,66 @@ export default function Settings() {
 
   /* --------------------------------------------------------------- branding */
 
+  const [savingBrand, setSavingBrand] = useState(false);
+  const [brandDirty, setBrandDirty] = useState(false);
+
   const previewColor = (hex) => {
     setBusiness((current) => ({ ...current, primaryColor: hex }));
+    setBrandDirty(hex !== settings?.primaryColor);
     // Repaint immediately so the choice is judged against the real interface,
     // not a swatch.
     applyPalette(hex);
   };
 
-  // Nothing else re-reads settings on navigation, so leaving this page without
-  // saving used to leave the previewed colour painted across the whole app for
-  // the rest of the session — while Settings still showed the saved one as
-  // selected. Put the saved palette back on the way out.
+  /**
+   * Saves the colour on its own, which is what makes it apply everywhere.
+   *
+   * `updateSettings` is what the rest of the app reads from — SettingsContext
+   * repaints the palette from it, and the receipt generator takes the accent
+   * from the same place. Previewing alone only touched this tab's CSS
+   * variables, so the change looked applied and then vanished on reload.
+   */
+  const saveBrandColour = async () => {
+    setSavingBrand(true);
+    try {
+      await updateSettings({ primaryColor: business.primaryColor });
+      setBrandDirty(false);
+      toast.success('Brand colour updated');
+    } catch (error) {
+      // Do not leave the app wearing a colour the server never stored.
+      applyPalette(settings?.primaryColor);
+      setBusiness((current) => ({ ...current, primaryColor: settings?.primaryColor }));
+      setBrandDirty(false);
+      toast.error(getErrorMessage(error, 'Could not save the brand colour'));
+    } finally {
+      setSavingBrand(false);
+    }
+  };
+
+  const discardBrandColour = () => {
+    applyPalette(settings?.primaryColor);
+    setBusiness((current) => ({ ...current, primaryColor: settings?.primaryColor }));
+    setBrandDirty(false);
+  };
+
+  /**
+   * Revert an *unsaved* preview when leaving the page.
+   *
+   * Read through refs and keyed on nothing, so it runs only on unmount. The
+   * previous version depended on `settings.primaryColor` and therefore also ran
+   * its cleanup the moment a save landed — repainting the app with the colour
+   * that had just been replaced, which is why saving appeared not to apply.
+   */
+  const brandDirtyRef = useRef(false);
+  const savedColourRef = useRef(settings?.primaryColor);
+  brandDirtyRef.current = brandDirty;
+  savedColourRef.current = settings?.primaryColor;
+
   useEffect(
-    () => () => applyPalette(settings?.primaryColor),
-    [settings?.primaryColor]
+    () => () => {
+      if (brandDirtyRef.current) applyPalette(savedColourRef.current);
+    },
+    []
   );
 
   const handleLogoChange = async (event) => {
@@ -394,8 +440,35 @@ export default function Settings() {
                 <span className="text-xs text-content-subtle">+</span>
               </label>
             </div>
+            {/* Its own save. The colour used to be persisted only by the
+                business-details form at the top of the page, so choosing one
+                here meant scrolling back up and pressing a button that looks
+                unrelated — and anyone who did not would lose the change on the
+                next reload without being told. */}
+            <div className="flex items-center gap-3 mt-3">
+              <Button
+                variant={brandDirty ? 'primary' : 'secondary'}
+                size="sm"
+                loading={savingBrand}
+                disabled={!brandDirty}
+                onClick={saveBrandColour}
+              >
+                {brandDirty ? 'Save colour' : 'Colour saved'}
+              </Button>
+              {brandDirty && (
+                <button
+                  type="button"
+                  onClick={discardBrandColour}
+                  className="text-sm font-medium text-content-muted min-h-[36px] px-1"
+                >
+                  Discard
+                </button>
+              )}
+            </div>
             <p className="text-xs text-content-subtle mt-2">
-              Changes preview instantly. Press Save details above to keep them.
+              {brandDirty
+                ? 'Previewing. Save to apply it everywhere.'
+                : 'Used across every screen, and on printed receipts.'}
             </p>
           </div>
         </CardBody>

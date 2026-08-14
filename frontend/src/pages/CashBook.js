@@ -79,13 +79,13 @@ export default function CashBook() {
   const ledger = useApi(
     (signal) => api.get('/cash-book', { params, signal }).then((r) => r.data),
     [params],
-    { keepPreviousData: true }
+    { keepPreviousData: true, cacheKey: 'cash-book' }
   );
 
   const summary = useApi(
     (signal) => api.get('/cash-book/summary', { signal }).then((r) => r.data),
     [],
-    { keepPreviousData: true }
+    { keepPreviousData: true, cacheKey: 'cash-book/summary' }
   );
 
   const meta = useApi((signal) => api.get('/cash-book/meta', { signal }).then((r) => r.data), []);

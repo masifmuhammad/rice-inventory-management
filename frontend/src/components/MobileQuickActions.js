@@ -46,7 +46,7 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
   const recent = useApi(
     (signal) => api.get('/transactions', { params: { limit: 1 }, signal }).then((r) => r.data),
     [],
-    { keepPreviousData: true }
+    { keepPreviousData: true, cacheKey: 'transactions/last' }
   );
 
   const last = recent.data?.data?.[0] || null;

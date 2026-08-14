@@ -109,7 +109,7 @@ export default function Transactions() {
   const transactions = useApi(
     (signal) => api.get('/transactions', { params, signal }).then((r) => r.data),
     [params],
-    { keepPreviousData: true }
+    { keepPreviousData: true, cacheKey: 'transactions' }
   );
 
   // Needed for the form's product picker; kept separate so the list can refresh

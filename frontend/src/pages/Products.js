@@ -81,7 +81,7 @@ export default function Products() {
   const products = useApi(
     (signal) => api.get('/products', { params, signal }).then((r) => r.data),
     [params],
-    { keepPreviousData: true }
+    { keepPreviousData: true, cacheKey: 'products' }
   );
 
   // `keepPreviousData` so a post-save refetch does not blank the figures — and
@@ -89,7 +89,7 @@ export default function Products() {
   const summary = useApi(
     (signal) => api.get('/products/summary', { signal }).then((r) => r.data),
     [],
-    { keepPreviousData: true }
+    { keepPreviousData: true, cacheKey: 'products/summary' }
   );
 
   const meta = useApi((signal) => api.get('/products/meta', { signal }).then((r) => r.data), []);

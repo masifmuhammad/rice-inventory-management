@@ -173,19 +173,19 @@ export default function Dashboard() {
   const stats = useApi(
     (signal) => api.get('/reports/dashboard', { signal }).then((r) => r.data),
     [],
-    { keepPreviousData: true }
+    { keepPreviousData: true, cacheKey: 'reports/dashboard' }
   );
 
   const analytics = useApi(
     (signal) => api.get('/reports/bi-analytics', { params: rangeParams, signal }).then((r) => r.data),
     [rangeParams],
-    { keepPreviousData: true }
+    { keepPreviousData: true, cacheKey: 'reports/bi-analytics' }
   );
 
   const profit = useApi(
     (signal) => api.get('/reports/profit-analysis', { params: rangeParams, signal }).then((r) => r.data),
     [rangeParams],
-    { keepPreviousData: true }
+    { keepPreviousData: true, cacheKey: 'reports/profit' }
   );
 
   const handleExport = useCallback(async () => {
