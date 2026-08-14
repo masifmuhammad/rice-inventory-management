@@ -31,7 +31,6 @@ import { EmptyState, ErrorState } from '../components/ui/States';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
 import Modal from '../components/ui/Modal';
-import SwipeAction from '../components/ui/SwipeAction';
 import TransactionFormModal from '../components/transactions/TransactionFormModal';
 
 const TYPE_FILTERS = [
@@ -341,9 +340,12 @@ export default function Transactions() {
                 const tone = transactionTone[transaction.type] || transactionTone.adjustment;
                 const Icon = typeIcon[transaction.type] || FiEdit;
 
+                // No swipe-to-reverse on these rows: this list sits between
+                // Stock and Cash in the tab bar, so a left swipe on a row is the
+                // same gesture as "go to Cash". Navigation wins — it is used far
+                // more often, and the reverse button is right there.
                 return (
                   <li key={transaction._id}>
-                  <SwipeAction label="Reverse" onAction={() => handleReverse(transaction)}>
                   <div
                     role="button"
                     tabIndex={0}
@@ -461,7 +463,6 @@ export default function Transactions() {
                       </div>
                     </div>
                   </div>
-                  </SwipeAction>
                   </li>
                 );
               })}

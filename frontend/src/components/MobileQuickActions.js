@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   FiAlertCircle,
   FiArrowDownLeft,
@@ -217,29 +217,82 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
 
       {/* Last recorded, as one line. The full list lives on Transactions; this
           exists so a receipt for what was just entered is one tap away. */}
-      {last && (
-        <motion.button
+      <LastRecordedCapsule
+        transaction={last}
+        currencySymbol={currencySymbol}
+        downloading={downloading}
+        onReceipt={handleReceipt}
+        reducedMotion={reducedMotion}
+      />
+    </div>
+  );
+}
+
+/** Past this the release counts as a dismissal rather than a stray nudge. */
+const DISMISS = 88;
+
+/**
+ * The last recorded entry, as one dismissible line.
+ *
+ * Keyed by transaction id at the call site rather than animating on every
+ * render: the parent re-renders whenever any of its queries settle, and an
+ * entrance tied to render is what made this flicker. It animates when the
+ * *entry* changes and stays still otherwise.
+ *
+ * Dismissing is per entry and remembered, so a capsule swiped away does not
+ * reappear on the next refetch — the whole point of dismissing it.
+ */
+function LastRecordedCapsule({ transaction, currencySymbol, downloading, onReceipt, reducedMotion }) {
+  const [dismissed, setDismissed] = useState(null);
+
+  if (!transaction || dismissed === transaction._id) return null;
+
+  const isOut = transaction.type === 'stock_out';
+
+  return (
+    <AnimatePresence initial={false} mode="popLayout">
+      <motion.div
+        key={transaction._id}
+        layout={!reducedMotion}
+        initial={reducedMotion ? { opacity: 0 } : { opacity: 0, transform: 'translateY(10px)' }}
+        animate={{ opacity: 1, transform: 'translateY(0px)' }}
+        exit={reducedMotion ? { opacity: 0 } : { opacity: 0, transform: 'scale(0.96)' }}
+        transition={{ duration: 0.26, ease: EASE_OUT }}
+        drag={reducedMotion ? false : 'x'}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.9}
+        dragSnapToOrigin
+        onDragEnd={(event, info) => {
+          // A flick counts even if it did not travel far — the same rule the
+          // platform uses for dismissing its own notifications.
+          const flicked = Math.abs(info.velocity.x) > 420;
+          if (Math.abs(info.offset.x) > DISMISS || flicked) setDismissed(transaction._id);
+        }}
+        className="touch-pan-y"
+      >
+        <button
           type="button"
-          {...rise(0.08)}
-          onClick={handleReceipt}
+          onClick={onReceipt}
           disabled={downloading}
-          aria-label={`Receipt for ${last.product?.name || 'the last transaction'}`}
+          aria-label={`Receipt for ${transaction.product?.name || 'the last transaction'}`}
           className="w-full flex items-center gap-2.5 rounded-full pl-4 pr-2 py-2
             surface-card text-left
             active:scale-[0.985] transition-transform duration-150 ease-out
             motion-reduce:active:scale-100 disabled:opacity-60"
         >
           <span
-            className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              last.type === 'stock_out' ? 'bg-red-500' : 'bg-emerald-500'
-            }`}
+            className={`w-2 h-2 rounded-full flex-shrink-0 ${isOut ? 'bg-red-500' : 'bg-emerald-500'}`}
             aria-hidden="true"
           />
           <span className="min-w-0 flex-1 truncate text-[14px] text-content-muted">
-            <span className="font-medium text-content">{last.product?.name || 'Last entry'}</span>
+            <span className="font-medium text-content">
+              {transaction.product?.name || 'Last entry'}
+            </span>
             {' · '}
-            {formatQuantity(last.quantity, last.unit)}
-            {last.totalValue > 0 ? ` · ${formatMoney(last.totalValue, currencySymbol)}` : ''}
+            {formatQuantity(transaction.quantity, transaction.unit)}
+            {transaction.totalValue > 0
+              ? ` · ${formatMoney(transaction.totalValue, currencySymbol)}`
+              : ''}
           </span>
           <span className="grid place-items-center w-9 h-9 rounded-full bg-hairline/[0.06] flex-shrink-0">
             <FiDownload
@@ -247,8 +300,8 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
               aria-hidden="true"
             />
           </span>
-        </motion.button>
-      )}
-    </div>
+        </button>
+      </motion.div>
+    </AnimatePresence>
   );
 }

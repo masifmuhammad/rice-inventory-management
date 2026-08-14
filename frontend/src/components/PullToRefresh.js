@@ -2,10 +2,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FiRefreshCw } from 'react-icons/fi';
 import { feedbackTick } from '../utils/feedback';
 
-/** How far the page must be pulled before releasing counts as a refresh. */
-const THRESHOLD = 72;
+/**
+ * How far the page must be pulled before releasing counts as a refresh.
+ *
+ * Deliberately a long pull. Refreshing is cheap but not free, and a short
+ * threshold turns every slightly-downward scroll attempt into a reload.
+ */
+const THRESHOLD = 110;
 /** Past this, extra pull barely moves the indicator — the rubber-band. */
-const MAX = 120;
+const MAX = 160;
+/** Vertical movement has to beat horizontal by this much to count as a pull. */
+const AXIS_BIAS = 1.4;
 
 /**
  * Pull down at the top of a page to refresh it.
@@ -37,15 +44,20 @@ export default function PullToRefresh() {
         start.current = null;
         return;
       }
-      start.current = event.touches[0].clientY;
+      start.current = { y: event.touches[0].clientY, x: event.touches[0].clientX };
     };
 
     const onTouchMove = (event) => {
       if (start.current === null || busy) return;
 
-      const delta = event.touches[0].clientY - start.current;
-      if (delta <= 0) {
+      const delta = event.touches[0].clientY - start.current.y;
+      const sideways = Math.abs(event.touches[0].clientX - start.current.x);
+
+      // A swipe between tabs is a horizontal gesture that drifts down a little.
+      // Without this it also armed the refresh, so changing tab reloaded the app.
+      if (delta <= 0 || delta < sideways * AXIS_BIAS) {
         setPull(0);
+        armed.current = false;
         return;
       }
 
@@ -119,11 +131,19 @@ export default function PullToRefresh() {
         transition: start.current === null ? 'transform 220ms cubic-bezier(0.16,1,0.3,1)' : 'none',
       }}
     >
-      <span className="grid place-items-center w-9 h-9 rounded-full bg-surface-1 shadow-md border border-hairline/[0.08]">
+      {/* Says what will happen, so the gesture is not a guess. The arrow winds
+          up as you pull and spins once it is doing the work. */}
+      <span
+        className="inline-flex items-center gap-2 h-9 pl-2.5 pr-3.5 rounded-full
+          bg-surface-1 shadow-md border border-hairline/[0.08]"
+      >
         <FiRefreshCw
-          className={`w-4 h-4 text-content-muted ${busy ? 'animate-spin' : ''}`}
-          style={busy ? undefined : { transform: `rotate(${progress * 270}deg)`, opacity: 0.3 + progress * 0.7 }}
+          className={`w-4 h-4 flex-shrink-0 ${busy ? 'animate-spin text-primary-600 dark:text-primary-400' : 'text-content-muted'}`}
+          style={busy ? undefined : { transform: `rotate(${progress * 270}deg)` }}
         />
+        <span className="text-[13px] font-medium text-content-muted whitespace-nowrap">
+          {busy ? 'Refreshing…' : progress >= 1 ? 'Release to refresh' : 'Pull to refresh'}
+        </span>
       </span>
     </div>
   );

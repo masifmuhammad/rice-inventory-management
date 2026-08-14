@@ -20,7 +20,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useConfirm } from './ui/ConfirmProvider';
-import usePrefetchRoute from '../hooks/usePrefetchRoute';
+import usePrefetchRoute, { usePrefetchTabs } from '../hooks/usePrefetchRoute';
 import BrandLogo from './BrandLogo';
 import ErrorBoundary from './ErrorBoundary';
 import BusinessSwitcher from './BusinessSwitcher';
@@ -280,6 +280,9 @@ export default function Layout() {
   // Swipe left and right to move between the tab-bar pages. Disabled while the
   // drawer is open, which owns horizontal movement for as long as it is up.
   useTabSwipe({ enabled: !drawerOpen });
+
+  // Every tab chunk warmed during idle time, so a swipe never waits on a fetch.
+  usePrefetchTabs();
 
   useEffect(() => {
     if (!drawerOpen) return undefined;
