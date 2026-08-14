@@ -31,6 +31,7 @@ import Pagination from '../components/ui/Pagination';
 import { EmptyState, ErrorState } from '../components/ui/States';
 import { SkeletonStatCards, SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
+import SwipeAction from '../components/ui/SwipeAction';
 import CashEntryModal from '../components/cash/CashEntryModal';
 
 const TABS = [
@@ -302,7 +303,13 @@ export default function CashBook() {
                 const auto = entry.source === 'sale';
 
                 return (
-                  <li key={entry._id} className="p-4 sm:px-6 hover:bg-hairline/[0.05] transition-colors">
+                  <li key={entry._id}>
+                  {/* Sale lines are posted from a transaction and the API
+                      refuses to delete them, so they must not offer the gesture
+                      either — a swipe that always ends in an error message is
+                      worse than no swipe. */}
+                  <SwipeAction disabled={auto} onAction={() => handleDelete(entry)}>
+                  <div className="p-4 sm:px-6 hover:bg-hairline/[0.05] transition-colors">
                     {/* Stacked on phones. Side by side, the two nowrap money
                         strings reserved ~132px of a 256px row, leaving about
                         60px for the purpose and its category badge — which the
@@ -398,6 +405,8 @@ export default function CashBook() {
                         )}
                       </div>
                     </div>
+                  </div>
+                  </SwipeAction>
                   </li>
                 );
               })}

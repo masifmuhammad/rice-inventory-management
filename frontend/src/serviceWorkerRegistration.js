@@ -24,10 +24,45 @@ export function register(config) {
   });
 }
 
+/**
+ * Ask the browser to look for a new build.
+ *
+ * A service worker only checks for an update on navigation. An installed PWA on
+ * an iPhone home screen is almost never navigated — it is opened, backgrounded,
+ * and opened again for weeks — so without this a deploy can sit unnoticed
+ * indefinitely and there is no address bar to reload from. Checking whenever the
+ * app comes back to the foreground is what makes "I pushed an update" actually
+ * reach the device.
+ */
+function watchForUpdates(registration) {
+  const check = () => {
+    if (document.visibilityState === 'visible') registration.update().catch(() => {});
+  };
+
+  document.addEventListener('visibilitychange', check);
+  window.addEventListener('focus', check);
+  // Also on a long-lived session that never gets backgrounded.
+  setInterval(check, 60 * 60 * 1000);
+
+  // Pull-to-refresh doubles as "get me the latest" — the gesture users already
+  // reach for when something looks stale.
+  window.addEventListener('rim:refresh', check);
+}
+
 function registerValidSW(swUrl, config) {
   navigator.serviceWorker
     .register(swUrl)
     .then((registration) => {
+      watchForUpdates(registration);
+
+      // A build that finished installing while the app was backgrounded is
+      // already sitting in `waiting`, and `onupdatefound` has long since fired
+      // for it — so without this the prompt never appears and the update stalls
+      // one tap away from being applied, forever.
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        config?.onUpdate?.(registration);
+      }
+
       registration.onupdatefound = () => {
         const installing = registration.installing;
         if (!installing) return;
