@@ -264,8 +264,7 @@ export const Select = forwardRef(function Select(
                 : shellClasses(error, 'relative w-full text-left cursor-pointer')
             }
               data-[open]:ring-2 data-[open]:ring-primary-500/35 data-[open]:border-primary-500/55
-              active:scale-[0.99] transition-transform duration-100 ease-out
-              motion-reduce:active:scale-100
+              active:bg-hairline/[0.04] transition-colors duration-100 ease-out
               disabled:cursor-not-allowed disabled:opacity-65`}
           >
             <ShellLabel as="span" label={label} required={required} />

@@ -349,7 +349,7 @@ export default function Layout() {
       <Dialog open={drawerOpen} onClose={closeDrawer} className="relative z-50 lg:hidden">
         <DialogBackdrop
           transition
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
             data-[closed]:opacity-0 motion-reduce:duration-150"
         />
 

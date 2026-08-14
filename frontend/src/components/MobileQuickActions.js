@@ -153,7 +153,7 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
           {...rise(0.04)}
           onClick={() => navigate('/products', { state: { lowStockOnly: true } })}
           className={`w-full flex items-center gap-3 rounded-card px-4 py-3 text-left
-            active:scale-[0.985] transition-transform duration-150 ease-out
+            active:scale-[0.96] transition-transform duration-150 ease-out
             motion-reduce:active:scale-100 ${
               urgent
                 ? 'bg-red-500/[0.09] shadow-[inset_0_0_0_1px_rgb(239_68_68/0.28)]'
@@ -170,7 +170,7 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
                 ? `${outOfStock} ${outOfStock === 1 ? 'product is' : 'products are'} out of stock`
                 : `${lowStockCount} ${lowStockCount === 1 ? 'product is' : 'products are'} running low`}
             </span>
-            <span className="block text-[13px] text-content-subtle truncate">
+            <span className="block text-[13px] text-content-subtle truncate tabular-nums">
               {lowStock
                 .slice(0, 2)
                 .map((p) => `${p.name} · ${formatQuantity(p.currentStock, p.unit)}`)
@@ -277,14 +277,14 @@ function LastRecordedCapsule({ transaction, currencySymbol, downloading, onRecei
           aria-label={`Receipt for ${transaction.product?.name || 'the last transaction'}`}
           className="w-full flex items-center gap-2.5 rounded-full pl-4 pr-2 py-2
             surface-card text-left
-            active:scale-[0.985] transition-transform duration-150 ease-out
+            active:scale-[0.96] transition-transform duration-150 ease-out
             motion-reduce:active:scale-100 disabled:opacity-60"
         >
           <span
             className={`w-2 h-2 rounded-full flex-shrink-0 ${isOut ? 'bg-red-500' : 'bg-emerald-500'}`}
             aria-hidden="true"
           />
-          <span className="min-w-0 flex-1 truncate text-[14px] text-content-muted">
+          <span className="min-w-0 flex-1 truncate text-[14px] text-content-muted tabular-nums">
             <span className="font-medium text-content">
               {transaction.product?.name || 'Last entry'}
             </span>
