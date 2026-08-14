@@ -11,7 +11,7 @@ const { audit } = require('../middleware/audit');
 const { requireCapability } = require('../middleware/permissions');
 const { resolveUuid } = require('../db/helpers');
 
-const round2 = (n) => Math.round(n * 100) / 100;
+const { round2 } = require('../db/helpers');
 
 /**
  * Stock levels, not money. `current_stock` and `quantity` are NUMERIC(14,4), so
@@ -19,7 +19,7 @@ const round2 = (n) => Math.round(n * 100) / 100;
  * before/after snapshot to two would make the ledger disagree with the balance
  * it was taken from. Money stays on round2 — currency really is two places.
  */
-const roundQty = (n) => Math.round(n * 10000) / 10000;
+const { round4: roundQty } = require('../db/helpers');
 
 const resolveProductId = (transaction) =>
   resolveUuid(transaction.productId) || resolveUuid(transaction.product);

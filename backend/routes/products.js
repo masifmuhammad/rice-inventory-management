@@ -8,6 +8,7 @@ const validate = require('../middleware/validate');
 const { asyncHandler, ApiError } = require('../middleware/errorHandler');
 const { requireCapability } = require('../middleware/permissions');
 const { audit } = require('../middleware/audit');
+const { round2 } = require('../db/helpers');
 
 const CATEGORIES = ['Basmati', 'Jasmine', 'Long Grain', 'Short Grain', 'Brown Rice', 'Wild Rice', 'Other'];
 const UNITS = ['kg', 'ton', 'bag', 'sack'];
@@ -120,8 +121,8 @@ router.get(
 
     res.json({
       total: summary.total,
-      stockValue: Math.round(summary.stockValue * 100) / 100,
-      retailValue: Math.round(summary.retailValue * 100) / 100,
+      stockValue: round2(summary.stockValue),
+      retailValue: round2(summary.retailValue),
       lowStock: summary.lowStock,
       healthy: summary.total - summary.lowStock,
     });

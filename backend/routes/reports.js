@@ -7,7 +7,7 @@ const auth = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { requireCapability, can } = require('../middleware/permissions');
 
-const round2 = (n) => Math.round((n || 0) * 100) / 100;
+const { round2 } = require('../db/helpers');
 
 /** How many individual sales the profit report lists. Totals are not capped by it. */
 const DETAIL_LIMIT = 1000;

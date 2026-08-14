@@ -2,7 +2,7 @@ const Product = require('../models/Product');
 const Transaction = require('../models/Transaction');
 const CashEntry = require('../models/CashEntry');
 
-const round2 = (n) => Math.round((n || 0) * 100) / 100;
+const { round2 } = require('../db/helpers');
 
 const daysAgo = (n) => {
   const d = new Date();

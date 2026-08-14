@@ -17,7 +17,7 @@ const { requireCapability } = require('../middleware/permissions');
  * present the old field names.
  */
 
-const round2 = (n) => Math.round((n || 0) * 100) / 100;
+const { round2 } = require('../db/helpers');
 
 const startOfMonth = () => {
   const now = new Date();

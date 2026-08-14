@@ -8,7 +8,7 @@ const { asyncHandler, ApiError } = require('../middleware/errorHandler');
 const { audit } = require('../middleware/audit');
 const { requireCapability } = require('../middleware/permissions');
 
-const round2 = (n) => Math.round((n || 0) * 100) / 100;
+const { round2 } = require('../db/helpers');
 
 const startOfMonth = () => {
   const now = new Date();

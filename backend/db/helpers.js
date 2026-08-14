@@ -47,6 +47,33 @@ const pick = (obj, keys) =>
  */
 const likePattern = (search) => `%${String(search).replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 
+/**
+ * Rounds money to paisa, half away from zero.
+ *
+ * `Math.round(n * 100) / 100` is wrong for a ledger: the multiply happens in
+ * binary, so a value whose decimal form ends in a 5 can land just under the
+ * boundary and round down. round2(1.005) gave 1.00, round2(8.165) gave 8.16,
+ * round2(162.295) gave 162.29 — each one a paisa quietly lost on a real sale.
+ *
+ * Shifting through the exponent in string form skips the float multiply
+ * entirely. The sign is applied separately because Math.round breaks ties
+ * toward +Infinity, so -1.005 would round to -1.00 rather than -1.01.
+ */
+const round2 = (n) => {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return 0;
+  const sign = v < 0 ? -1 : 1;
+  return sign * Number(`${Math.round(Number(`${Math.abs(v)}e2`))}e-2`);
+};
+
+/** Same, at the four decimal places the quantity columns store. */
+const round4 = (n) => {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return 0;
+  const sign = v < 0 ? -1 : 1;
+  return sign * Number(`${Math.round(Number(`${Math.abs(v)}e4`))}e-4`);
+};
+
 const pgError = (error) => {
   if (error.code === '23505') {
     const field = error.detail?.match(/\(([^)]+)\)/)?.[1] || 'field';
@@ -74,4 +101,6 @@ module.exports = {
   pick,
   pgError,
   likePattern,
+  round2,
+  round4,
 };
