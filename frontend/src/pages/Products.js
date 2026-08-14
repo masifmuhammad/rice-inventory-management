@@ -55,6 +55,9 @@ export default function Products() {
     const state = location.state;
     if (!state) return;
     if (typeof state.search === 'string') setSearch(state.search);
+    // Arriving from the home screen's low-stock alert: land on the filtered
+    // view, not the full list the user would then have to filter themselves.
+    if (state.lowStockOnly) setLowStockOnly(true);
     if (state.openCreate) {
       setEditing(null);
       setModalOpen(true);

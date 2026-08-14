@@ -1,8 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
+  FiAlertCircle,
   FiArrowDownLeft,
   FiArrowUpRight,
+  FiChevronRight,
   FiDownload,
   FiPackage,
   FiTrendingUp,
@@ -13,66 +16,64 @@ import useApi from '../hooks/useApi';
 import useActionUsage from '../hooks/useActionUsage';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { toast } from '../utils/toast';
 import { formatMoney, formatQuantity } from '../utils/currency';
-import { formatSafe } from '../utils/date';
-import Card from './ui/Card';
 import Button from './ui/Button';
 
+/** Strong ease-out — the stock curves do not read as deliberate. */
+const EASE_OUT = [0.23, 1, 0.32, 1];
+
 /**
- * The top of the home screen on a phone.
+ * The top of the home screen on a phone: what to do, what needs attention, and
+ * what was last done — in that order, because that is the order they are needed.
  *
- * A dashboard on a desktop can afford to be a summary, because the sidebar puts
- * every screen one click away. On a phone the sidebar is a drawer and the tab
- * bar only holds four things, so a summary-first home screen means the work
- * always starts with navigation. This puts the jobs first and the figures below.
- *
- * The shortcuts reorder themselves by use — someone recording forty sales a day
- * should not have the same first button as someone who mostly receives
- * deliveries. Ordering is per device and decays, so it follows current habit
- * rather than being fixed by whatever the first busy week looked like.
+ * A dashboard on a desktop can afford to lead with figures, because the sidebar
+ * puts every screen one click away. On a phone the tab bar holds four things and
+ * everything else is behind a drawer, so leading with a summary means the work
+ * always starts with navigation.
  */
-export default function MobileQuickActions() {
+export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 }) {
   const navigate = useNavigate();
   const { can } = useAuth();
   const { currencySymbol, settings } = useSettings();
   const { record, order } = useActionUsage();
-  const [downloadingId, setDownloadingId] = useState(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const [downloading, setDownloading] = useState(false);
 
-  // Enough to reprint what was recorded in the last few minutes, which is what
-  // this is for — Transactions is still where you go to look something up.
+  // Only the last one. This is a shortcut to reprinting what was just recorded,
+  // not a second copy of the transactions list.
   const recent = useApi(
-    (signal) => api.get('/transactions', { params: { limit: 4 }, signal }).then((r) => r.data),
+    (signal) => api.get('/transactions', { params: { limit: 1 }, signal }).then((r) => r.data),
     [],
     { keepPreviousData: true }
   );
 
-  const handleReceipt = useCallback(
-    async (transaction) => {
-      if (!transaction.product) {
-        toast.error('This transaction has no product attached.');
-        return;
-      }
+  const last = recent.data?.data?.[0] || null;
 
-      setDownloadingId(transaction._id);
-      try {
-        const { generateTransactionPDF } = await import('../utils/pdfGenerator');
-        const outcome = await generateTransactionPDF(transaction, transaction.product, settings);
+  const handleReceipt = useCallback(async () => {
+    if (!last?.product) {
+      toast.error('This transaction has no product attached.');
+      return;
+    }
 
-        if (outcome === 'cancelled') toast.dismiss();
-        else if (outcome === 'shared')
-          toast.success('Receipt ready — choose "Save to Files" to keep it', { feedback: 'download' });
-        else if (outcome === 'insecure')
-          toast.error('Open the app over https to save files on iPhone');
-        else toast.success('Receipt downloaded', { feedback: 'download' });
-      } catch (error) {
-        toast.error(getErrorMessage(error, 'Could not build the receipt'));
-      } finally {
-        setDownloadingId(null);
-      }
-    },
-    [settings]
-  );
+    setDownloading(true);
+    try {
+      const { generateTransactionPDF } = await import('../utils/pdfGenerator');
+      const outcome = await generateTransactionPDF(last, last.product, settings);
+
+      if (outcome === 'cancelled') toast.dismiss();
+      else if (outcome === 'shared')
+        toast.success('Receipt ready — choose "Save to Files" to keep it', { feedback: 'download' });
+      else if (outcome === 'insecure')
+        toast.error('Open the app over https to save files on iPhone');
+      else toast.success('Receipt downloaded', { feedback: 'download' });
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Could not build the receipt'));
+    } finally {
+      setDownloading(false);
+    }
+  }, [last, settings]);
 
   const available = [
     can('transactions.create') && {
@@ -115,12 +116,21 @@ export default function MobileQuickActions() {
     navigate(action.to, { state: action.state });
   };
 
-  const list = recent.data?.data || [];
+  // Entrances start from a visible offset, never from nothing — an element that
+  // materialises out of zero reads as a glitch rather than an arrival.
+  const rise = (delay) =>
+    reducedMotion
+      ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.12 } }
+      : {
+          initial: { opacity: 0, transform: 'translateY(8px)' },
+          animate: { opacity: 1, transform: 'translateY(0px)' },
+          transition: { duration: 0.26, ease: EASE_OUT, delay },
+        };
 
   return (
-    <div className="lg:hidden space-y-3">
-      {/* The most-used action gets its own full-width row. The thing done fifty
-          times a day should not be the same size as the thing done weekly. */}
+    <div className="lg:hidden space-y-2.5">
+      {/* The most-used action gets its own row. The thing done fifty times a day
+          should not be the same size as the thing done weekly. */}
       <Button
         variant="primary"
         icon={primary.icon}
@@ -147,48 +157,67 @@ export default function MobileQuickActions() {
         </div>
       )}
 
-      {list.length > 0 && (
-        <Card className="overflow-hidden">
-          <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-            <h2 className="text-base font-semibold text-content">Just recorded</h2>
-            <button
-              type="button"
-              onClick={() => navigate('/transactions')}
-              className="text-sm font-medium text-primary-600 dark:text-primary-400 min-h-[44px] px-2 -mr-2"
-            >
-              See all
-            </button>
-          </div>
+      {/* Attention. Present only when there is something to act on — a panel
+          that permanently says "all good" trains people to stop reading it. */}
+      {lowStockCount > 0 && (
+        <motion.button
+          type="button"
+          {...rise(0.04)}
+          onClick={() => navigate('/products', { state: { lowStockOnly: true } })}
+          className="w-full flex items-center gap-3 rounded-card px-4 py-3 text-left
+            bg-amber-500/[0.08] shadow-[inset_0_0_0_1px_rgb(245_158_11/0.22)]
+            active:scale-[0.985] transition-transform duration-150 ease-out
+            motion-reduce:active:scale-100"
+        >
+          <FiAlertCircle className="w-5 h-5 flex-shrink-0 text-amber-500" aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-medium text-content">
+              {lowStockCount} {lowStockCount === 1 ? 'product is' : 'products are'} low on stock
+            </span>
+            <span className="block text-[13px] text-content-subtle truncate">
+              {lowStock
+                .slice(0, 2)
+                .map((p) => `${p.name} · ${formatQuantity(p.currentStock, p.unit)}`)
+                .join(' · ') || 'Tap to review'}
+            </span>
+          </span>
+          <FiChevronRight className="w-4 h-4 flex-shrink-0 text-content-subtle" aria-hidden="true" />
+        </motion.button>
+      )}
 
-          <ul className="divide-y divide-hairline">
-            {list.map((transaction) => (
-              <li key={transaction._id} className="flex items-center gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-medium text-content truncate">
-                    {transaction.product?.name || 'Deleted product'}
-                  </p>
-                  <p className="text-[13px] text-content-subtle tabular-nums truncate">
-                    {formatQuantity(transaction.quantity, transaction.unit)}
-                    {transaction.totalValue > 0
-                      ? ` · ${formatMoney(transaction.totalValue, currencySymbol)}`
-                      : ''}
-                    {' · '}
-                    {formatSafe(transaction.createdAt, 'd MMM, h:mm a', '')}
-                  </p>
-                </div>
-
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  icon={FiDownload}
-                  aria-label={`Receipt for ${transaction.product?.name || 'transaction'}`}
-                  loading={downloadingId === transaction._id}
-                  onClick={() => handleReceipt(transaction)}
-                />
-              </li>
-            ))}
-          </ul>
-        </Card>
+      {/* Last recorded, as one line. The full list lives on Transactions; this
+          exists so a receipt for what was just entered is one tap away. */}
+      {last && (
+        <motion.button
+          type="button"
+          {...rise(0.08)}
+          onClick={handleReceipt}
+          disabled={downloading}
+          aria-label={`Receipt for ${last.product?.name || 'the last transaction'}`}
+          className="w-full flex items-center gap-2.5 rounded-full pl-4 pr-2 py-2
+            surface-card text-left
+            active:scale-[0.985] transition-transform duration-150 ease-out
+            motion-reduce:active:scale-100 disabled:opacity-60"
+        >
+          <span
+            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              last.type === 'stock_out' ? 'bg-red-500' : 'bg-emerald-500'
+            }`}
+            aria-hidden="true"
+          />
+          <span className="min-w-0 flex-1 truncate text-[14px] text-content-muted">
+            <span className="font-medium text-content">{last.product?.name || 'Last entry'}</span>
+            {' · '}
+            {formatQuantity(last.quantity, last.unit)}
+            {last.totalValue > 0 ? ` · ${formatMoney(last.totalValue, currencySymbol)}` : ''}
+          </span>
+          <span className="grid place-items-center w-9 h-9 rounded-full bg-hairline/[0.06] flex-shrink-0">
+            <FiDownload
+              className={`w-4 h-4 text-content-muted ${downloading ? 'animate-pulse' : ''}`}
+              aria-hidden="true"
+            />
+          </span>
+        </motion.button>
       )}
     </div>
   );

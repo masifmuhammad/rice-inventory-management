@@ -326,7 +326,10 @@ export default function Dashboard() {
       {/* On a phone the point of this screen is doing the next job, not reading
           a summary — so the jobs come first, above the figures. */}
       <motion.div variants={staggerItem}>
-        <MobileQuickActions />
+        <MobileQuickActions
+          lowStock={stats.data?.lowStockProducts || []}
+          lowStockCount={stats.data?.lowStockCount || 0}
+        />
       </motion.div>
 
       {/* Headline numbers */}
