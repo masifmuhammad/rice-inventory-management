@@ -31,8 +31,11 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - '5000:5000'
+    # Not published. Caddy reaches this over the compose network; exposing it on
+    # the host as well would leave a plain-HTTP door open beside the TLS one,
+    # which a bookmarked old URL would keep walking through.
+    expose:
+      - '5000'
     environment:
       NODE_ENV: production
       PORT: 5000
