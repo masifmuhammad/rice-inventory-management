@@ -1,0 +1,45 @@
+# TLS termination in front of the app.
+#
+# The app itself speaks plain HTTP on :5000 and knows nothing about this — it is
+# the same single-origin setup as before, just with Caddy holding the certificate
+# and forwarding. That keeps CORS out of the picture.
+#
+# The hostname is an nip.io address, which resolves *.<ip>.nip.io straight to
+# that IP with no DNS to configure. Let's Encrypt will issue a real certificate
+# for it, so there are no browser warnings — which matters, because a warning
+# staff are told to click through every day is worse than no warning at all.
+#
+# Certificates are stored in the `caddy-data` volume. Do not recreate that volume
+# casually: Let's Encrypt rate-limits issuance to 5 per hostname per week, and a
+# wiped volume means re-issuing from scratch.
+
+{
+	# A real address so expiry warnings reach a person.
+	email masifmmv@gmail.com
+}
+
+193.123.81.103.nip.io {
+	encode zstd gzip
+
+	reverse_proxy app:5000 {
+		# The app sits behind a proxy now. Without these it would see Caddy's
+		# container IP for every request, which breaks rate limiting and puts
+		# the wrong address in the audit log.
+		header_up X-Real-IP {remote_host}
+	}
+
+	# HSTS is deliberately absent until this has run cleanly for a while.
+	# Once set, a browser refuses plain HTTP for this host for the max-age
+	# period — so a certificate problem becomes an outage with no way back.
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+	}
+}

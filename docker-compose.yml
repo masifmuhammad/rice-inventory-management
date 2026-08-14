@@ -48,5 +48,32 @@ services:
       postgres:
         condition: service_healthy
 
+  # TLS terminator. Optional: bring it up with `--profile tls`, so a plain
+  # `docker compose up -d` on a machine with no domain still works unchanged.
+  #
+  #   docker compose --profile tls up -d
+  #
+  # Port 5000 stays published on `app` above, so the direct HTTP route keeps
+  # working while the certificate is being issued and as a fallback.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: ['tls']
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      - caddy-logs:/var/log/caddy
+    depends_on:
+      - app
+
 volumes:
   postgres-data:
+  # Holds the issued certificates. Let's Encrypt rate-limits to 5 per hostname
+  # per week, so losing this volume is not free.
+  caddy-data:
+  caddy-config:
+  caddy-logs:
