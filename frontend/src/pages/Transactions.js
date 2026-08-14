@@ -6,6 +6,7 @@ import {
   FiArrowRight,
   FiDownload,
   FiEdit,
+  FiEdit2,
   FiPlus,
   FiSearch,
   FiTrash2,
@@ -91,6 +92,8 @@ export default function Transactions() {
 
   const [downloadingId, setDownloadingId] = useState(null);
   const [detail, setDetail] = useState(null);
+  // The transaction currently being corrected, or null when creating a new one.
+  const [editing, setEditing] = useState(null);
 
   const debouncedSearch = useDebounce(search, 350);
 
@@ -145,6 +148,31 @@ export default function Transactions() {
       }
     },
     [transactions, products]
+  );
+
+  /**
+   * Corrects a transaction in place.
+   *
+   * The server moves the stock difference, rewrites the row and re-posts the
+   * cash line in one database transaction, so a correction can never leave the
+   * stock and the books disagreeing — which is the whole reason this is a PUT
+   * rather than a delete followed by a create.
+   */
+  const handleEdit = useCallback(
+    async (values) => {
+      try {
+        await api.put(`/transactions/${editing._id}`, values);
+        toast.success('Transaction corrected');
+        setModalOpen(false);
+        setEditing(null);
+        transactions.refetch();
+        products.refetch();
+      } catch (error) {
+        toast.error(getErrorMessage(error, 'Could not correct the transaction'));
+        throw error;
+      }
+    },
+    [editing, transactions, products]
   );
 
   const handleReverse = useCallback(
@@ -413,6 +441,17 @@ export default function Transactions() {
                         </Button>
                         <button
                           type="button"
+                          onClick={() => {
+                            setEditing(transaction);
+                            setModalOpen(true);
+                          }}
+                          aria-label="Correct transaction"
+                          className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/12 transition-colors"
+                        >
+                          <FiEdit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleReverse(transaction)}
                           aria-label="Reverse transaction"
                           className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
@@ -459,6 +498,16 @@ export default function Transactions() {
               >
                 Receipt
               </Button>
+              <Button
+                variant="secondary"
+                icon={FiEdit2}
+                onClick={() => {
+                  setEditing(detail);
+                  setDetail(null);
+                  setModalOpen(true);
+                }}
+                aria-label="Correct transaction"
+              />
               <Button
                 variant="dangerGhost"
                 icon={FiTrash2}
@@ -507,11 +556,26 @@ export default function Transactions() {
         onClose={() => {
           setModalOpen(false);
           setScanPrefill(null);
+          setEditing(null);
         }}
-        onSubmit={handleCreate}
+        onSubmit={editing ? handleEdit : handleCreate}
+        editing={Boolean(editing)}
         products={products.data || []}
         productsLoading={products.loading && !products.data}
-        initialValues={scanPrefill}
+        initialValues={
+          editing
+            ? {
+                type: editing.type,
+                product: editing.product?._id || editing.product,
+                quantity: editing.quantity,
+                price: editing.price,
+                reference: editing.reference,
+                supplier: editing.supplier,
+                customer: editing.customer,
+                notes: editing.notes,
+              }
+            : scanPrefill
+        }
       />
     </div>
   );

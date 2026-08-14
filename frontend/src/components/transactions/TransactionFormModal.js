@@ -33,6 +33,7 @@ export default function TransactionFormModal({
   products = [],
   productsLoading = false,
   initialValues = null,
+  editing = false,
 }) {
   const { currencySymbol } = useSettings();
   const [values, setValues] = useState(EMPTY);
@@ -146,8 +147,12 @@ export default function TransactionFormModal({
       onClose={saving ? () => {} : onClose}
       disableClose={saving}
       busy={saving}
-      title="New transaction"
-      description="Stock moves and the ledger updates together."
+      title={editing ? 'Correct transaction' : 'New transaction'}
+      description={
+        editing
+          ? 'Stock and the cash book are corrected to match.'
+          : 'Stock moves and the ledger updates together.'
+      }
       size="md"
       footer={
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
@@ -155,7 +160,7 @@ export default function TransactionFormModal({
             Cancel
           </Button>
           <Button type="submit" form="transaction-form" loading={saving}>
-            Record transaction
+            {editing ? 'Save correction' : 'Record transaction'}
           </Button>
         </div>
       }
@@ -175,8 +180,16 @@ export default function TransactionFormModal({
           value={values.product}
           onChange={set('product')}
           error={errors.product}
-          disabled={productsLoading}
-          hint={productsLoading ? 'Loading products…' : undefined}
+          // Pointing an existing movement at a different product is not a
+          // correction — it would leave the original product's stock wrong.
+          disabled={productsLoading || editing}
+          hint={
+            editing
+              ? 'To change the product, reverse this and record a new one'
+              : productsLoading
+                ? 'Loading products…'
+                : undefined
+          }
         >
           <option value="">{productsLoading ? 'Loading products…' : 'Select a product…'}</option>
           {!productsLoading &&

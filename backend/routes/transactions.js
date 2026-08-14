@@ -10,6 +10,7 @@ const { asyncHandler, ApiError } = require('../middleware/errorHandler');
 const { audit } = require('../middleware/audit');
 const { requireCapability } = require('../middleware/permissions');
 const { resolveUuid } = require('../db/helpers');
+const { withTransaction } = require('../config/db');
 
 const { round2 } = require('../db/helpers');
 
@@ -205,37 +206,44 @@ router.get(
 );
 
 // @route   POST /api/transactions
+/**
+ * Shared by create and correct. `product` is not here on purpose: pointing an
+ * existing movement at a different product is not a correction, it is a
+ * different transaction, and it would leave the original product's stock
+ * silently wrong.
+ */
+const transactionValidators = [
+  body('type')
+    .isIn(['stock_in', 'stock_out', 'adjustment', 'transfer'])
+    .withMessage('Pick a valid transaction type'),
+  // An adjustment can legitimately set stock to zero; a movement cannot be zero.
+  body('quantity')
+    .isFloat({ min: 0 })
+    .withMessage('Quantity must be 0 or greater')
+    .toFloat()
+    .custom((value, { req }) => {
+      if (['stock_in', 'stock_out'].includes(req.body.type) && value <= 0) {
+        throw new Error('Quantity must be greater than 0');
+      }
+      return true;
+    }),
+  body('price').optional({ values: 'falsy' }).isFloat({ min: 0 }).toFloat(),
+  // Bounded to match the columns. An over-long value would otherwise be
+  // rejected by Postgres *after* applyStockChange had already moved the
+  // stock, relying on the best-effort revert to put it back.
+  body('reference').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
+  body('batchNumber').optional({ values: 'falsy' }).trim().isLength({ max: 80 }),
+  body('supplier').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
+  body('customer').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
+  body('notes').optional({ values: 'falsy' }).trim().isLength({ max: 2000 }),
+];
+
 // @access  Private
 router.post(
   '/',
   auth,
   requireCapability('transactions.create'),
-  [
-    body('type')
-      .isIn(['stock_in', 'stock_out', 'adjustment', 'transfer'])
-      .withMessage('Pick a valid transaction type'),
-    body('product').isUUID().withMessage('Pick a product'),
-    // An adjustment can legitimately set stock to zero; a movement cannot be zero.
-    body('quantity')
-      .isFloat({ min: 0 })
-      .withMessage('Quantity must be 0 or greater')
-      .toFloat()
-      .custom((value, { req }) => {
-        if (['stock_in', 'stock_out'].includes(req.body.type) && value <= 0) {
-          throw new Error('Quantity must be greater than 0');
-        }
-        return true;
-      }),
-    body('price').optional({ values: 'falsy' }).isFloat({ min: 0 }).toFloat(),
-    // Bounded to match the columns. An over-long value would otherwise be
-    // rejected by Postgres *after* applyStockChange had already moved the
-    // stock, relying on the best-effort revert to put it back.
-    body('reference').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
-    body('batchNumber').optional({ values: 'falsy' }).trim().isLength({ max: 80 }),
-    body('supplier').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
-    body('customer').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
-    body('notes').optional({ values: 'falsy' }).trim().isLength({ max: 2000 }),
-  ],
+  [body('product').isUUID().withMessage('Pick a product'), ...transactionValidators],
   validate,
   asyncHandler(async (req, res) => {
     const { type, product: productId, quantity, price, reference, batchNumber, expiryDate, supplier, customer, notes } = req.body;
@@ -306,6 +314,140 @@ router.get(
 
     if (!transaction) throw new ApiError(404, 'Transaction not found');
     res.json(transaction);
+  })
+);
+
+/** What a movement does to the stock level. A transfer relocates, it does not change the count. */
+const stockEffect = (type, quantity) =>
+  type === 'stock_in' ? Number(quantity) : type === 'stock_out' ? -Number(quantity) : 0;
+
+// @route   PUT /api/transactions/:id
+// @desc    Correct a transaction that was recorded wrongly
+// @access  Private
+router.put(
+  '/:id',
+  auth,
+  requireCapability('transactions.reverse'),
+  [param('id').isUUID().withMessage('Invalid transaction id'), ...transactionValidators],
+  validate,
+  asyncHandler(async (req, res) => {
+    const { type, quantity, price, reference, batchNumber, supplier, customer, notes } = req.body;
+
+    const before = await Transaction.findById(req.params.id, { businessId: req.businessId });
+    if (!before) throw new ApiError(404, 'Transaction not found');
+
+    const productId = resolveProductId(before);
+    if (!productId) throw new ApiError(400, 'This transaction has no product attached');
+
+    /**
+     * An adjustment means "the true level is X", so it has no delta to move —
+     * re-basing one retroactively would silently rewrite every level recorded
+     * after it. Its wording can be corrected; its arithmetic cannot.
+     */
+    const movementChanged =
+      type !== before.type || Number(quantity) !== Number(before.quantity);
+    if (movementChanged && (type === 'adjustment' || before.type === 'adjustment')) {
+      throw new ApiError(
+        400,
+        'An adjustment sets the stock level outright, so it cannot be re-typed or re-quantified. Reverse it and record a new one.'
+      );
+    }
+
+    // Everything below has to land together or not at all: the stock move, the
+    // ledger row and the cash line are one correction, not three edits.
+    const updated = await withTransaction(async (client) => {
+      const delta = stockEffect(type, quantity) - stockEffect(before.type, before.quantity);
+
+      const { rows: stockRows } = await client.query(
+        `UPDATE products SET current_stock = current_stock + $1, updated_at = NOW()
+         WHERE id = $2 AND business_id = $3 AND current_stock + $1 >= 0
+         RETURNING current_stock, name`,
+        [delta, productId, req.businessId]
+      );
+
+      if (!stockRows[0]) {
+        // Either the product moved business, or the correction would drive the
+        // level below zero — which is the same "don't oversell" rule the create
+        // path enforces, just arriving from the other direction.
+        throw new ApiError(
+          400,
+          'That correction would take the stock below zero. Reduce the quantity, or record the missing stock first.'
+        );
+      }
+
+      const stockAfter = roundQty(Number(stockRows[0].current_stock));
+      const unitPrice = price ?? before.price ?? 0;
+      const totalValue = round2(unitPrice * Number(quantity));
+
+      const { rows } = await client.query(
+        `UPDATE transactions SET
+           type = $1, quantity = $2, price = $3, total_value = $4,
+           reference = $5, batch_number = $6, supplier = $7, customer = $8, notes = $9,
+           stock_before = $10, stock_after = $11, updated_at = NOW()
+         WHERE id = $12 AND business_id = $13
+         RETURNING *`,
+        [
+          type,
+          quantity,
+          unitPrice,
+          totalValue,
+          reference ?? null,
+          batchNumber ?? null,
+          supplier ?? null,
+          customer ?? null,
+          notes ?? null,
+          roundQty(stockAfter - stockEffect(type, quantity)),
+          stockAfter,
+          before._id,
+          req.businessId,
+        ]
+      );
+
+      /**
+       * Re-post the cash line rather than patching it: the correction may have
+       * turned a sale into a delivery, in which case the money never came in and
+       * the line must go entirely. Deleting then re-inserting covers becoming a
+       * sale, ceasing to be one, and changing amount, in one path.
+       */
+      await client.query(
+        `DELETE FROM cash_entries WHERE transaction_id = $1 AND source = 'sale' AND business_id = $2`,
+        [before._id, req.businessId]
+      );
+
+      if (type === 'stock_out' && totalValue > 0) {
+        await client.query(
+          `INSERT INTO cash_entries
+             (business_id, direction, amount, category, purpose, party, reference,
+              source, transaction_id, occurred_at, created_by)
+           VALUES ($1, 'in', $2, 'Sale', $3, $4, $5, 'sale', $6, $7, $8)`,
+          [
+            req.businessId,
+            totalValue,
+            `Sale — ${stockRows[0].name}`,
+            customer || '',
+            reference || '',
+            before._id,
+            before.createdAt || new Date(),
+            req.user._id,
+          ]
+        );
+      }
+
+      return rows[0];
+    });
+
+    audit(
+      req,
+      'UPDATE_TRANSACTION',
+      'TRANSACTION',
+      before._id,
+      { product: before.product?.name },
+      { type: before.type, quantity: before.quantity, totalValue: before.totalValue },
+      { type, quantity: Number(quantity), totalValue: Number(updated.total_value) }
+    );
+
+    const fresh = await Transaction.findById(before._id, { businessId: req.businessId });
+    res.json(fresh);
   })
 );
 

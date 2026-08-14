@@ -71,6 +71,32 @@ const connectDB = async ({ retries = 5 } = {}) => {
   }
 };
 
+/**
+ * Runs `fn` inside a single database transaction.
+ *
+ * Everything in this codebase is autocommit, which is fine for a single INSERT
+ * but not for an operation that has to move stock, rewrite a ledger row and
+ * re-post a cash entry together. Half of that applying is worse than none of it:
+ * the stock and the books disagree, and nothing says which is right.
+ *
+ * The callback receives the client — every query it makes must use it, or that
+ * query runs on a different connection outside the transaction.
+ */
+const withTransaction = async (fn) => {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 const isDbReady = () => Boolean(pool);
 
 const closeDB = async () => {
@@ -79,4 +105,4 @@ const closeDB = async () => {
   pool = null;
 };
 
-module.exports = { connectDB, closeDB, getPool, isDbReady };
+module.exports = { connectDB, closeDB, getPool, isDbReady, withTransaction };
