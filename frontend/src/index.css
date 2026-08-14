@@ -117,29 +117,49 @@
    * New Tab, which is what makes it feel like Safari rather than a kiosk.
    */
   @media (hover: none) and (pointer: coarse) {
+    /**
+     * Selection is off by default on a touchscreen.
+     *
+     * The opposite — opting individual text elements *into* selection — is what
+     * makes a web app feel like a web page: a finger dragged across a list to
+     * scroll it catches on a label and paints it blue instead. A native app
+     * never does that. Selection is a deliberate act here, not a side effect of
+     * touching the screen, so it lives on the few places that genuinely need it.
+     */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* Somewhere the user is actually editing or deliberately copying. */
+    input,
+    textarea,
+    [contenteditable],
+    .selectable {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    /* Long press still offers Copy / Look Up / Open in New Tab on real content —
+       `-webkit-touch-callout` is independent of selection, so turning selection
+       off above does not cost the context menu here. */
+    a,
+    img {
+      -webkit-touch-callout: default;
+    }
+
+    /* Never double-tap-zoomed, so the browser can dispatch the click
+       immediately rather than holding it back to see whether a second tap is
+       coming. That wait is most of what "not responsive" feels like. */
     button,
+    a,
     [role='button'],
     [role='tab'],
     [role='option'],
     label,
-    nav a {
-      -webkit-tap-highlight-color: transparent;
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
-      /* Tells the browser this element will never be double-tap-zoomed, so it
-         can dispatch the click immediately instead of holding it back to see
-         whether a second tap is coming. That wait is most of what "not
-         responsive" feels like on a touchscreen. */
+    summary {
       touch-action: manipulation;
-    }
-
-    /* Text, and links inside content, keep every native gesture. */
-    p, h1, h2, h3, h4, span, td, dd, li, input, textarea,
-    main a:not([role='button']) {
-      -webkit-touch-callout: default;
-      -webkit-user-select: text;
-      user-select: text;
     }
   }
 

@@ -141,6 +141,22 @@ export default function AssistantFab() {
           bottom-[calc(var(--app-tabbar-height)+1.5rem)] lg:bottom-6"
       />
 
+      {/* The fixed positioning and the drag transform are deliberately on two
+          different elements.
+
+          On one element, `position: fixed` plus a transform promotes it to its
+          own compositing layer, and iOS then updates that layer on a different
+          cadence to the rest of the fixed content while the page scrolls — so
+          the button visibly drifts and flickers against the tab bar beside it.
+          The outer element stays a plain fixed box; the inner one owns the
+          transform and moves relative to it. */}
+      <div
+        className="fixed z-50 pointer-events-none
+          right-4 sm:right-6
+          bottom-[calc(var(--app-tabbar-height)+1.5rem)] lg:bottom-6"
+        onMouseEnter={() => !isMobile && setHovered(true)}
+        onMouseLeave={() => !isMobile && !menuPinned && setHovered(false)}
+      >
       <motion.div
         drag
         dragConstraints={boundsRef}
@@ -150,11 +166,7 @@ export default function AssistantFab() {
         style={{ x, y }}
         // `touch-action: none` is what lets a drag start on a touchscreen at
         // all — without it the browser claims the gesture for scrolling.
-        className="fixed z-50 flex flex-col items-end gap-3 pointer-events-none touch-none
-          right-4 sm:right-6
-          bottom-[calc(var(--app-tabbar-height)+1.5rem)] lg:bottom-6"
-        onMouseEnter={() => !isMobile && setHovered(true)}
-        onMouseLeave={() => !isMobile && !menuPinned && setHovered(false)}
+        className="flex flex-col items-end gap-3 pointer-events-none touch-none"
       >
         <AnimatePresence initial={false}>
           {!isMobile && menuOpen && (
@@ -186,6 +198,7 @@ export default function AssistantFab() {
           <AssistantFabTrigger onClick={handleFabClick} expanded={hubOpen || (menuOpen && !isMobile)} />
         </div>
       </motion.div>
+      </div>
 
       <AssistantHubSheet open={hubOpen} onClose={() => setHubOpen(false)} />
       <AssistantPanels />
