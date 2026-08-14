@@ -32,7 +32,7 @@ const PRESET_COLORS = [
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
 export default function Settings() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, businessId } = useAuth();
   const { settings, updateSettings } = useSettings();
   const { preference, setTheme } = useTheme();
   const [feedbackPrefs, setFeedbackPrefsState] = useState(() => getFeedbackPrefs());
@@ -53,21 +53,37 @@ export default function Settings() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef(null);
 
+  /**
+   * Seeds the form from the saved settings — once per business, not on every
+   * change to the settings object.
+   *
+   * The effect used to key on `settings` identity alone, and `updateSettings`
+   * produces a new object. So uploading a logo (or removing one, or saving a
+   * brand colour) from this same page silently threw away whatever the user had
+   * typed into the business-name and phone fields, and a subsequent Save wrote
+   * the old values back with no indication anything had been lost.
+   */
+  const seededFor = useRef(null);
+
   useEffect(() => {
-    if (settings) {
-      setBusiness({
-        businessName: settings.businessName || '',
-        tagline: settings.tagline || '',
-        phone: settings.phone || '',
-        email: settings.email || '',
-        website: settings.website || '',
-        primaryColor: settings.primaryColor || '#0284c7',
-        currency: settings.currency || { code: 'PKR', symbol: 'Rs.' },
-        address: settings.address || {},
-        receiptSettings: settings.receiptSettings || {},
-      });
-    }
-  }, [settings]);
+    if (!settings) return;
+
+    const key = businessId ?? settings.businessName ?? '';
+    if (seededFor.current === key) return;
+
+    seededFor.current = key;
+    setBusiness({
+      businessName: settings.businessName || '',
+      tagline: settings.tagline || '',
+      phone: settings.phone || '',
+      email: settings.email || '',
+      website: settings.website || '',
+      primaryColor: settings.primaryColor || '#0284c7',
+      currency: settings.currency || { code: 'PKR', symbol: 'Rs.' },
+      address: settings.address || {},
+      receiptSettings: settings.receiptSettings || {},
+    });
+  }, [settings, businessId]);
 
   useEffect(() => {
     if (user) setProfile({ name: user.name || '', email: user.email || '' });
@@ -83,9 +99,18 @@ export default function Settings() {
   const previewColor = (hex) => {
     setBusiness((current) => ({ ...current, primaryColor: hex }));
     // Repaint immediately so the choice is judged against the real interface,
-    // not a swatch. Reverted on cancel by the settings reload.
+    // not a swatch.
     applyPalette(hex);
   };
+
+  // Nothing else re-reads settings on navigation, so leaving this page without
+  // saving used to leave the previewed colour painted across the whole app for
+  // the rest of the session — while Settings still showed the saved one as
+  // selected. Put the saved palette back on the way out.
+  useEffect(
+    () => () => applyPalette(settings?.primaryColor),
+    [settings?.primaryColor]
+  );
 
   const handleLogoChange = async (event) => {
     const file = event.target.files?.[0];
@@ -219,7 +244,17 @@ export default function Settings() {
                 placeholder="Inventory Management System"
                 className="sm:col-span-2"
               />
-              <Input label="Phone" value={business.phone} onChange={setBusinessField('phone')} placeholder="+92 300 0000000" />
+              {/* Every money and quantity field in the app declares its keyboard;
+                  this one was missed and opened the alphabetic one. */}
+              <Input
+                label="Phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={business.phone}
+                onChange={setBusinessField('phone')}
+                placeholder="+92 300 0000000"
+              />
               <Input label="Email" type="email" value={business.email} onChange={setBusinessField('email')} placeholder="shop@example.com" />
               <Input
                 label="City"

@@ -24,7 +24,10 @@
     --color-primary-800: 6 95 70;
     --color-primary-900: 6 78 59;
 
-    --app-header-height: 4rem;
+    /* The header is `h-[3.75rem] sm:h-16`, so this token has to follow it —
+       a flat 4rem left anything positioned against it floating 4px low on
+       phones. Overridden at the `sm` breakpoint below. */
+    --app-header-height: 3.75rem;
     /* Floating tab bar: inner height + bottom margin */
     --app-tabbar-height: 5.5rem;
 
@@ -94,6 +97,13 @@
     /* Shadow does almost nothing on near-black; the tonal step carries it. */
     --card-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -14px rgb(0 0 0 / 0.6);
     --card-shadow-hover: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 36px -16px rgb(0 0 0 / 0.7);
+  }
+
+  /* The header grows to 4rem from `sm` up (see AppHeader's `h-[3.75rem] sm:h-16`). */
+  @media (min-width: 640px) {
+    :root {
+      --app-header-height: 4rem;
+    }
   }
 
   html {
@@ -391,8 +401,12 @@
     @apply ring-red-500/30 border-red-500;
   }
 
+  /* 12px, not 11px. In a stacked field this label is the *only* thing naming
+     the input, and it is read on a phone while filling a form — the one place
+     in the app where sub-12px type is carrying real information rather than
+     decorating chrome. */
   .field-shell-label {
-    @apply block text-[11px] leading-tight font-medium text-content-subtle truncate;
+    @apply block text-xs leading-tight font-medium text-content-subtle truncate;
   }
 
   .field-shell-control {
@@ -633,8 +647,12 @@
    * two per card where this app shows four across. These cap below 48px so a
    * four-up row still fits; the tracking and weight are the reference's.
    */
+  /* The 1.5rem floor was set for a viewport wider than the phones this runs on:
+     a four-up stat grid gives each cell ~116px at 320px, and a 24px figure plus
+     its symbol and scale unit does not fit in that. Letting it fall to 1.25rem
+     costs nothing on larger screens, where the vw term is what applies. */
   .stat-figure {
-    font-size: clamp(1.5rem, 6vw, 2.5rem);
+    font-size: clamp(1.25rem, 5.4vw, 2.5rem);
     line-height: 1;
     letter-spacing: -0.03em;
   }

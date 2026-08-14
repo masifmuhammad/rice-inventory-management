@@ -117,7 +117,10 @@ router.put(
     const { step } = req.params;
     const settings = await getOrCreate(req.businessId);
 
-    if (settings.setupSteps[step] === undefined) {
+    // `hasOwnProperty`, not `=== undefined`: inherited keys such as `toString`
+    // are not undefined, so they passed the old guard and were written into the
+    // settings JSONB as extra steps that could never be ticked off.
+    if (!Object.prototype.hasOwnProperty.call(settings.setupSteps || {}, step)) {
       throw new ApiError(400, `Unknown onboarding step: ${step}`);
     }
 

@@ -6,6 +6,7 @@ import api, {
   getCachedCapabilities,
   getCachedUser,
   getToken,
+  isCancel,
   setCachedCapabilities,
   setCachedUser,
   setToken,
@@ -123,9 +124,6 @@ export function AuthProvider({ children }) {
     api
       .get('/auth/me', { signal: controller.signal })
       .then(({ data }) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7498/ingest/bb659440-42af-44d0-9469-4bd87f9cef58',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'130b99'},body:JSON.stringify({sessionId:'130b99',location:'AuthContext.js:auth-me-ok',message:'auth/me succeeded',data:{hasUser:Boolean(data?.user)},hypothesisId:'B',timestamp:Date.now(),runId:'pre-fix'})}).catch(()=>{});
-        // #endregion
         const resolved = normalizeCapabilities(data.user?.role, data.capabilities);
         setUser(data.user);
         setCachedUser(data.user);
@@ -137,12 +135,18 @@ export function AuthProvider({ children }) {
         writeBusinesses(data.businesses || []);
       })
       .catch((error) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7498/ingest/bb659440-42af-44d0-9469-4bd87f9cef58',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'130b99'},body:JSON.stringify({sessionId:'130b99',location:'AuthContext.js:auth-me-err',message:'auth/me failed',data:{status:error.response?.status??null,code:error.code??null,msg:error.message},hypothesisId:'B',timestamp:Date.now(),runId:'pre-fix'})}).catch(()=>{});
-        // #endregion
+        if (isCancel(error)) throw error;
         if (error.response?.status === 401) clearSession();
       })
-      .finally(() => setInitialising(false));
+      // Not `.finally`: that also runs when the request is aborted, and an
+      // abort has decided nothing. Clearing `initialising` there lets
+      // RequireAuth read a not-yet-loaded user as "signed out" and bounce a
+      // valid session to /login — which StrictMode's double-mount triggers on
+      // every cold load in development.
+      .then(
+        () => setInitialising(false),
+        () => {}
+      );
 
     return () => controller.abort();
   }, [clearSession]);
@@ -173,6 +177,23 @@ export function AuthProvider({ children }) {
         setCapabilities({});
         setBusinessId(null);
         setBusinesses([]);
+        return;
+      }
+
+      // Another tab switched business. The request interceptor reads the token
+      // from localStorage on every call, so this tab is *already* talking to the
+      // new tenant — but its React state still names the old one. Left alone it
+      // renders the new business's stock list under the old business's heading,
+      // with nothing to indicate the mismatch.
+      if (event.key === BUSINESS_ID_KEY && event.newValue && event.newValue !== businessId) {
+        const cached = getCachedUser();
+        setBusinessId(event.newValue);
+        setBusinesses(readBusinesses());
+        setUser(cached);
+        setCapabilities(normalizeCapabilities(cached?.role, getCachedCapabilities()));
+        window.dispatchEvent(
+          new CustomEvent('rim:business-changed', { detail: { businessId: event.newValue } })
+        );
       }
     };
 
@@ -184,7 +205,7 @@ export function AuthProvider({ children }) {
       window.removeEventListener(PASSWORD_CHANGE_EVENT, onPasswordChangeRequired);
       window.removeEventListener('storage', onStorage);
     };
-  }, [clearSession]);
+  }, [clearSession, businessId]);
 
   const login = useCallback(
     async (email, password) => {

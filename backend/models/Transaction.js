@@ -1,5 +1,6 @@
 const { getPool } = require('../config/db');
-const { rowToDoc, pgError } = require('../db/helpers');
+const env = require('../config/env');
+const { rowToDoc, pgError, likePattern } = require('../db/helpers');
 
 const mapTransactionRow = (row) => {
   const doc = rowToDoc(row);
@@ -140,7 +141,7 @@ class Transaction {
     if (filter.$or) {
       const search = filter.$or[0]?.reference?.source;
       if (search) {
-        params.push(`%${search}%`);
+        params.push(likePattern(search));
         clauses.push(
           `(t.reference ILIKE $${params.length} OR t.supplier ILIKE $${params.length} OR t.customer ILIKE $${params.length} OR t.notes ILIKE $${params.length})`
         );
@@ -191,9 +192,65 @@ class Transaction {
       clauses.push(`created_at <= $${params.length}`);
     }
 
+    // The count has to apply the same search predicate as `find`, or pagination
+    // is computed against the unfiltered table: one matching row reported as
+    // "1–1 of 4,382", with 175 pages that all come back empty.
+    if (filter.$or) {
+      const search = filter.$or[0]?.reference?.source;
+      if (search) {
+        params.push(likePattern(search));
+        clauses.push(
+          `(reference ILIKE $${params.length} OR supplier ILIKE $${params.length} OR customer ILIKE $${params.length} OR notes ILIKE $${params.length})`
+        );
+      }
+    }
+
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
     const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM transactions ${where}`, params);
     return rows[0].count;
+  }
+
+  /**
+   * Revenue, profit and count for every sale in a period, aggregated in the
+   * database rather than over a page of rows.
+   *
+   * Profit uses the sale price actually charged where one was recorded, falling
+   * back to the product's list price, against the product's cost price. Sales
+   * whose product has since been deleted contribute their revenue but no profit,
+   * because there is no cost basis left to subtract.
+   */
+  static async sumSales(businessId, range = {}) {
+    if (!businessId) throw new Error('Transaction.sumSales requires a businessId');
+
+    const pool = getPool();
+    const params = [businessId];
+    const clauses = [`t.business_id = $1`, `t.type = 'stock_out'`];
+
+    if (range.$gte) {
+      params.push(range.$gte);
+      clauses.push(`t.created_at >= $${params.length}`);
+    }
+    if (range.$lte) {
+      params.push(range.$lte);
+      clauses.push(`t.created_at <= $${params.length}`);
+    }
+
+    const { rows } = await pool.query(
+      `SELECT
+         COALESCE(SUM(COALESCE(t.total_value, COALESCE(t.price, p.selling_price, 0) * t.quantity)), 0) AS revenue,
+         COALESCE(SUM((COALESCE(t.price, p.selling_price, 0) - COALESCE(p.cost_price, 0)) * t.quantity), 0) AS profit,
+         COUNT(*)::int AS count
+       FROM transactions t
+       LEFT JOIN products p ON p.id = t.product_id
+       WHERE ${clauses.join(' AND ')}`,
+      params
+    );
+
+    return {
+      revenue: Number(rows[0].revenue),
+      profit: Number(rows[0].profit),
+      count: rows[0].count,
+    };
   }
 
   static async create(data) {
@@ -282,15 +339,18 @@ class Transaction {
     }
 
     if (groupStage?._id?.$dateToString) {
+      // Bucket by the business's local day, not the server's UTC day. The
+      // dashboard builds its timeline from the browser's local dates, so a
+      // UTC bucket meant today's row could never be matched to today's column.
       const { rows } = await pool.query(
-        `SELECT to_char(t.created_at, 'YYYY-MM-DD') AS _id,
+        `SELECT to_char(t.created_at AT TIME ZONE $${params.length + 1}, 'YYYY-MM-DD') AS _id,
           COALESCE(SUM(CASE WHEN type = 'stock_in' THEN quantity ELSE 0 END), 0) AS stock_in,
           COALESCE(SUM(CASE WHEN type = 'stock_out' THEN quantity ELSE 0 END), 0) AS stock_out,
           COALESCE(SUM(CASE WHEN type = 'stock_out' THEN total_value ELSE 0 END), 0) AS revenue
         FROM transactions t ${where}
         GROUP BY 1
         ORDER BY 1`,
-        params
+        [...params, env.reportTimezone]
       );
       return rows.map((r) => ({
         _id: r._id,

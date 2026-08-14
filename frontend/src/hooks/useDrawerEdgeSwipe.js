@@ -39,6 +39,14 @@ export default function useDrawerEdgeSwipe({ open, onOpen, onClose, enabled = tr
         return;
       }
 
+      // A modal or sheet is open. Every create form on this app is a bottom
+      // sheet, and a swipe starting near the left edge of one was opening the
+      // nav drawer behind it.
+      if (document.querySelector('[data-headlessui-portal]')) {
+        reset();
+        return;
+      }
+
       const touch = event.touches[0];
       startX = touch.clientX;
       startY = touch.clientY;

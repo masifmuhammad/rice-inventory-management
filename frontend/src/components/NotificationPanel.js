@@ -35,11 +35,12 @@ export default function NotificationPanel({ variant = 'default' }) {
   const popoverTo = reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 };
   const popoverTransition = reducedMotion ? reducedTransition : springSnappy;
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (signal) => {
     try {
       const lastSeen = localStorage.getItem(LAST_SEEN_KEY);
       const { data: payload } = await api.get('/admin/notifications', {
         params: lastSeen ? { since: lastSeen } : {},
+        signal,
       });
       setData(payload);
       const unread = lastSeen
@@ -54,11 +55,16 @@ export default function NotificationPanel({ variant = 'default' }) {
   useEffect(() => {
     if (!can('users.manage')) return undefined;
 
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
-    const onFocus = () => fetchNotifications();
+    // This polls on mount, every 60s and on every window focus. Without a signal
+    // the request in flight at unmount still resolves into setState.
+    const controller = new AbortController();
+
+    fetchNotifications(controller.signal);
+    const interval = setInterval(() => fetchNotifications(controller.signal), 60000);
+    const onFocus = () => fetchNotifications(controller.signal);
     window.addEventListener('focus', onFocus);
     return () => {
+      controller.abort();
       clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
@@ -80,7 +86,17 @@ export default function NotificationPanel({ variant = 'default' }) {
     document.addEventListener('keydown', onKeyDown);
     panelRef.current?.focus();
 
-    return () => document.removeEventListener('keydown', onKeyDown);
+    // This is a `role="dialog" aria-modal="true"` panel but not a Headless UI
+    // Dialog, so it gets no scroll lock of its own. On a phone the page scrolled
+    // underneath the open panel and the backdrop then swallowed the tap that was
+    // meant for the row the user was reaching for.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [open]);
 
   if (!can('users.manage')) return null;
@@ -155,7 +171,7 @@ export default function NotificationPanel({ variant = 'default' }) {
               animate={popoverTo}
               exit={popoverFrom}
               transition={popoverTransition}
-              className="fixed inset-x-3 top-[calc(var(--app-header-height)+env(safe-area-inset-top)+0.5rem)] z-50 max-h-[min(70vh,28rem)] overflow-hidden rounded-2xl border border-hairline/[0.07] bg-surface-1 shadow-xl flex flex-col origin-top
+              className="fixed inset-x-3 top-[calc(var(--app-header-height)+env(safe-area-inset-top)+0.5rem)] z-50 max-h-[min(70dvh,28rem)] overflow-hidden rounded-2xl border border-hairline/[0.07] bg-surface-1 shadow-xl flex flex-col origin-top
                 lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-2 lg:w-96 lg:max-h-[28rem] lg:origin-top-right"
             >
             <div className="flex items-center justify-between px-4 py-3 border-b border-hairline/[0.07]">
@@ -166,7 +182,7 @@ export default function NotificationPanel({ variant = 'default' }) {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close notifications"
-                className="p-2 rounded-lg hover:bg-hairline/[0.05]"
+                className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg hover:bg-hairline/[0.05]"
               >
                 <FiX className="w-4 h-4" />
               </button>

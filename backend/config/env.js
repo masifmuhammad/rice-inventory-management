@@ -46,6 +46,15 @@ const loadEnv = () => {
       .map((o) => o.trim())
       .filter(Boolean),
     clientBuildPath: process.env.CLIENT_BUILD_PATH || null,
+    /**
+     * The timezone a "day" is measured in for daily report buckets.
+     *
+     * Timestamps are stored as TIMESTAMPTZ and the container clock is UTC, so
+     * without this a sale at 02:00 in Karachi is filed under the previous day —
+     * and the dashboard's own timeline, built from local dates, never had a
+     * bucket to match it, so today's movement simply never appeared.
+     */
+    reportTimezone: process.env.REPORT_TIMEZONE || 'Asia/Karachi',
     openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
     openrouterModelFree: process.env.OPENROUTER_MODEL_FREE || 'openrouter/free',
     openrouterModelPaid: process.env.OPENROUTER_MODEL_PAID || 'meta-llama/llama-3.1-8b-instruct',

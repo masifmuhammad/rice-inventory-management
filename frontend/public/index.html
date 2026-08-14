@@ -11,7 +11,14 @@
     <meta name="description" content="Inventory management for Haji Muhammad Rice Mills — stock, sales and cash" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!--
+      `black-translucent`, not `default`. With `default`, iOS paints an opaque
+      white status bar with dark glyphs whatever the theme — a white strip above
+      a #111111 canvas in dark mode — and, because the web view then starts below
+      it, `env(safe-area-inset-top)` resolves to 0 in standalone, which makes the
+      header and drawer's existing top padding dead code.
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="HM Mills" />
     <meta name="application-name" content="HM Mills" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />

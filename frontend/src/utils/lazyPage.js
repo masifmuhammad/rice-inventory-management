@@ -19,13 +19,20 @@ const clearPwaCaches = async () => {
   }
 };
 
-const withTimeout = (promise, ms, label) =>
-  Promise.race([
+const withTimeout = (promise, ms, label) => {
+  let timer;
+  return Promise.race([
     promise,
     new Promise((_, reject) => {
-      setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
+      timer = setTimeout(
+        () => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)),
+        ms
+      );
     }),
-  ]);
+    // `Promise.race` discards the loser but not its timer, which would otherwise
+    // hold the closure alive for 45s after every successful chunk load.
+  ]).finally(() => clearTimeout(timer));
+};
 
 /**
  * After a deploy, a tab still running the old index.html requests chunk files that
@@ -35,24 +42,37 @@ const withTimeout = (promise, ms, label) =>
  */
 export function lazyPage(importFn, label = 'page') {
   return lazy(() =>
-    withTimeout(importFn(), 45000, `Loading ${label}`).catch(async (error) => {
-      const message = String(error?.message || error);
+    withTimeout(importFn(), 45000, `Loading ${label}`)
+      .then((module) => {
+        // A successful load means this tab is on a current build, so the
+        // one-reload budget is free again. Leaving the flag set meant the
+        // *second* deploy of a long-lived session skipped the auto-recovery
+        // and dropped the user on the error screen instead.
+        try {
+          sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+        } catch {
+          /* storage disabled — the guard just stays as it is */
+        }
+        return module;
+      })
+      .catch(async (error) => {
+        const message = String(error?.message || error);
 
-      if (isChunkError(message) && !sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
-        sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
-        await clearPwaCaches().catch(() => {});
-        window.location.reload();
-        return new Promise(() => {});
-      }
+        if (isChunkError(message) && !sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
+          sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+          await clearPwaCaches().catch(() => {});
+          window.location.reload();
+          return new Promise(() => {});
+        }
 
-      sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+        sessionStorage.removeItem(CHUNK_RELOAD_KEY);
 
-      throw new Error(
-        isChunkError(message)
-          ? 'This screen was updated in the background. Refresh the page once to load the latest version.'
-          : `Could not load the ${label}. ${message}`
-      );
-    })
+        throw new Error(
+          isChunkError(message)
+            ? 'This screen was updated in the background. Refresh the page once to load the latest version.'
+            : `Could not load the ${label}. ${message}`
+        );
+      })
   );
 }
 

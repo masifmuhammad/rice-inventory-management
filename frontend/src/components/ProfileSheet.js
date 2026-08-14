@@ -91,7 +91,7 @@ export default function ProfileSheet({ open, onClose }) {
           </button>
           <div>
             <p className="font-semibold text-content">{user.name}</p>
-            <p className="text-sm text-content-subtle">{user.email}</p>
+            <p className="text-sm text-content-subtle break-words">{user.email}</p>
             <p className="text-xs text-content-subtle capitalize mt-0.5">{user.role}</p>
           </div>
         </div>

@@ -63,6 +63,11 @@ export default function useApi(fetcher, deps = [], options = {}) {
       } catch (err) {
         if (isCancel(err) || !mountedRef.current || controller.signal.aborted) return;
 
+        // Preserved data belongs to the query that was *superseded*. After a
+        // business switch that is the previous tenant's rows, and leaving them
+        // on screen under an error banner shows one business's figures beneath
+        // another business's name.
+        if (preserve) setData(null);
         setError(getErrorMessage(err));
         setLoading(false);
         errorRef.current?.(err);
@@ -71,11 +76,17 @@ export default function useApi(fetcher, deps = [], options = {}) {
     [keepPreviousData]
   );
 
+  // Serialised rather than spread. A spread dependency array changes length if a
+  // caller ever writes something like `[page, ...(filter ? [filter] : [])]`, and
+  // React responds by warning and leaving the effect in an undefined state — the
+  // hook simply stops refetching. A single string keeps the length fixed.
+  const depsKey = JSON.stringify(deps);
+
   useEffect(() => {
     if (!immediate) return;
     execute();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [execute, immediate, ...deps]);
+  }, [execute, immediate, depsKey]);
 
   // Soft business switch: refetch without blanking so NumberFlow can roll digits.
   useEffect(() => {

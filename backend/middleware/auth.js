@@ -3,8 +3,15 @@ const User = require('../models/User');
 const Business = require('../models/Business');
 const env = require('../config/env');
 
-/** Endpoints a signed-in user may reach before they have finished onboarding. */
-const PASSWORD_CHANGE_ALLOWLIST = ['/api/auth/me', '/api/auth/me/password'];
+/**
+ * Endpoints a signed-in user may reach before they have set their own password.
+ *
+ * Keyed by method as well as path: matching on path alone also allowed
+ * `PUT /api/auth/me`, so someone still on an admin-issued temporary password
+ * could change the account's email address — taking over the identity without
+ * ever proving they own it.
+ */
+const PASSWORD_CHANGE_ALLOWLIST = ['GET /api/auth/me', 'PUT /api/auth/me/password'];
 
 const auth = async (req, res, next) => {
   const header = req.header('Authorization') || '';
@@ -53,7 +60,10 @@ const auth = async (req, res, next) => {
       });
     }
 
-    if (user.mustChangePassword && !PASSWORD_CHANGE_ALLOWLIST.includes(req.baseUrl + req.path)) {
+    if (
+      user.mustChangePassword &&
+      !PASSWORD_CHANGE_ALLOWLIST.includes(`${req.method} ${req.baseUrl}${req.path}`)
+    ) {
       return res.status(403).json({
         message: 'Please set a new password before continuing.',
         code: 'PASSWORD_CHANGE_REQUIRED',

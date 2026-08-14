@@ -39,6 +39,32 @@ const assertNotLastAdmin = async (targetUser, { changingTo } = {}) => {
   }
 };
 
+/**
+ * Loads a user and refuses to hand back one belonging to another business.
+ *
+ * Every handler below takes its target from `req.params.id`, so without this the
+ * only thing standing between an admin and another tenant's accounts is a UUID
+ * they are not supposed to know — which is not a control. The failure is a plain
+ * 404 rather than a 403, because confirming "that id exists, just not for you"
+ * turns the endpoint into a membership oracle for other businesses.
+ */
+const findUserInBusiness = async (id, businessId, { allowUnassigned = false, ...options } = {}) => {
+  const user = await User.findById(id, options);
+  if (!user) throw new ApiError(404, 'User not found');
+
+  // `users.business_id` is nullable, and approval is the step that claims an
+  // unassigned signup into a business — so only that caller may see one.
+  if (user.businessId == null) {
+    if (allowUnassigned) return user;
+    throw new ApiError(404, 'User not found');
+  }
+
+  if (String(user.businessId) !== String(businessId)) {
+    throw new ApiError(404, 'User not found');
+  }
+  return user;
+};
+
 /* -------------------------------------------------------------------- users */
 
 // @route   GET /api/admin/users
@@ -83,15 +109,10 @@ router.post(
   [body('role').optional().isIn(ROLES).withMessage('Pick a valid role')],
   validate,
   asyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.id);
-    if (!user) throw new ApiError(404, 'User not found');
+    const user = await findUserInBusiness(req.params.id, req.businessId, { allowUnassigned: true });
 
     if (user.status === 'active') {
       return res.json({ message: 'That account is already active', user: user.toPublic() });
-    }
-
-    if (user.businessId && String(user.businessId) !== String(req.businessId)) {
-      throw new ApiError(403, 'This user belongs to a different business');
     }
 
     const previous = { status: user.status, role: user.role };
@@ -125,8 +146,7 @@ router.post(
   [body('reason').optional().trim().isLength({ max: 200 })],
   validate,
   asyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.id);
-    if (!user) throw new ApiError(404, 'User not found');
+    const user = await findUserInBusiness(req.params.id, req.businessId);
 
     if (String(user._id) === String(req.user._id)) {
       throw new ApiError(400, 'You cannot reject your own account');
@@ -156,8 +176,7 @@ router.post(
   [body('reason').optional().trim().isLength({ max: 200 })],
   validate,
   asyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.id);
-    if (!user) throw new ApiError(404, 'User not found');
+    const user = await findUserInBusiness(req.params.id, req.businessId);
 
     if (String(user._id) === String(req.user._id)) {
       throw new ApiError(400, 'You cannot suspend your own account');
@@ -187,8 +206,7 @@ router.post(
   '/users/:id/reactivate',
   requireCapability('users.manage'),
   asyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.id);
-    if (!user) throw new ApiError(404, 'User not found');
+    const user = await findUserInBusiness(req.params.id, req.businessId);
 
     const previous = { status: user.status };
     user.status = 'active';
@@ -211,8 +229,7 @@ router.put(
   [body('role').isIn(ROLES).withMessage('Pick a valid role')],
   validate,
   asyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.id);
-    if (!user) throw new ApiError(404, 'User not found');
+    const user = await findUserInBusiness(req.params.id, req.businessId);
 
     if (String(user._id) === String(req.user._id)) {
       throw new ApiError(400, 'You cannot change your own role');
@@ -239,8 +256,7 @@ router.post(
   '/users/:id/reset-password',
   requireCapability('users.manage'),
   asyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.id, { select: '+password' });
-    if (!user) throw new ApiError(404, 'User not found');
+    const user = await findUserInBusiness(req.params.id, req.businessId, { select: '+password' });
 
     // Readable but high-entropy, because it gets read aloud or written down.
     const temporary = `${crypto.randomBytes(4).toString('hex')}-${crypto.randomBytes(3).toString('hex')}`;

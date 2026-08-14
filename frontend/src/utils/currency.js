@@ -12,8 +12,17 @@ const toNumber = (value) => {
  * Formats an amount as currency.
  * Invalid input formats as zero rather than rendering "NaN" in the UI.
  */
+/**
+ * Collapses -0 and sub-half-paisa negatives to a clean zero.
+ *
+ * Without this, a cash book that nets to -0.004 after a rounding-heavy reversal
+ * renders as "Rs. -0.00" — which reads as a real deficit to anyone reconciling
+ * to zero, and cannot be made to go away.
+ */
+const normaliseZero = (value) => (Math.abs(value) < 0.005 ? 0 : value);
+
 export const formatMoney = (amount, symbol = DEFAULT_SYMBOL, showSymbol = true) => {
-  const value = toNumber(amount) ?? 0;
+  const value = normaliseZero(toNumber(amount) ?? 0);
 
   const formatted = value.toLocaleString('en-PK', {
     minimumFractionDigits: 2,
@@ -31,8 +40,11 @@ export const formatPKR = (amount, showSymbol = true) =>
  * businesses actually read in: thousands, Lac (100k) and Crore (10m).
  */
 export const formatCompactMoney = (amount, symbol = DEFAULT_SYMBOL) => {
-  const value = toNumber(amount) ?? 0;
-  const magnitude = Math.abs(value);
+  const value = normaliseZero(toNumber(amount) ?? 0);
+  // Round to the precision that will actually be displayed *before* choosing the
+  // scale. Testing the raw value made 999.999 print as "Rs. 1000.00" while a
+  // neighbouring card showed "Rs. 1.0K" for the same magnitude.
+  const magnitude = Math.abs(Number(value.toFixed(2)));
 
   let formatted;
   if (magnitude >= 10000000) formatted = `${(value / 10000000).toFixed(2)} Cr`;

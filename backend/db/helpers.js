@@ -35,6 +35,18 @@ const pick = (obj, keys) =>
     return acc;
   }, {});
 
+/**
+ * Wraps a user's search term as an ILIKE pattern.
+ *
+ * The routes escape *regex* metacharacters before handing the term over, which
+ * leaves `%` and `_` — the two characters ILIKE itself treats as wildcards —
+ * untouched. Searching for the grade "50%" would otherwise match every product
+ * with "50" anywhere in its name. Backslash is LIKE's default escape character
+ * in Postgres, and the pattern travels as a bound parameter, so the escapes
+ * arrive intact.
+ */
+const likePattern = (search) => `%${String(search).replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+
 const pgError = (error) => {
   if (error.code === '23505') {
     const field = error.detail?.match(/\(([^)]+)\)/)?.[1] || 'field';
@@ -61,4 +73,5 @@ module.exports = {
   rowsToDocs,
   pick,
   pgError,
+  likePattern,
 };

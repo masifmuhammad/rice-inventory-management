@@ -40,9 +40,10 @@ services:
       # Override this. The server refuses to start in production without it.
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in a .env file next to docker-compose.yml}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      DEBUG_LOG_PATH: /app/debug-130b99.log
-    volumes:
-      - ./debug-130b99.log:/app/debug-130b99.log
+      # The day a "day" ends for daily report buckets. Timestamps are stored as
+      # TIMESTAMPTZ and the container clock is UTC, so without this a sale at
+      # 02:00 in Karachi is filed under the previous day.
+      REPORT_TIMEZONE: ${REPORT_TIMEZONE:-Asia/Karachi}
     depends_on:
       postgres:
         condition: service_healthy

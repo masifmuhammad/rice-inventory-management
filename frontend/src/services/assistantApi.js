@@ -1,46 +1,42 @@
-import api, { getToken, getErrorMessage } from './api';
+import api, { getErrorMessage } from './api';
 
-const apiBase = () => process.env.REACT_APP_API_URL || '/api';
-
-const aiApi = () =>
-  api.create({
-    baseURL: apiBase(),
-    timeout: 90000,
-    headers: { 'Content-Type': 'application/json' },
-  });
-
-const withAuth = (instance) => {
-  instance.interceptors.request.use((config) => {
-    const token = getToken();
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-  return instance;
-};
+/**
+ * The assistant reuses the shared client rather than building its own instance.
+ *
+ * `api.create()` copies configuration but *not* interceptors, so the old
+ * per-call instances had no 401 handling: leaving the assistant open past token
+ * expiry produced "Something went wrong with the assistant" instead of a session
+ * expiry, and the user retried into the same wall while the rest of the app
+ * signed them out. It also allocated a fresh instance and interceptor per call.
+ *
+ * The only thing these endpoints genuinely need is a longer timeout — a model
+ * round-trip is not a database query.
+ */
+const AI = { timeout: 90000 };
 
 /** Quick probe — must not block the rest of the app. */
 export const fetchAiStatus = (signal) =>
-  withAuth(aiApi()).get('/ai/status', { signal, timeout: 8000 }).then((r) => r.data);
+  api.get('/ai/status', { signal, timeout: 8000 }).then((r) => r.data);
 
 export const sendChatMessage = (message) =>
-  withAuth(aiApi()).post('/ai/chat', { message }).then((r) => r.data);
+  api.post('/ai/chat', { message }, AI).then((r) => r.data);
 
-export const parseIntent = (text) => withAuth(aiApi()).post('/ai/intent', { text }).then((r) => r.data);
+export const parseIntent = (text) => api.post('/ai/intent', { text }, AI).then((r) => r.data);
 
 export const sendVoiceAudio = (audio, format = 'webm', hard = false) =>
-  withAuth(aiApi()).post('/ai/voice', { audio, format, hard }).then((r) => r.data);
+  api.post('/ai/voice', { audio, format, hard }, AI).then((r) => r.data);
 
-export const fetchBriefing = () => withAuth(aiApi()).get('/ai/briefing').then((r) => r.data);
+export const fetchBriefing = () => api.get('/ai/briefing', AI).then((r) => r.data);
 
 export const scanDeliveryNote = (image, mimeType = 'image/jpeg') =>
-  withAuth(aiApi()).post('/ai/scan', { image, mimeType }).then((r) => r.data);
+  api.post('/ai/scan', { image, mimeType }, AI).then((r) => r.data);
 
 export const scanCashReceipt = (image, mimeType = 'image/jpeg') =>
-  withAuth(aiApi()).post('/ai/scan-receipt', { image, mimeType }).then((r) => r.data);
+  api.post('/ai/scan-receipt', { image, mimeType }, AI).then((r) => r.data);
 
 export const saveCashEntry = (payload) => api.post('/cash-book', payload).then((r) => r.data);
 
-export const fetchAnomalies = () => withAuth(aiApi()).get('/ai/anomalies').then((r) => r.data);
+export const fetchAnomalies = () => api.get('/ai/anomalies', AI).then((r) => r.data);
 
 export const confirmTransaction = (payload) =>
   api.post('/transactions', payload).then((r) => r.data);

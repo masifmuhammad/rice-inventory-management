@@ -84,7 +84,7 @@ export default function MicPermissionPrompt() {
           animate={enterTo}
           exit={enterFrom}
           transition={enterTransition}
-          className="fixed bottom-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom)+0.75rem)] inset-x-3 z-40 lg:bottom-4 lg:left-auto lg:right-4 lg:max-w-sm"
+          className="fixed bottom-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom)+5.5rem)] inset-x-3 z-[45] lg:bottom-4 lg:left-auto lg:right-4 lg:max-w-sm"
         >
           <div className="surface-card rounded-card p-4 shadow-lg flex items-start gap-3">
             <BrandLogo size={36} rounded="rounded-xl" className="shrink-0" />
@@ -113,7 +113,7 @@ export default function MicPermissionPrompt() {
               type="button"
               onClick={dismiss}
               aria-label="Dismiss microphone prompt"
-              className="p-2 rounded-lg hover:bg-hairline/[0.05]"
+              className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg hover:bg-hairline/[0.05]"
             >
               <FiX className="w-4 h-4" />
             </button>

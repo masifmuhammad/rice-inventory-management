@@ -1,5 +1,5 @@
 const { getPool } = require('../config/db');
-const { rowToDoc, pgError, resolveUuid } = require('../db/helpers');
+const { rowToDoc, pgError, resolveUuid, likePattern } = require('../db/helpers');
 
 const IN_CATEGORIES = ['Sale', 'Owner investment', 'Loan received', 'Customer advance', 'Refund', 'Other income'];
 const OUT_CATEGORIES = [
@@ -163,7 +163,7 @@ class CashEntry {
     if (filter.$or) {
       const search = filter.$or[0]?.purpose?.source;
       if (search) {
-        params.push(`%${search}%`);
+        params.push(likePattern(search));
         clauses.push(
           `(ce.purpose ILIKE $${params.length} OR ce.party ILIKE $${params.length} OR ce.reference ILIKE $${params.length} OR ce.notes ILIKE $${params.length} OR ce.category ILIKE $${params.length})`
         );

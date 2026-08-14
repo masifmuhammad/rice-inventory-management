@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   FiActivity,
@@ -13,6 +14,7 @@ import {
 import api from '../services/api';
 import useApi from '../hooks/useApi';
 import useDebounce from '../hooks/useDebounce';
+import { daysAgoInput, todayInput } from '../utils/date';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
 import Button from '../components/ui/Button';
@@ -44,13 +46,11 @@ const ROLE_TONES = {
   worker: 'neutral',
 };
 
-const isoDaysAgo = (days) => {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date.toISOString().slice(0, 10);
-};
-
-const todayIso = () => new Date().toISOString().slice(0, 10);
+// Local dates, not UTC: at 02:00 in Karachi `toISOString()` still reports
+// yesterday, so the "Today" preset filtered to the wrong day and an admin
+// investigating an overnight change saw "No events match those filters".
+const isoDaysAgo = daysAgoInput;
+const todayIso = todayInput;
 
 function DetailBlock({ label, value }) {
   if (value == null || (typeof value === 'object' && !Object.keys(value).length)) return null;
@@ -200,8 +200,11 @@ export default function AdminActivity() {
 
   const hasFilters = search || userId || action || resourceType || startDate || endDate;
 
+  // `return null` rendered a blank white page. The route is already gated in
+  // App.js, so this only fires while capabilities are still loading — send them
+  // somewhere real rather than showing nothing.
   if (!can('audit.view')) {
-    return null;
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -254,7 +257,7 @@ export default function AdminActivity() {
                 setStartDate(event.target.value);
                 setPage(1);
               }}
-              className="field-control px-3 py-2.5 min-h-[44px] text-sm"
+              className="field-control px-3 py-2.5 min-h-[44px]"
             />
           </div>
           <div>
@@ -270,7 +273,7 @@ export default function AdminActivity() {
                 setEndDate(event.target.value);
                 setPage(1);
               }}
-              className="field-control px-3 py-2.5 min-h-[44px] text-sm"
+              className="field-control px-3 py-2.5 min-h-[44px]"
             />
           </div>
           <Select
@@ -338,7 +341,7 @@ export default function AdminActivity() {
                 setPage(1);
               }}
               placeholder="Name, action or summary…"
-              className="field-control pl-11 pr-10 py-2.5 min-h-[44px] text-sm"
+              className="field-control pl-11 pr-10 py-2.5 min-h-[44px]"
             />
             {search && (
               <button
@@ -401,7 +404,8 @@ export default function AdminActivity() {
               ))}
             </ul>
             <Pagination
-              page={page}
+              page={pagination?.page || page}
+              pages={pagination?.pages || 1}
               total={pagination?.total || 0}
               limit={LIMIT}
               onChange={setPage}

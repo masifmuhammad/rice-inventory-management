@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
-import { format } from 'date-fns';
+import { formatSafe } from '../utils/date';
 import {
   FiArrowRight,
   FiDownload,
@@ -125,6 +125,10 @@ export default function Transactions() {
         await api.post('/transactions', values);
         toast.success('Transaction recorded');
         setModalOpen(false);
+        // The scan prefill has been consumed. Leaving it set meant the next
+        // "New transaction" reopened the form already filled with the previous
+        // delivery note — one inattentive Save away from a duplicate stock-in.
+        setScanPrefill(null);
         setPage(1);
         // Stock levels moved, so both lists are now stale.
         transactions.refetch();
@@ -152,13 +156,17 @@ export default function Transactions() {
         const id = transaction._id || transaction.id;
         await api.delete(`/transactions/${id}`);
         toast.success('Transaction reversed');
+        // Reversing the only row on the last page leaves that page empty, and
+        // the empty state renders instead of the pager — so there is no control
+        // left to get back. Step back a page when we just emptied this one.
+        setPage((current) => (list.length === 1 && current > 1 ? current - 1 : current));
         transactions.refetch();
         products.refetch();
       } catch (error) {
         toast.error(getErrorMessage(error, 'Could not reverse the transaction'));
       }
     },
-    [confirm, transactions, products]
+    [confirm, transactions, products, list.length]
   );
 
   const handleReceipt = useCallback(
@@ -173,10 +181,21 @@ export default function Transactions() {
         // Kept out of the main bundle; only loaded the first time someone
         // actually asks for a receipt.
         const { generateTransactionPDF } = await import('../utils/pdfGenerator');
-        await generateTransactionPDF(transaction, transaction.product, settings);
-        toast.success('Receipt downloaded');
+        const outcome = await generateTransactionPDF(transaction, transaction.product, settings);
+
+        // iOS routes the file through the share sheet, so "downloaded" would be
+        // wrong there — and dismissing that sheet is a choice, not a failure.
+        if (outcome === 'cancelled') {
+          toast.dismiss();
+        } else if (outcome === 'shared') {
+          toast.success('Receipt ready — choose "Save to Files" to keep it', { feedback: 'download' });
+        } else if (outcome === 'opened') {
+          toast.success('Receipt opened — use your browser’s share menu to save it');
+        } else {
+          toast.success('Receipt downloaded', { feedback: 'download' });
+        }
       } catch (error) {
-        toast.error('Could not build the receipt. Please try again.');
+        toast.error(getErrorMessage(error, 'Could not build the receipt. Please try again.'));
       } finally {
         setDownloadingId(null);
       }
@@ -220,7 +239,7 @@ export default function Transactions() {
                 type="button"
                 onClick={() => changeFilter(setSearch)('')}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-content-subtle hover:text-content-muted rounded-lg"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center min-h-[44px] min-w-[44px] text-content-subtle hover:text-content-muted rounded-lg"
               >
                 <FiX className="w-4 h-4" />
               </button>
@@ -349,7 +368,7 @@ export default function Transactions() {
                         )}
 
                         <p className="mt-2 text-xs text-content-subtle">
-                          {format(new Date(transaction.createdAt), 'd MMM yyyy, h:mm a')} ·{' '}
+                          {formatSafe(transaction.createdAt, 'd MMM yyyy, h:mm a')} ·{' '}
                           {transaction.createdBy?.name || 'Unknown'}
                         </p>
                       </div>
@@ -369,7 +388,7 @@ export default function Transactions() {
                           type="button"
                           onClick={() => handleReverse(transaction)}
                           aria-label="Reverse transaction"
-                          className="p-2.5 rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                          className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
                         >
                           <FiTrash2 className="w-4 h-4" />
                         </button>

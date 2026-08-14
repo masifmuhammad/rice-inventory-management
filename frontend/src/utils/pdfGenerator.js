@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatMoney, formatQuantity } from './currency';
+import { isoDate, saveFile, slugify } from './download';
 
 /**
  * Receipt and report generation.
@@ -165,11 +166,39 @@ const ensureSpace = (doc, geom, y, needed) => {
   return geom.top;
 };
 
-const formatDate = (date) =>
-  new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+/** Guards against `new Date(undefined)`, which renders as "Invalid Date" on the page. */
+const asDate = (input) => {
+  const date = input instanceof Date ? input : new Date(input ?? NaN);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
 
-const formatTime = (date) =>
-  new Date(date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const formatDate = (date) => {
+  const parsed = asDate(date);
+  return parsed
+    ? parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '-';
+};
+
+const formatTime = (date) => {
+  const parsed = asDate(date);
+  return parsed ? parsed.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '-';
+};
+
+/** "14 Aug 2026 at 18:40" — the stamp a printed document is judged by. */
+const formatDateTime = (date) => {
+  const parsed = asDate(date);
+  return parsed ? `${formatDate(parsed)} at ${formatTime(parsed)}` : '-';
+};
+
+/**
+ * Hands the finished document to the browser.
+ *
+ * jsPDF's own `doc.save()` is an `<a download>` underneath, which iOS ignores —
+ * the report opens as a page instead of being saved. Routing through `saveFile`
+ * gets an actual file into Files on iPhone and into Downloads everywhere else.
+ */
+const deliver = (doc, filename, { title, text }) =>
+  saveFile(doc.output('blob'), filename, { title, text });
 
 /* ------------------------------------------------------------------ assets */
 
@@ -251,6 +280,10 @@ const businessFrom = (settings = {}) => {
     tagline: settings.tagline || '',
     addressLines: lines,
     contact: [settings.phone, settings.email, settings.website].filter(Boolean),
+    // One line that says who this document belongs to, for the meta grid and for
+    // the share sheet's preview text. Falls back to the address when no tagline
+    // has been set, so the cell is never empty.
+    description: settings.tagline || lines[0] || settings.phone || '',
     accent: hexToRgb(settings.primaryColor),
     symbol: settings.currency?.symbol || 'Rs.',
     footerText: settings.receiptSettings?.footerText || 'Thank you for your business.',
@@ -401,9 +434,14 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
       : 'Stock Adjustment';
   const receiptNumber = `${business.prefix}-${String(transaction._id).slice(-8).toUpperCase()}`;
 
+  const issuedAt = asDate(transaction.createdAt) || new Date();
+
   doc.setProperties({
-    title: `${documentType} ${receiptNumber}`,
-    subject: product?.name || 'Inventory transaction',
+    title: `${documentType} ${receiptNumber} - ${business.name}`,
+    subject: `${documentType} for ${product?.name || 'an inventory item'}, issued by ${
+      business.name
+    } on ${formatDate(issuedAt)}.`,
+    keywords: [documentType, receiptNumber, business.name, isoDate(issuedAt)].join(', '),
     creator: business.name,
     author: business.name,
   });
@@ -415,7 +453,7 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
     doc,
     geom,
     [
-      { label: 'Date', value: `${formatDate(transaction.createdAt)}, ${formatTime(transaction.createdAt)}` },
+      { label: 'Date', value: formatDateTime(issuedAt) },
       {
         label: isSale ? 'Customer' : 'Supplier',
         value: (isSale ? transaction.customer : transaction.supplier) || 'Not recorded',
@@ -564,30 +602,81 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
 
   drawFooters(doc, geom, business, { leftText: business.footerText });
 
-  doc.save(`${receiptNumber}.pdf`);
-  return true;
+  const filename = `${slugify(business.name, 'receipt')}-${slugify(documentType)}-${receiptNumber}.pdf`;
+
+  return deliver(doc, filename, {
+    title: `${documentType} ${receiptNumber}`,
+    text: `${documentType} ${receiptNumber} from ${business.name}, ${formatDate(issuedAt)}.`,
+  });
 };
 
 /* ------------------------------------------------------------------ report */
 
-export const generateInventoryReportPDF = async (products = [], summary = {}, settings = {}) => {
+const REPORT_TITLE = 'Inventory Report';
+const REPORT_ABOUT =
+  'A valuation of every product currently in stock: the quantity on hand, what it cost to buy, ' +
+  'what it is priced to sell for, and the profit still sitting on the shelf.';
+
+/**
+ * @param options.generatedAt  when the report was run (defaults to now)
+ * @param options.preparedBy   name of the user who ran it, printed on the document
+ * @param options.periodLabel  the range the figures cover, when one applies
+ */
+export const generateInventoryReportPDF = async (
+  products = [],
+  summary = {},
+  settings = {},
+  options = {}
+) => {
   const business = businessFrom(settings);
   const logo = settings.logo ? await loadImage(settings.logo) : null;
+
+  const generatedAt = asDate(options.generatedAt) || new Date();
+  const stamp = isoDate(generatedAt);
 
   // Landscape: eight columns need the width to stay readable.
   const { doc, geom } = createCanvas('landscape');
 
   doc.setProperties({
-    title: `Inventory report ${formatDate(new Date())}`,
-    subject: `Stock position for ${business.name}`,
+    title: `${REPORT_TITLE} - ${business.name} - ${formatDate(generatedAt)}`,
+    subject: `${REPORT_ABOUT} Prepared for ${business.name}.`,
+    keywords: ['inventory', 'stock valuation', business.name, stamp].join(', '),
     creator: business.name,
     author: business.name,
   });
 
   let y = drawLetterhead(doc, geom, business, logo, {
-    documentType: 'Inventory Report',
-    documentNumber: formatDate(new Date()),
+    documentType: REPORT_TITLE,
+    documentNumber: formatDate(generatedAt),
   });
+
+  /* What this document is, who it belongs to and when it was run. Without this
+     block a printed report is undatable the moment it leaves the screen, and a
+     shared PDF gives no clue which business it came from. */
+  y = drawMetaGrid(
+    doc,
+    geom,
+    [
+      { label: 'Report', value: REPORT_TITLE },
+      { label: 'Business', value: business.name },
+      { label: 'About this business', value: business.description || '-' },
+      { label: 'Generated', value: formatDateTime(generatedAt) },
+      { label: options.periodLabel ? 'Period covered' : 'Position as at', value: options.periodLabel || formatDate(generatedAt) },
+      { label: 'Prepared by', value: options.preparedBy || '-' },
+    ],
+    y,
+    { columns: 3 }
+  );
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...MUTED);
+  const aboutLines = doc.splitTextToSize(safeText(REPORT_ABOUT), geom.contentWidth);
+  doc.text(aboutLines, geom.left, y);
+  y += aboutLines.length * 11 + 12;
+
+  rule(doc, geom, y);
+  y += 20;
 
   /* Summary strip: four figures, separated by whitespace instead of boxes. Each
      is bounded by its own column and shrinks rather than running into the next. */
@@ -713,8 +802,16 @@ export const generateInventoryReportPDF = async (products = [], summary = {}, se
     },
   });
 
-  drawFooters(doc, geom, business, { leftText: `${business.name} - inventory report` });
+  // Every page carries the business, the document type and the date, so a page
+  // that gets separated from the rest can still be identified.
+  drawFooters(doc, geom, business, {
+    leftText: `${business.name} - ${REPORT_TITLE} - ${formatDate(generatedAt)}`,
+  });
 
-  doc.save(`inventory-report-${new Date().toISOString().slice(0, 10)}.pdf`);
-  return true;
+  const filename = `${slugify(business.name, 'inventory')}-inventory-report-${stamp}.pdf`;
+
+  return deliver(doc, filename, {
+    title: `${REPORT_TITLE} - ${business.name}`,
+    text: `${REPORT_TITLE} for ${business.name}, generated ${formatDate(generatedAt)}.`,
+  });
 };

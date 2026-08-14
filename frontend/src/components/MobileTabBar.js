@@ -30,7 +30,10 @@ export default function MobileTabBar() {
   const selectedIndex = TABS.findIndex(({ href, end }) =>
     end ? location.pathname === href : location.pathname.startsWith(href)
   );
-  const activeIndex = dragIndex ?? (selectedIndex < 0 ? 0 : selectedIndex);
+  // -1 means the current route has no tab (Reports, Settings, the admin pages).
+  // Falling back to 0 lit up "Home" while the user was somewhere else entirely —
+  // a visual claim about where they are that contradicts `aria-current`.
+  const activeIndex = dragIndex ?? selectedIndex;
   const dragging = dragIndex !== null;
   const pillTransition = withReducedMotion(dragging ? springSnappy : springUI, reducedMotion);
 
@@ -92,6 +95,12 @@ export default function MobileTabBar() {
     }
   };
 
+  // `pointercancel` fires when the browser claims the gesture for scrolling —
+  // which `touch-action: pan-y` explicitly invites. Treating it like a release
+  // meant a thumb resting on a tab while flicking the page up navigated away
+  // mid-scroll. Cancel means abandon the selection, not commit it.
+  const cancelDrag = () => setDragIndex(null);
+
   return (
     <nav
       aria-label="Primary"
@@ -107,7 +116,7 @@ export default function MobileTabBar() {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={endDrag}
-          onPointerCancel={endDrag}
+          onPointerCancel={cancelDrag}
         >
           {TABS.map(({ name, href, icon: Icon, end }, index) => {
             const routeActive = end

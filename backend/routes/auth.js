@@ -7,11 +7,10 @@ const Business = require('../models/Business');
 const auth = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const env = require('../config/env');
-const { authLimiter } = require('../middleware/rateLimiters');
+const { authLimiter, registerLimiter } = require('../middleware/rateLimiters');
 const { asyncHandler, ApiError } = require('../middleware/errorHandler');
 const { audit } = require('../middleware/audit');
 const { capabilitiesFor } = require('../middleware/permissions');
-const { debugLog } = require('../debugLog');
 
 const MAX_FAILED_ATTEMPTS = 8;
 const LOCKOUT_MINUTES = 15;
@@ -40,7 +39,7 @@ const sessionPayload = async (user, businessId) => {
 // @route   POST /api/auth/register
 router.post(
   '/register',
-  authLimiter,
+  registerLimiter,
   [
     body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 80 }),
     body('email').customSanitizer(emailSanitizer).isEmail().withMessage('Please enter a valid email'),
@@ -94,14 +93,6 @@ router.post(
   validate,
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
-    // #region agent log
-    debugLog({
-      location: 'auth.js:login-in',
-      message: 'Login attempt',
-      data: { email: email ? `${email.slice(0, 3)}***` : null, origin: req.headers.origin || null },
-      hypothesisId: 'B',
-    });
-    // #endregion
 
     const user = await User.findOne({ email }, { select: '+password' });
 
@@ -164,14 +155,6 @@ router.post(
     });
 
     const token = generateToken(user, user.businessId);
-    // #region agent log
-    debugLog({
-      location: 'auth.js:login-ok',
-      message: 'Login succeeded',
-      data: { userId: user._id, status: user.status },
-      hypothesisId: 'B',
-    });
-    // #endregion
     res.json({ token, ...(await sessionPayload(user, user.businessId)) });
   })
 );
@@ -297,6 +280,10 @@ router.delete(
 router.put(
   '/me/password',
   auth,
+  // This endpoint verifies `currentPassword` with bcrypt, so without a tight
+  // limiter a stolen session can grind the account's real password — and each
+  // attempt costs a bcrypt round of server CPU.
+  authLimiter,
   [
     body('currentPassword').notEmpty().withMessage('Current password is required'),
     body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),

@@ -60,7 +60,15 @@ export default class ErrorBoundary extends React.Component {
           <div className="mt-6 flex flex-col sm:flex-row gap-2 justify-center">
             <button
               type="button"
-              onClick={() => this.setState({ error: null })}
+              // Boundaries given `resetKeys` (the route-level one in Layout) can
+              // recover by clearing state. The outer boundary wrapping the whole
+              // app cannot: re-rendering the identical tree throws again on the
+              // same frame, so "Try again" did nothing at all. Reload instead.
+              onClick={() =>
+                this.props.resetKeys
+                  ? this.setState({ error: null })
+                  : window.location.reload()
+              }
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg
                 bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
             >
@@ -81,6 +89,16 @@ export default class ErrorBoundary extends React.Component {
                 setToken(null);
                 setCachedUser(null);
                 setCachedCapabilities(null);
+                // The same keys AuthContext.clearSession removes. Leaving these
+                // behind seeded the *next* sign-in with the previous tenant's
+                // business id, so a different user could open the app wearing
+                // the last business's name, logo and colours.
+                try {
+                  localStorage.removeItem('rim.businessId');
+                  localStorage.removeItem('rim.businesses');
+                } catch {
+                  /* storage disabled — nothing was persisted to clear */
+                }
                 window.location.href = '/login';
               }}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg

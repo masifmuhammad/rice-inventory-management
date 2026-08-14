@@ -31,6 +31,16 @@ const errorHandler = (err, req, res, next) => {
     return res.status(409).json({ message: `That ${field} is already in use` });
   }
 
+  // Postgres: value longer than the column, or a number outside NUMERIC's range.
+  // Both are bad input, and reporting them as 500s left users retrying an entry
+  // that could never save with no idea which field was at fault.
+  if (err.code === '22001') {
+    return res.status(400).json({ message: 'One of those fields is too long. Please shorten it.' });
+  }
+  if (err.code === '22003') {
+    return res.status(400).json({ message: 'That number is too large. Please check the amount.' });
+  }
+
   const status = err.status || 500;
 
   if (status >= 500) {

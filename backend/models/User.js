@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { getPool } = require('../config/db');
-const { rowToDoc, rowsToDocs, pgError } = require('../db/helpers');
+const { rowToDoc, rowsToDocs, pgError, likePattern } = require('../db/helpers');
 
 const ROLES = ['admin', 'accountant', 'worker'];
 const STATUSES = ['pending', 'active', 'suspended', 'rejected'];
@@ -204,7 +204,7 @@ class User {
     if (filter.$or) {
       const search = filter.$or[0]?.name?.source || filter.$or[0]?.email?.source;
       if (search) {
-        params.push(`%${search}%`);
+        params.push(likePattern(search));
         clauses.push(`(u.name ILIKE $${params.length} OR u.email ILIKE $${params.length})`);
       }
     }

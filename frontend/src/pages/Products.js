@@ -25,7 +25,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import StatCard, { StatGrid } from '../components/ui/StatCard';
 import { Select } from '../components/ui/Field';
-import { EmptyState, ErrorState } from '../components/ui/States';
+import { EmptyState, ErrorState, InlineError } from '../components/ui/States';
 import { SkeletonStatCards, SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
 import ProductFormModal from '../components/products/ProductFormModal';
@@ -81,7 +81,13 @@ export default function Products() {
     { keepPreviousData: true }
   );
 
-  const summary = useApi((signal) => api.get('/products/summary', { signal }).then((r) => r.data), []);
+  // `keepPreviousData` so a post-save refetch does not blank the figures — and
+  // so the stat cards can roll from the old number to the new one.
+  const summary = useApi(
+    (signal) => api.get('/products/summary', { signal }).then((r) => r.data),
+    [],
+    { keepPreviousData: true }
+  );
 
   const meta = useApi((signal) => api.get('/products/meta', { signal }).then((r) => r.data), []);
 
@@ -124,7 +130,10 @@ export default function Products() {
           toast.success(`${data.name} updated`);
         } else {
           const { data } = await api.post('/products', values);
-          products.setData((current) => [data, ...(current || [])]);
+          // Refetch rather than prepend: the list is filtered and sorted by the
+          // server, and a new well-stocked product pushed to the top of a
+          // "Low stock only" view is a row that does not belong there.
+          products.refetch({ keepPreviousData: true });
           summary.refetch();
           toast.success(`${data.name} added`);
         }
@@ -174,7 +183,12 @@ export default function Products() {
     setLowStockOnly(false);
   };
 
-  const loading = (products.loading && !products.data) || (summary.loading && !summary.data);
+  // Two independent requests, so two independent loading flags. Gating the list
+  // on the summary meant every save replaced the whole table with a skeleton
+  // while /products/summary was in flight — hiding the row that had just been
+  // patched in place and throwing away the scroll position.
+  const loadingList = products.loading && !products.data;
+  const loadingStats = summary.loading && !summary.data;
 
   return (
     <div className="space-y-6">
@@ -188,7 +202,11 @@ export default function Products() {
         }
       />
 
-      {loading ? (
+      {summary.error ? (
+        /* Without this the four cards confidently render 0 products and
+           Rs. 0.00 next to a table listing eighty, with no way to retry. */
+        <InlineError message={summary.error} onRetry={summary.refetch} />
+      ) : loadingStats ? (
         <SkeletonStatCards count={4} />
       ) : (
         <StatGrid>
@@ -232,7 +250,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setSearch('')}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-content-subtle hover:text-content-muted rounded-lg"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center min-h-[44px] min-w-[44px] text-content-subtle hover:text-content-muted rounded-lg"
               >
                 <FiX className="w-4 h-4" />
               </button>
@@ -290,7 +308,7 @@ export default function Products() {
 
       {/* List */}
       <Card className="overflow-hidden">
-        {loading ? (
+        {loadingList ? (
           <SkeletonTable rows={6} columns={5} />
         ) : products.error ? (
           <ErrorState message={products.error} onRetry={products.refetch} />
@@ -328,7 +346,7 @@ export default function Products() {
                         <h3 className="text-sm font-semibold text-content truncate">{product.name}</h3>
                         {isLowStock(product) && <Badge tone="danger">Low</Badge>}
                       </div>
-                      <p className="text-xs text-content-subtle mt-0.5">
+                      <p className="text-xs text-content-subtle mt-0.5 break-words">
                         {product.sku} · {product.category}
                       </p>
                     </div>
@@ -337,7 +355,7 @@ export default function Products() {
                         type="button"
                         onClick={() => openEdit(product)}
                         aria-label={`Edit ${product.name}`}
-                        className="p-2.5 rounded-lg text-content-subtle hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/12 transition-colors"
+                        className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/12 transition-colors"
                       >
                         <FiEdit2 className="w-4 h-4" />
                       </button>
@@ -345,18 +363,21 @@ export default function Products() {
                         type="button"
                         onClick={() => handleDelete(product)}
                         aria-label={`Archive ${product.name}`}
-                        className="p-2.5 rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                        className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
                       >
                         <FiTrash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
 
-                  <dl className="grid grid-cols-3 gap-3 mt-3 text-sm">
+                  {/* Two up on phones, three from 400px. Three columns at 375px
+                      leaves ~95px per track, and `Rs. 12,345.00` needs ~109px —
+                      the price and value figures painted outside their cells. */}
+                  <dl className="grid grid-cols-2 xs:grid-cols-3 gap-x-4 gap-y-3 mt-3 text-sm">
                     <div>
                       <dt className="text-xs text-content-subtle">Stock</dt>
                       <dd
-                        className={`font-medium tabular-nums ${
+                        className={`font-medium tabular-nums text-[13px] leading-tight break-words ${
                           isLowStock(product) ? 'text-red-500' : 'text-content'
                         }`}
                       >
@@ -365,13 +386,13 @@ export default function Products() {
                     </div>
                     <div>
                       <dt className="text-xs text-content-subtle">Sell price</dt>
-                      <dd className="font-medium text-content tabular-nums">
+                      <dd className="font-medium text-content tabular-nums text-[13px] leading-tight break-words">
                         {formatMoney(product.sellingPrice, currencySymbol)}
                       </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-content-subtle">Value</dt>
-                      <dd className="font-medium text-content tabular-nums">
+                      <dd className="font-medium text-content tabular-nums text-[13px] leading-tight break-words">
                         {formatCompactMoney(product.currentStock * product.costPrice, currencySymbol)}
                       </dd>
                     </div>

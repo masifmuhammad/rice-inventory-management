@@ -100,7 +100,19 @@ export default function Modal({
   return (
     <Dialog
       open={open}
-      onClose={closeOnBackdrop && !disableClose ? onClose : () => {}}
+      /* Headless UI funnels backdrop clicks and the Escape key through this one
+         callback, so `closeOnBackdrop={false}` was silently killing keyboard
+         dismissal too — an accessibility regression for any dialog that only
+         wanted to survive a stray tap outside it. Only a backdrop click arrives
+         with a MouseEvent, so Escape keeps working either way. */
+      onClose={
+        disableClose
+          ? () => {}
+          : (event) => {
+              if (!closeOnBackdrop && event instanceof MouseEvent) return;
+              onClose();
+            }
+      }
       className="relative z-50"
     >
       <DialogBackdrop
@@ -132,8 +144,11 @@ export default function Modal({
               dragElastic={{ top: 0.1, bottom: 1 }}
               onDragEnd={handleDragEnd}
               style={{ y, maxHeight: sheetMaxHeight }}
+              /* `dvh`, not `vh`: the inline sheetMaxHeight from visualViewport
+                 covers modern browsers, but where that is unavailable `vh` is
+                 the *large* viewport and the sheet overflows the visible area. */
               className="bg-surface-1 shadow-2xl rounded-t-card sm:rounded-card
-                max-h-[92vh] sm:max-h-[88vh] flex flex-col"
+                max-h-[92dvh] sm:max-h-[88dvh] flex flex-col"
             >
               {/* Only the grabber starts a drag. A panel-wide listener would
                   swallow scrolling in the body below. */}
@@ -160,7 +175,7 @@ export default function Modal({
                   onClick={handleClose}
                   disabled={disableClose}
                   aria-label="Close dialog"
-                  className="-mr-2 -mt-1 p-2 rounded-lg text-content-subtle hover:text-content hover:bg-hairline/[0.05]
+                  className="-mr-2 -mt-1 grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-content hover:bg-hairline/[0.05]
                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                 >
                   <FiX className="w-5 h-5" />

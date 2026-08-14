@@ -76,6 +76,11 @@ export default function PillFilter({ options, value, onChange, ariaLabel, classN
     if (committed && committed.value !== value) onChange(committed.value);
   };
 
+  // The browser fires `pointercancel` when it takes the gesture over for
+  // scrolling. Committing there meant starting a page scroll from the segmented
+  // control silently changed the filter and fired a new request.
+  const cancelDrag = () => setDragIndex(null);
+
   const handleKeyDown = (event) => {
     const delta = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
     if (!delta || selectedIndex < 0) return;
@@ -96,7 +101,7 @@ export default function PillFilter({ options, value, onChange, ariaLabel, classN
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
-      onPointerCancel={endDrag}
+      onPointerCancel={cancelDrag}
       onKeyDown={handleKeyDown}
     >
       {options.map((option, index) => {

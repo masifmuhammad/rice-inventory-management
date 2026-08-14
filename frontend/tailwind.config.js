@@ -16,6 +16,12 @@ module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
   theme: {
     extend: {
+      // The smallest built-in breakpoint is `sm` at 640px, which is wider than
+      // every phone this app runs on — so a 320px screen and a 430px screen
+      // rendered identically and there was no way to express "roomier phone".
+      screens: {
+        xs: '400px',
+      },
       colors: {
         // Tailwind's default gray is blue-tinted; neutral reads warmer and more premium.
         gray: colors.neutral,

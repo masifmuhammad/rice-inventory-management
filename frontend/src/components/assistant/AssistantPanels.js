@@ -158,7 +158,17 @@ function ChatPanel({ onClose }) {
     setRecording(false);
   }, []);
 
-  useEffect(() => () => stopRecording(), [stopRecording]);
+  // Tracks whether this panel is still mounted, so async work that resolves
+  // after it closes (a permission prompt, a recorder's onstop) can bail out.
+  const aliveRef = useRef(true);
+
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      stopRecording();
+    };
+  }, [stopRecording]);
 
   const appendAssistant = (text) => {
     setMessages((m) => [...m, { role: 'assistant', text }]);
@@ -241,6 +251,17 @@ function ChatPanel({ onClose }) {
 
     try {
       const stream = await requestMicrophoneAccess({ keepAlive: true });
+
+      // getUserMedia can resolve long after this panel closed — the user may
+      // have been looking at the permission sheet when they dismissed it. The
+      // unmount cleanup already ran and found empty refs, so without this the
+      // stream is assigned to a ref nobody reads, the recorder starts, and the
+      // browser's red recording indicator stays on until the tab is closed.
+      if (!aliveRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
       streamRef.current = stream;
       setMicState('granted');
 
@@ -256,6 +277,12 @@ function ChatPanel({ onClose }) {
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+
+        // The panel was closed mid-recording, so this is an abandoned clip.
+        // Uploading it anyway spends an API call transcribing half a sentence
+        // and fires a toast for a screen the user has already left.
+        if (!aliveRef.current) return;
+
         const blob = new Blob(chunksRef.current, { type: usedMime });
         if (blob.size < 500) {
           toast.error('Recording too short. Hold a bit longer.');
@@ -326,6 +353,13 @@ function ChatPanel({ onClose }) {
       title="Chat & Voice"
       description={<BiLine en="Type or speak · Urdu understood, replies in English" size="sm" />}
       size="lg"
+      /* The composer lives in the footer, not in the scrolling body.
+         Modal's footer is sticky and already carries
+         `pb-[max(0.875rem,env(safe-area-inset-bottom))]`, and Modal clamps the
+         sheet to `visualViewport.height`. Inside the body it sat below the fold
+         the moment the keyboard opened — on a 375×667 iPhone the visible pane
+         is about 300px — so the user had to scroll a bottom sheet to reach the
+         field they had just tapped. */
       footer={
         pendingIntent?.requiresConfirmation ? (
           <ConfirmTransactionFooter
@@ -336,10 +370,36 @@ function ChatPanel({ onClose }) {
             }}
             onCancel={() => setPendingIntent(null)}
           />
-        ) : null
+        ) : (
+          <div className="flex gap-2 items-end">
+            <AssistantMicButton
+              recording={recording}
+              onClick={toggleMic}
+              disabled={(loading && !recording) || (micBlocked && !recording)}
+            />
+            <Input
+              className="flex-1 min-w-0"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={recording ? 'Listening…' : 'Ask anything…'}
+              disabled={recording}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
+            />
+            <Button
+              icon={FiSend}
+              onClick={send}
+              loading={loading && !recording}
+              disabled={recording}
+              aria-label="Send message"
+            />
+          </div>
+        )
       }
     >
-      <div className="flex flex-col -my-5 -mx-5 sm:-mx-6 min-h-[420px] max-h-[60vh]">
+      {/* `min-h-0 flex-1` on phones so the transcript gives its height back to
+          the sheet when the keyboard takes the screen; the comfortable fixed
+          height only applies from `sm` up, where there is room for it. */}
+      <div className="flex flex-col -my-5 -mx-5 sm:-mx-6 min-h-0 flex-1 sm:min-h-[420px] sm:max-h-[60vh]">
         {showMicBanner && (
           <div className="mx-5 sm:mx-6 mt-1 mb-1 rounded-[14px] bg-primary-500/[0.08] shadow-[inset_0_0_0_1px_rgb(var(--primary-500)/0.18)] px-3.5 py-3 flex gap-3 items-start">
             <span className="mt-0.5 text-primary-600 dark:text-primary-400" aria-hidden="true">
@@ -417,22 +477,6 @@ function ChatPanel({ onClose }) {
             </div>
           )}
           <div ref={endRef} />
-        </div>
-        <div className="flex gap-2 px-5 sm:px-6 py-4 border-t border-hairline/[0.07] bg-surface-sunken items-end">
-          <AssistantMicButton
-            recording={recording}
-            onClick={toggleMic}
-            disabled={(loading && !recording) || (micBlocked && !recording)}
-          />
-          <Input
-            className="flex-1 min-w-0"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={recording ? 'Listening…' : 'Ask anything…'}
-            disabled={recording}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
-          />
-          <Button icon={FiSend} onClick={send} loading={loading && !recording} disabled={recording} aria-label="Send message" />
         </div>
       </div>
     </Modal>

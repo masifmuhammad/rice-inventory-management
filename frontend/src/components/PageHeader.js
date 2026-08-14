@@ -13,7 +13,12 @@ export default function PageHeader({ title, description, actions, className = ''
     return () => setTitle('');
   }, [title, setTitle]);
 
-  if (!description && !actions) return null;
+  // The header's own <h1> is `hidden lg:block`, and the mobile one lives here —
+  // so returning nothing left a title-only page with no heading at all under
+  // 1024px. Every current page passes a description, but the next one might not.
+  if (!description && !actions) {
+    return <h1 className="lg:hidden font-display text-heading text-content">{title}</h1>;
+  }
 
   return (
     <div className={`flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${className}`}>

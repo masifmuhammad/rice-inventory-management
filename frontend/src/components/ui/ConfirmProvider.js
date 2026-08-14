@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { FiAlertTriangle } from 'react-icons/fi';
 import Modal from './Modal';
 import Button from './Button';
@@ -20,6 +20,11 @@ export function ConfirmProvider({ children }) {
   const confirm = useCallback(
     (options) =>
       new Promise((resolve) => {
+        // A superseded confirm must still settle. Overwriting the resolver left
+        // the earlier `await confirm(...)` pending for the life of the page, so
+        // whatever it guarded — a spinner, a "deleting" row state — never came
+        // back.
+        resolverRef.current?.(false);
         resolverRef.current = resolve;
         setState({
           title: 'Are you sure?',
@@ -40,6 +45,15 @@ export function ConfirmProvider({ children }) {
     setState(null);
   }, []);
 
+  // Nothing pending survives the provider unmounting.
+  useEffect(
+    () => () => {
+      resolverRef.current?.(false);
+      resolverRef.current = null;
+    },
+    []
+  );
+
   const handleConfirm = useCallback(async () => {
     // Keep the dialog up while an async onConfirm runs, so the row does not
     // vanish before the server has actually agreed.
@@ -47,8 +61,14 @@ export function ConfirmProvider({ children }) {
       setBusy(true);
       try {
         await state.onConfirm();
-      } finally {
         settle(true);
+      } catch {
+        // `finally { settle(true) }` reported success even when the action had
+        // thrown — the caller then removed a row the server still holds — and
+        // let the rejection escape as an unhandled promise. A failed action is
+        // not a confirmation; the caller's own handling inside onConfirm owns
+        // the error message.
+        settle(false);
       }
       return;
     }

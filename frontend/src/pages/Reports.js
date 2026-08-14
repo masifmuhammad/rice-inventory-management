@@ -19,11 +19,14 @@ import {
   YAxis,
 } from 'recharts';
 
-import api from '../services/api';
+import api, { getErrorMessage } from '../services/api';
 import useApi from '../hooks/useApi';
+import useMediaQuery from '../hooks/useMediaQuery';
+import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { useTheme } from '../context/ThemeContext';
 import { formatMoney, formatQuantity } from '../utils/currency';
+import { daysAgoInput, todayInput } from '../utils/date';
 import PageHeader from '../components/PageHeader';
 import Button from '../components/ui/Button';
 import Card, { CardBody, CardHeader } from '../components/ui/Card';
@@ -34,17 +37,16 @@ import { EmptyState, ErrorState, InlineError } from '../components/ui/States';
 import { SkeletonChart, SkeletonGate, SkeletonStatCards, SkeletonTable, Skeleton } from '../components/ui/Skeleton';
 import { RefetchSection } from '../components/ui/RefetchIndicator';
 
-const isoDaysAgo = (days) => {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date.toISOString().slice(0, 10);
-};
+// Local dates, not UTC. `toISOString()` reports yesterday until 05:00 in PKT,
+// so the default range and the presets were both off by a day overnight.
+const isoDaysAgo = daysAgoInput;
 
 export default function Reports() {
   const { currencySymbol, settings } = useSettings();
+  const { user } = useAuth();
   const { isDark } = useTheme();
   const [exporting, setExporting] = useState(false);
-  const [range, setRange] = useState({ startDate: isoDaysAgo(30), endDate: new Date().toISOString().slice(0, 10) });
+  const [range, setRange] = useState({ startDate: isoDaysAgo(30), endDate: todayInput() });
 
   const chartTheme = useMemo(
     () => ({
@@ -103,14 +105,19 @@ export default function Reports() {
     { keepPreviousData: true }
   );
 
+  // Twelve grouped pairs with rotated labels need about 200px of plot width per
+  // six bars; a 320px phone leaves roughly that in total, so the tick labels
+  // overlapped into an unreadable smear. Six products on phones, twelve above.
+  const isWide = useMediaQuery('(min-width: 640px)');
+
   const chartData = useMemo(
     () =>
-      (movement.data || []).slice(0, 12).map((item) => ({
+      (movement.data || []).slice(0, isWide ? 12 : 6).map((item) => ({
         name: item.product.name.length > 16 ? `${item.product.name.slice(0, 15)}…` : item.product.name,
         'Stock in': item.stockIn,
         'Stock out': item.stockOut,
       })),
-    [movement.data]
+    [movement.data, isWide]
   );
 
   const handleExport = useCallback(async () => {
@@ -125,15 +132,36 @@ export default function Reports() {
       }
 
       const { generateInventoryReportPDF } = await import('../utils/pdfGenerator');
-      await generateInventoryReportPDF(products, stockValue.data.summary, settings);
+      const outcome = await generateInventoryReportPDF(products, stockValue.data.summary, settings, {
+        generatedAt: new Date(),
+        preparedBy: user?.name,
+      });
 
-      toast.success('Report downloaded', { id: toastId, feedback: 'download' });
+      // On iPhone the file goes through the share sheet, so "downloaded" would be
+      // a lie — and dismissing that sheet is a choice, not a failure.
+      if (outcome === 'cancelled') {
+        toast.dismiss(toastId);
+      } else if (outcome === 'shared') {
+        toast.success('Report ready — choose "Save to Files" to keep it', {
+          id: toastId,
+          feedback: 'download',
+        });
+      } else if (outcome === 'opened') {
+        toast.success('Report opened — use your browser’s share menu to save it', { id: toastId });
+      } else {
+        toast.success('Report downloaded', { id: toastId, feedback: 'download' });
+      }
     } catch (error) {
-      toast.error('Could not build the report. Please try again.', { id: toastId });
+      // Surface what actually went wrong. The blanket message turned a 403
+      // "you do not have permission to view reports" into "please try again",
+      // which the user then did, forever.
+      toast.error(getErrorMessage(error, 'Could not build the report. Please try again.'), {
+        id: toastId,
+      });
     } finally {
       setExporting(false);
     }
-  }, [stockValue.data, settings]);
+  }, [stockValue.data, settings, user?.name]);
 
   const summary = stockValue.data?.summary;
   const loadingValue = stockValue.loading && !stockValue.data;
@@ -192,7 +220,7 @@ export default function Reports() {
                 key={preset.label}
                 type="button"
                 onClick={() =>
-                  setRange({ startDate: isoDaysAgo(preset.days), endDate: new Date().toISOString().slice(0, 10) })
+                  setRange({ startDate: isoDaysAgo(preset.days), endDate: todayInput() })
                 }
                 className="px-3 py-2.5 min-h-[44px] rounded-lg border border-hairline/[0.12] bg-surface-1 text-sm
                   font-medium text-content-muted hover:bg-hairline/[0.05] hover:text-content transition-colors"
@@ -360,7 +388,7 @@ export default function Reports() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-content truncate">{product.name}</p>
-                      <p className="text-xs text-content-subtle">{product.sku}</p>
+                      <p className="text-xs text-content-subtle truncate">{product.sku}</p>
                     </div>
                     <span className="text-sm font-semibold text-content tabular-nums whitespace-nowrap">
                       {formatMoney(product.stockValue, currencySymbol)}

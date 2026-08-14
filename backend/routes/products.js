@@ -150,6 +150,12 @@ const productValidators = [
   body('maxStockLevel').optional({ values: 'falsy' }).isFloat({ min: 0 }).toFloat(),
   body('costPrice').isFloat({ min: 0 }).withMessage('Cost price must be 0 or greater').toFloat(),
   body('sellingPrice').isFloat({ min: 0 }).withMessage('Selling price must be 0 or greater').toFloat(),
+  // Bounded to match the columns. Without these, an over-long value reaches
+  // Postgres and comes back as an unattributed 500 rather than a field error.
+  body('description').optional({ values: 'falsy' }).trim().isLength({ max: 2000 }),
+  body('location').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
+  body('batchNumber').optional({ values: 'falsy' }).trim().isLength({ max: 80 }),
+  body('supplier').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
 ];
 
 // @route   POST /api/products
@@ -204,7 +210,13 @@ router.put(
     if (!product) throw new ApiError(404, 'Product not found');
 
     const before = product.toObject();
-    const { sku, createdBy, _id, ...updates } = req.body;
+
+    // Everything named here is either identity or ownership, and `Product.save()`
+    // keys its UPDATE off `this.id`. Letting `id` through the spread would point
+    // the write at another business's row; letting `isActive` through would hand
+    // an accountant the archive/restore power that DELETE reserves for admins.
+    const { sku, createdBy, _id, id, businessId, isActive, createdAt, updatedAt, ...updates } =
+      req.body;
 
     if (sku !== undefined) {
       const nextSku = (sku || '').trim().toUpperCase();

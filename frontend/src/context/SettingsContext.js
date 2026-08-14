@@ -52,7 +52,15 @@ export function SettingsProvider({ children }) {
   }, [settings.businessName]);
 
   useEffect(() => {
-    if (!user || !businessId) return;
+    if (!user || !businessId) {
+      // A cleared session must not leave the last tenant's branding behind.
+      // `logout` reloads the page, but an *expired* session does not — so the
+      // sign-in screen kept the previous business's name in the tab title, its
+      // logo on the card and its brand colour on the button, shown to whoever
+      // sits down at the terminal next.
+      setSettings(DEFAULT_SETTINGS);
+      return undefined;
+    }
 
     setSettings(readCache(businessId));
 

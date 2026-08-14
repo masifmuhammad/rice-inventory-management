@@ -302,12 +302,17 @@ export default function Layout() {
         Skip to content
       </a>
 
-      {/* Left-edge swipe target — helps phones claim the gesture before browser back. */}
+      {/* Left-edge swipe target — helps phones claim the gesture before browser
+          back. Deliberately has no `onClick` and no z-index: it only stakes a
+          `touch-action` claim. With `z-20` and a click handler it sat above all
+          page content for the full height of the viewport, so a tap in the
+          leftmost 12px of any row, card or button opened the nav drawer instead
+          of doing what the user aimed at. `useDrawerEdgeSwipe` owns the gesture
+          itself, over a wider 28px zone. */}
       <div
         aria-hidden="true"
-        className="lg:hidden fixed inset-y-0 left-0 z-20 w-3"
+        className="lg:hidden fixed inset-y-0 left-0 w-3 pointer-events-none"
         style={{ touchAction: 'none' }}
-        onClick={openDrawer}
       />
 
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />

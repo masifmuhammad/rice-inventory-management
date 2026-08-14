@@ -1,5 +1,5 @@
 const { getPool } = require('../config/db');
-const { rowToDoc } = require('../db/helpers');
+const { rowToDoc, likePattern } = require('../db/helpers');
 
 const parseJsonField = (value) => {
   if (value == null) return null;
@@ -79,7 +79,7 @@ class AuditLog {
     if (filter.$or) {
       const search = filter.$or[0]?.userName?.source;
       if (search) {
-        params.push(`%${search}%`);
+        params.push(likePattern(search));
         clauses.push(
           `(user_name ILIKE $${params.length} OR action ILIKE $${params.length} OR summary ILIKE $${params.length})`
         );
@@ -130,7 +130,7 @@ class AuditLog {
     if (filter.$or) {
       const search = filter.$or[0]?.userName?.source;
       if (search) {
-        params.push(`%${search}%`);
+        params.push(likePattern(search));
         clauses.push(
           `(user_name ILIKE $${params.length} OR action ILIKE $${params.length} OR summary ILIKE $${params.length})`
         );
@@ -152,7 +152,12 @@ class AuditLog {
       clauses.push(`business_id = $${params.length}`);
     }
 
-    const column = field === 'action' ? 'action' : field === 'resourceType' ? 'resource_type' : field;
+    // An allowlist, not a ternary with a passthrough fallback. `column` is
+    // interpolated straight into the SQL below, so the `else` branch was an open
+    // door waiting for the first caller to pass a value from a request.
+    const COLUMNS = { action: 'action', resourceType: 'resource_type', userName: 'user_name' };
+    const column = COLUMNS[field];
+    if (!column) throw new Error(`AuditLog.distinct: unsupported field "${field}"`);
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
     const { rows } = await pool.query(
       `SELECT DISTINCT ${column} AS value FROM audit_logs ${where} ORDER BY value`,

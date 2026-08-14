@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
-import { format } from 'date-fns';
+import { formatSafe } from '../utils/date';
 import {
   FiArrowDownLeft,
   FiArrowUpRight,
@@ -91,6 +91,10 @@ export default function CashBook() {
 
   const entries = ledger.data?.data || [];
   const pagination = ledger.data?.pagination;
+  // The API omits the running balance under a filter, because accumulating across
+  // hidden rows produces a figure that contradicts the balance card. Showing the
+  // column anyway rendered every row as "bal Rs. 0.00".
+  const showBalance = ledger.data?.showBalance !== false;
 
   const refreshAll = useCallback(() => {
     ledger.refetch();
@@ -139,12 +143,16 @@ export default function CashBook() {
       try {
         await api.delete(`/cash-book/${entry._id}`);
         toast.success('Entry deleted');
+        // Deleting the only row on the last page leaves it empty, and the empty
+        // state renders in place of the pager — stranding the user with no way
+        // back to the entries that are still there.
+        setPage((current) => (entries.length === 1 && current > 1 ? current - 1 : current));
         refreshAll();
       } catch (error) {
         toast.error(getErrorMessage(error, 'Could not delete the entry'));
       }
     },
-    [confirm, currencySymbol, refreshAll]
+    [confirm, currencySymbol, refreshAll, entries.length]
   );
 
   const loading = ledger.loading && !ledger.data;
@@ -251,7 +259,7 @@ export default function CashBook() {
                 type="button"
                 onClick={() => setSearch('')}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-content-subtle hover:text-content-muted rounded-lg"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center min-h-[44px] min-w-[44px] text-content-subtle hover:text-content-muted rounded-lg"
               >
                 <FiX className="w-4 h-4" />
               </button>
@@ -295,7 +303,14 @@ export default function CashBook() {
 
                 return (
                   <li key={entry._id} className="p-4 sm:px-6 hover:bg-hairline/[0.05] transition-colors">
-                    <div className="flex items-start gap-3 sm:gap-4">
+                    {/* Stacked on phones. Side by side, the two nowrap money
+                        strings reserved ~132px of a 256px row, leaving about
+                        60px for the purpose and its category badge — which the
+                        card's `overflow-hidden` then clipped. */}
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
+                      {/* Icon and description stay side by side at every width;
+                          only the amount column drops below them on phones. */}
+                      <div className="flex items-start gap-3 sm:gap-4 min-w-0 sm:flex-1">
                       <span
                         className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
                           isIn ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
@@ -323,7 +338,7 @@ export default function CashBook() {
                           {[
                             entry.party && (isIn ? `From ${entry.party}` : `Taken by ${entry.party}`),
                             entry.reference && `Ref ${entry.reference}`,
-                            format(new Date(entry.occurredAt || entry.createdAt), 'd MMM yyyy'),
+                            formatSafe(entry.occurredAt || entry.createdAt, 'd MMM yyyy', null),
                           ]
                             .filter(Boolean)
                             .join(' · ')}
@@ -333,8 +348,15 @@ export default function CashBook() {
                           <p className="mt-1 text-xs text-content-subtle line-clamp-2">{entry.notes}</p>
                         )}
                       </div>
+                      </div>
 
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      {/* On phones this becomes a full-width row under the
+                          description, indented past the icon, with the amount
+                          and the actions at opposite ends. */}
+                      <div
+                        className="flex flex-row-reverse items-center justify-between gap-2 pl-[52px] w-full
+                          sm:w-auto sm:flex-col sm:items-end sm:justify-start sm:gap-1 sm:pl-0 sm:flex-shrink-0"
+                      >
                         <span
                           className={`text-sm font-semibold tabular-nums whitespace-nowrap ${
                             isIn ? 'text-emerald-500' : 'text-red-500'
@@ -343,14 +365,16 @@ export default function CashBook() {
                           {isIn ? '+' : '−'}
                           {formatMoney(entry.amount, currencySymbol)}
                         </span>
-                        <span className="text-xs text-content-subtle tabular-nums whitespace-nowrap">
-                          bal {formatMoney(entry.balanceAfter, currencySymbol)}
-                        </span>
+                        {showBalance && entry.balanceAfter != null && (
+                          <span className="text-xs text-content-subtle tabular-nums whitespace-nowrap">
+                            bal {formatMoney(entry.balanceAfter, currencySymbol)}
+                          </span>
+                        )}
 
                         {/* Sale lines mirror a transaction; editing them here
                             would let the two records disagree. */}
                         {!auto && (
-                          <div className="flex gap-0.5 mt-1">
+                          <div className="flex gap-1.5 sm:mt-1">
                             <button
                               type="button"
                               onClick={() => {
@@ -358,7 +382,7 @@ export default function CashBook() {
                                 setModalOpen(true);
                               }}
                               aria-label="Edit entry"
-                              className="p-2 rounded-lg text-content-subtle hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/12 transition-colors"
+                              className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/12 transition-colors"
                             >
                               <FiEdit2 className="w-4 h-4" />
                             </button>
@@ -366,7 +390,7 @@ export default function CashBook() {
                               type="button"
                               onClick={() => handleDelete(entry)}
                               aria-label="Delete entry"
-                              className="p-2 rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                              className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
                             >
                               <FiTrash2 className="w-4 h-4" />
                             </button>

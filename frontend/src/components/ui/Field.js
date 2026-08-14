@@ -234,6 +234,12 @@ export const Select = forwardRef(function Select(
             ref={ref}
             id={selectId}
             aria-invalid={error ? 'true' : undefined}
+            /* `...props` carries the `aria-label` that every unlabelled toolbar
+               filter relies on for its accessible name. Dropping it left the
+               category, sort, type and status dropdowns announcing only their
+               current value — three adjacent buttons a screen reader user
+               cannot tell apart. */
+            {...props}
             className={`${
               compact
                 ? controlClasses(

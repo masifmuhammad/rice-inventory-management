@@ -72,7 +72,11 @@ function RoleSelect({ value, onChange, disabled, 'aria-label': ariaLabel }) {
       onChange={onChange}
       disabled={disabled}
       aria-label={ariaLabel}
-      selectClassName="!min-h-[32px] !py-1 !px-2.5 !pr-8 !text-xs font-medium w-[7.5rem] rounded-lg"
+      /* Was `!min-h-[32px] !text-xs`: a real <select> at 12px, which iOS Safari
+         responds to by zooming the whole document on focus and never zooming
+         back out. 16px on phones keeps the page still, and 44px makes it a
+         target a thumb can actually hit. */
+      selectClassName="!min-h-[44px] !py-2 !px-3 !pr-9 !text-base sm:!text-sm font-medium w-[8.5rem] rounded-lg"
     >
       {ROLES.map((role) => (
         <option key={role.value} value={role.value}>
@@ -253,7 +257,7 @@ export default function AdminUsers() {
                 type="button"
                 onClick={() => setSearch('')}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-content-subtle hover:text-content-muted rounded-lg"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center min-h-[44px] min-w-[44px] text-content-subtle hover:text-content-muted rounded-lg"
               >
                 <FiX className="w-4 h-4" />
               </button>

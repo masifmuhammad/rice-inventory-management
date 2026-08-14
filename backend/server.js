@@ -9,7 +9,6 @@ const env = require('./config/env');
 const { connectDB, closeDB, isDbReady } = require('./config/db');
 const { apiLimiter } = require('./middleware/rateLimiters');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
-const { debugLog } = require('./debugLog');
 
 const app = express();
 
@@ -81,28 +80,6 @@ app.use(compression());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
-// #region agent log
-app.use((req, res, next) => {
-  if (!req.path.startsWith('/api')) return next();
-  const started = Date.now();
-  debugLog({
-    location: 'server.js:api-request-in',
-    message: 'API request received',
-    data: { method: req.method, path: req.path, origin: req.headers.origin || null },
-    hypothesisId: 'B',
-  });
-  res.on('finish', () => {
-    debugLog({
-      location: 'server.js:api-request-out',
-      message: 'API request finished',
-      data: { method: req.method, path: req.path, status: res.statusCode, ms: Date.now() - started },
-      hypothesisId: 'B',
-    });
-  });
-  next();
-});
-// #endregion
-
 /* ------------------------------------------------------------------ /api/* */
 
 app.get('/api/health', (req, res) => {
@@ -127,26 +104,7 @@ app.use('/api/cash-book', require('./routes/cashBook'));
 app.use('/api/cash-withdrawals', require('./routes/cashWithdrawals'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/admin', require('./routes/admin'));
-
-// #region agent log
-try {
-  app.use('/api/ai', require('./routes/ai'));
-  debugLog({
-    location: 'server.js:ai-routes',
-    message: 'AI routes mounted OK',
-    data: { openrouterConfigured: Boolean(env.openrouterApiKey) },
-    hypothesisId: 'D',
-  });
-} catch (error) {
-  debugLog({
-    location: 'server.js:ai-routes',
-    message: 'AI routes mount FAILED',
-    data: { error: error.message },
-    hypothesisId: 'D',
-  });
-  throw error;
-}
-// #endregion
+app.use('/api/ai', require('./routes/ai'));
 
 app.use('/api', notFound);
 

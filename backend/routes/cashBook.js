@@ -168,15 +168,19 @@ router.get(
         { $group: { _id: '$direction', total: { $sum: '$amount' } } },
       ]);
 
-      const carriedIn = carried.find((r) => r._id === 'in')?.total || 0;
-      const carriedOut = carried.find((r) => r._id === 'out')?.total || 0;
+      const carriedIn = Number(carried.find((r) => r._id === 'in')?.total) || 0;
+      const carriedOut = Number(carried.find((r) => r._id === 'out')?.total) || 0;
       let balance = carriedIn - carriedOut;
 
       // Walk oldest → newest so each row shows the balance *after* it was booked.
+      // `amount` is coerced explicitly: this accumulator is the one place where a
+      // stringly-typed money column would concatenate rather than add, and the
+      // resulting balance column is wrong in a way that looks plausible.
       data = [...entries]
         .reverse()
         .map((entry) => {
-          balance += entry.direction === 'in' ? entry.amount : -entry.amount;
+          const amount = Number(entry.amount) || 0;
+          balance += entry.direction === 'in' ? amount : -amount;
           return { ...entry, balanceAfter: round2(balance) };
         })
         .reverse();
@@ -203,6 +207,10 @@ const entryValidators = [
   body('category').optional().trim().isLength({ max: 60 }),
   body('party').optional({ values: 'falsy' }).trim().isLength({ max: 80 }),
   body('occurredAt').optional({ values: 'falsy' }).isISO8601().withMessage('Enter a valid date'),
+  // Bounded to match the columns, so over-long input is a field error rather
+  // than an unattributed 500 from Postgres.
+  body('reference').optional({ values: 'falsy' }).trim().isLength({ max: 80 }),
+  body('notes').optional({ values: 'falsy' }).trim().isLength({ max: 500 }),
 ];
 
 // @route   POST /api/cash-book

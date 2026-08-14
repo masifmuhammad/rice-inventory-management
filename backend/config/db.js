@@ -1,6 +1,23 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 
 const DEFAULT_URI = 'postgresql://postgres:postgres@127.0.0.1:5432/rice_inventory';
+
+/**
+ * NUMERIC columns arrive as strings by default, because a Postgres NUMERIC can
+ * hold more precision than a JS number can. Every money and quantity column here
+ * is NUMERIC(14,4) — at most ten integer digits — which float64 represents
+ * exactly, so the precision argument does not apply to this schema.
+ *
+ * Leaving them as strings did real damage: `balance += entry.amount` in the cash
+ * book concatenated instead of adding, turning a running balance of 500 followed
+ * by a 10 withdrawal into the string "0500.0000-10" and then NaN. Every `+` on a
+ * money field anywhere in the codebase was one edit away from the same bug, so
+ * the conversion belongs here, once, rather than at each call site.
+ *
+ * 1700 = NUMERIC. 20 (int8/bigint) is deliberately left alone: counts are cast
+ * to ::int in their queries, and a stray bigint really can exceed float64.
+ */
+types.setTypeParser(types.builtins.NUMERIC, (value) => (value === null ? null : Number(value)));
 
 let pool;
 

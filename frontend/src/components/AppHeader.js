@@ -192,7 +192,21 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
           ) : null}
         </div>
 
-        <div className="lg:hidden absolute inset-x-0 flex justify-center px-[4.5rem] pointer-events-none">
+        {/* The reserved side gutters have to clear the right-hand cluster, which
+            is bell (40) + gap (8) + avatar (36) + padding (12) ≈ 96px. At 4.5rem
+            the centred business name ran under the bell — and that cluster is
+            `z-10`, so it painted over the name and read as the name being cut
+            off mid-word. */}
+        {/* `z-20` is load-bearing, not decoration. The left block beside this is
+            `flex-1 z-10`, so on a phone — where its <h1> is hidden and only the
+            hamburger occupies it — it stretches across the middle of the header
+            and sits directly on top of this one. The switcher still *painted*,
+            because it is absolutely positioned, but every tap landed on that
+            invisible block instead: a visible dropdown chevron that did nothing.
+            Raising this above the two z-10 siblings puts the button back in
+            front for hit-testing. The wrapper stays `pointer-events-none`, so it
+            never steals taps meant for the hamburger or the bell. */}
+        <div className="lg:hidden absolute inset-x-0 z-20 flex justify-center px-[7rem] pointer-events-none">
           <BusinessSwitcher className="pointer-events-auto min-w-0 max-w-[14rem]" centered showLogo />
         </div>
 
@@ -205,7 +219,7 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
           <button
             type="button"
             onClick={onOpenProfile}
-            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base"
+            className="grid place-items-center min-h-[44px] min-w-[44px] rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base"
             title="Your profile"
             aria-label={`Your profile — ${user?.name || 'Account'}`}
           >

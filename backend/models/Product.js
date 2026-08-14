@@ -1,5 +1,5 @@
 const { getPool } = require('../config/db');
-const { rowToDoc, rowsToDocs, pgError, resolveUuid } = require('../db/helpers');
+const { rowToDoc, rowsToDocs, pgError, resolveUuid, likePattern } = require('../db/helpers');
 
 const PRODUCT_COLUMNS = `
   p.id, p.business_id, p.name, p.sku, p.category, p.description, p.unit, p.current_stock,
@@ -39,7 +39,7 @@ class Product {
         current_stock = $6, min_stock_level = $7, max_stock_level = $8,
         cost_price = $9, selling_price = $10, location = $11, batch_number = $12,
         expiry_date = $13, supplier = $14, is_active = $15, updated_at = NOW()
-      WHERE id = $16
+      WHERE id = $16 AND business_id = $17
       RETURNING *`,
       [
         this.name,
@@ -58,8 +58,19 @@ class Product {
         this.supplier ?? null,
         this.isActive,
         this.id,
+        this.businessId,
       ]
     );
+
+    // The tenant predicate above means a mismatched row simply matches nothing.
+    // Without this check the miss would surface as a TypeError deep inside the
+    // row mapper rather than as the 404 it actually is.
+    if (!rows[0]) {
+      const error = new Error('Product not found');
+      error.status = 404;
+      throw error;
+    }
+
     Object.assign(this, mapProductRow(rows[0]));
     return this;
   }
@@ -197,7 +208,7 @@ class Product {
     if (filter.$or) {
       const search = filter.$or[0]?.name?.source;
       if (search) {
-        params.push(`%${search}%`);
+        params.push(likePattern(search));
         clauses.push(
           `(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length} OR p.supplier ILIKE $${params.length} OR p.batch_number ILIKE $${params.length})`
         );

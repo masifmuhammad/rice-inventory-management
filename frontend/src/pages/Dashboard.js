@@ -28,11 +28,13 @@ import {
   YAxis,
 } from 'recharts';
 
-import api from '../services/api';
+import api, { getErrorMessage } from '../services/api';
 import useApi from '../hooks/useApi';
+import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { useTheme } from '../context/ThemeContext';
 import { formatCompactMoney, formatMoney, formatNumber, formatQuantity } from '../utils/currency';
+import { toDateInput } from '../utils/date';
 import PageHeader from '../components/PageHeader';
 import PillFilter from '../components/ui/PillFilter';
 import Button from '../components/ui/Button';
@@ -86,7 +88,12 @@ function fillTrendDates(trends, dayCount) {
 
   const filled = [];
   for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
-    const key = cursor.toISOString().slice(0, 10);
+    // `toDateInput`, not `toISOString()`: the cursor sits at local midnight, so
+    // converting it to UTC walked every key back a day in PKT. The last column
+    // was yesterday, today's key was never generated, and today's sales had
+    // nowhere to land — the panel read "0.0 kg" beside a revenue card that
+    // counted them.
+    const key = toDateInput(cursor);
     const row = map.get(key);
     filled.push({
       date: key,
@@ -137,6 +144,7 @@ function CategoryTooltip({ active, payload, currencySymbol }) {
 
 export default function Dashboard() {
   const { currencySymbol, settings } = useSettings();
+  const { user } = useAuth();
   const { isDark } = useTheme();
   const [range, setRange] = useState('30');
   const [exporting, setExporting] = useState(false);
@@ -193,15 +201,35 @@ export default function Dashboard() {
 
       // jsPDF is ~350KB. Loading it on demand keeps it out of the main bundle.
       const { generateInventoryReportPDF } = await import('../utils/pdfGenerator');
-      await generateInventoryReportPDF(data.products, data.summary, settings);
+      const outcome = await generateInventoryReportPDF(data.products, data.summary, settings, {
+        generatedAt: new Date(),
+        preparedBy: user?.name,
+      });
 
-      toast.success('Report downloaded', { id: toastId, feedback: 'download' });
+      // iOS hands the file to the share sheet rather than downloading it, so
+      // "downloaded" would be wrong there; dismissing the sheet is not an error.
+      if (outcome === 'cancelled') {
+        toast.dismiss(toastId);
+      } else if (outcome === 'shared') {
+        toast.success('Report ready — choose "Save to Files" to keep it', {
+          id: toastId,
+          feedback: 'download',
+        });
+      } else if (outcome === 'opened') {
+        toast.success('Report opened — use your browser’s share menu to save it', { id: toastId });
+      } else {
+        toast.success('Report downloaded', { id: toastId, feedback: 'download' });
+      }
     } catch (error) {
-      toast.error('Could not build the report. Please try again.', { id: toastId });
+      // The blanket message hid real causes — a 403 from a user without
+      // reports.view read as "please try again", which they did indefinitely.
+      toast.error(getErrorMessage(error, 'Could not build the report. Please try again.'), {
+        id: toastId,
+      });
     } finally {
       setExporting(false);
     }
-  }, [settings]);
+  }, [settings, user?.name]);
 
   const trends = stats.data?.trends || {};
   const activity = stats.data?.recentActivity || {};
@@ -342,7 +370,11 @@ export default function Dashboard() {
           />
           <CardBody className="pt-2">
             {!analytics.loading && analytics.data && (
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+              /* Stacked below 400px. Three columns at 320px leaves ~52px of
+                 content per cell once padding is taken out, and "10,240.0 kg"
+                 needs about twice that — the figures painted straight out of
+                 their grey wells. */
+              <div className="grid grid-cols-1 xs:grid-cols-3 gap-2 sm:gap-3 mb-4">
                 {[
                   { label: 'Stock in', value: `${formatNumber(trendTotals.stockIn, 1)} kg`, tone: 'text-emerald-500' },
                   { label: 'Stock out', value: `${formatNumber(trendTotals.stockOut, 1)} kg`, tone: 'text-red-500' },
@@ -350,9 +382,14 @@ export default function Dashboard() {
                 ].map((item) => (
                   /* Nested panel tone, sentence case — a filled grey slab with
                      small-caps read as a form field rather than a figure. */
-                  <div key={item.label} className="rounded-well bg-surface-2 px-3.5 py-2.5">
+                  <div key={item.label} className="rounded-well bg-surface-2 px-3 py-2.5 min-w-0">
                     <p className="text-caption font-medium text-content-muted">{item.label}</p>
-                    <p className={`text-base sm:text-lg font-semibold tabular-nums tracking-[-0.02em] mt-0.5 ${item.tone}`}>{item.value}</p>
+                    <p
+                      className={`text-[15px] sm:text-lg font-semibold tabular-nums tracking-[-0.02em] mt-0.5 truncate ${item.tone}`}
+                      title={item.value}
+                    >
+                      {item.value}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -601,7 +638,7 @@ export default function Dashboard() {
                 <li key={product.id} className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-content truncate">{product.name}</p>
-                    <p className="text-xs text-content-subtle">{product.sku || 'No SKU'}</p>
+                    <p className="text-xs text-content-subtle truncate">{product.sku || 'No SKU'}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-semibold text-red-500 tabular-nums">

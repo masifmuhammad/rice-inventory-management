@@ -1,11 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiArrowDownLeft, FiArrowUpRight } from 'react-icons/fi';
 import { useSettings } from '../../context/SettingsContext';
+import { isValidDate, todayInput } from '../../utils/date';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import { Input, Select, Textarea } from '../ui/Field';
 
-const today = () => new Date().toISOString().slice(0, 10);
+// Local, not `toISOString()`. In PKT (UTC+5) the UTC day is still yesterday
+// until 05:00, so a sale entered at 01:30 pre-filled — and was capped at — the
+// wrong date, and the picker refused to let anyone select today.
+const today = todayInput;
 
 const EMPTY = {
   direction: 'in',
@@ -97,6 +101,11 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
     }
     if (!values.purpose.trim()) nextErrors.purpose = 'Say what this is for';
 
+    // A cleared date used to reach `new Date('').toISOString()`, which throws a
+    // RangeError from inside a try/finally with no catch — so the save silently
+    // did nothing at all: no request, no error, no explanation.
+    if (!isValidDate(values.occurredAt)) nextErrors.occurredAt = 'Choose a date';
+
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
 
@@ -187,6 +196,7 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
             type="date"
             value={values.occurredAt}
             onChange={set('occurredAt')}
+            error={errors.occurredAt}
             max={today()}
             hint="Back-date if it happened earlier"
           />

@@ -9,6 +9,9 @@ const { requireCapability, can } = require('../middleware/permissions');
 
 const round2 = (n) => Math.round((n || 0) * 100) / 100;
 
+/** How many individual sales the profit report lists. Totals are not capped by it. */
+const DETAIL_LIMIT = 1000;
+
 const daysAgo = (n) => {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -412,9 +415,11 @@ router.get(
   auth,
   requireCapability('reports.view'),
   asyncHandler(async (req, res) => {
+    const range = dateRange(req.query);
+
     const sales = await Transaction.find(
-      { businessId: req.businessId, type: 'stock_out', createdAt: dateRange(req.query) },
-      { limit: 1000 }
+      { businessId: req.businessId, type: 'stock_out', createdAt: range },
+      { limit: DETAIL_LIMIT }
     );
 
     const transactions = sales.map((t) => {
@@ -439,18 +444,25 @@ router.get(
       };
     });
 
-    const totalRevenue = transactions.reduce((sum, t) => sum + t.revenue, 0);
-    const totalProfit = transactions.reduce((sum, t) => sum + t.profit, 0);
+    // The headline figures are aggregated in SQL over the *whole* period, not
+    // over the capped detail list. Reducing the capped array understated revenue
+    // and profit on any period with more than DETAIL_LIMIT sales — silently, and
+    // by whatever proportion happened to be cut off.
+    const totals = await Transaction.sumSales(req.businessId, range);
 
     res.json({
       transactions,
+      // The per-sale table is still capped; say so rather than letting the UI
+      // present a partial list as the complete one.
+      truncated: totals.count > transactions.length,
+      detailLimit: DETAIL_LIMIT,
       summary: {
-        totalRevenue: round2(totalRevenue),
-        totalProfit: round2(totalProfit),
+        totalRevenue: round2(totals.revenue),
+        totalProfit: round2(totals.profit),
         // Weighted by revenue rather than a flat mean, so one tiny sale can't
         // swing the headline margin.
-        averageMargin: totalRevenue > 0 ? round2((totalProfit / totalRevenue) * 100) : 0,
-        transactionCount: transactions.length,
+        averageMargin: totals.revenue > 0 ? round2((totals.profit / totals.revenue) * 100) : 0,
+        transactionCount: totals.count,
       },
     });
   })

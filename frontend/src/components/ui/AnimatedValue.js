@@ -62,10 +62,22 @@ export default function AnimatedValue({
   const shouldAnimate = animate && canAnimate && !reducedMotion;
 
   return (
-    <span className="inline-flex items-baseline gap-1 tabular-nums" title={title}>
+    /* `flex-wrap` and `max-w-full`: flex items never wrap, so "Rs." + digits +
+       "Cr" was one unbreakable run about 120px wide inside a 116px stat cell at
+       320px — and StatGrid's `overflow-hidden` sliced the unit clean off. */
+    <span
+      className="inline-flex flex-wrap items-baseline gap-x-1 max-w-full tabular-nums"
+      title={title}
+    >
       {isMoney && symbol && <span className={unitClassName}>{symbol}</span>}
       {shouldAnimate ? (
+        /* Keyed by unit so a scale change snaps instead of spinning through a
+           meaningless range: 1.2K dropping to 900 is a fall of 300, but the
+           reel would otherwise roll 1.2 all the way up to 900. Within one
+           scale the key is stable, which is what keeps the ordinary
+           500 -> 490 transition rolling. */
         <NumberFlow
+          key={unit || 'unit'}
           value={amount}
           format={format}
           locales="en-PK"

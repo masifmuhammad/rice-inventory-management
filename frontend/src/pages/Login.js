@@ -3,10 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FiEye, FiEyeOff, FiLock, FiMail, FiUser } from 'react-icons/fi';
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-import { getErrorMessage } from '../services/api';
+import api, { getErrorMessage, isCancel } from '../services/api';
 import BrandLogo from '../components/BrandLogo';
 import Button from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Field';
@@ -33,14 +32,32 @@ export default function Login() {
   const reducedMotion = usePrefersReducedMotion();
   const item = reducedMotion ? staggerItemReduced : staggerItem;
 
+  /**
+   * The business list for the signup form.
+   *
+   * Goes through the shared client, not bare axios: hard-coding `/api` ignores
+   * REACT_APP_API_URL, so on split hosting this hit the static host, got
+   * index.html back, and left the dropdown empty with no error — registration
+   * was simply impossible and nothing said why. The abort also settles the
+   * login/register toggle race, where an older response could land last.
+   */
   useEffect(() => {
-    if (mode !== 'register') return;
+    if (mode !== 'register') return undefined;
+
+    const controller = new AbortController();
     setLoadingBusinesses(true);
-    axios
-      .get('/api/businesses/public')
-      .then(({ data }) => setBusinesses(data || []))
-      .catch(() => setBusinesses([]))
+
+    api
+      .get('/businesses/public', { signal: controller.signal })
+      .then(({ data }) => setBusinesses(Array.isArray(data) ? data : []))
+      .catch((err) => {
+        if (isCancel(err)) return;
+        setBusinesses([]);
+        setError(getErrorMessage(err, 'Could not load the business list'));
+      })
       .finally(() => setLoadingBusinesses(false));
+
+    return () => controller.abort();
   }, [mode]);
 
   useEffect(() => {

@@ -60,7 +60,14 @@ const applyStockChange = async (productId, type, quantity) => {
       );
     }
 
-    return { stockBefore: roundQty(updated.currentStock + quantity), stockAfter: roundQty(updated.currentStock), product: updated };
+    // `Number()` is not decoration: current_stock is NUMERIC, and a stringly
+    // typed one would make this `+` concatenate — recording stockBefore as
+    // equal to stockAfter, so every sale claims to have moved nothing.
+    return {
+      stockBefore: roundQty(Number(updated.currentStock) + quantity),
+      stockAfter: roundQty(Number(updated.currentStock)),
+      product: updated,
+    };
   }
 
   if (type === 'transfer') {
@@ -164,7 +171,14 @@ router.get(
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+      if (endDate) {
+        // A bare YYYY-MM-DD parses to midnight, so `<=` would exclude the whole
+        // of the last day the user asked for. The reports, cash book and audit
+        // routes all extend it; this one was missed.
+        const end = new Date(endDate);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(String(endDate))) end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
     }
 
     if (search) {
@@ -213,6 +227,14 @@ router.post(
         return true;
       }),
     body('price').optional({ values: 'falsy' }).isFloat({ min: 0 }).toFloat(),
+    // Bounded to match the columns. An over-long value would otherwise be
+    // rejected by Postgres *after* applyStockChange had already moved the
+    // stock, relying on the best-effort revert to put it back.
+    body('reference').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
+    body('batchNumber').optional({ values: 'falsy' }).trim().isLength({ max: 80 }),
+    body('supplier').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
+    body('customer').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
+    body('notes').optional({ values: 'falsy' }).trim().isLength({ max: 2000 }),
   ],
   validate,
   asyncHandler(async (req, res) => {
@@ -323,7 +345,7 @@ router.delete(
           'This stock-in has already been sold on. Record a correcting adjustment instead of deleting it.'
         );
       }
-    } else {
+    } else if (transaction.type === 'adjustment') {
       // Adjustments overwrote the level outright, so the only honest undo is
       // putting the recorded pre-adjustment level back.
       await Product.updateOne(
@@ -331,6 +353,10 @@ router.delete(
         { $set: { currentStock: transaction.stockBefore } }
       );
     }
+    // A transfer moved stock between locations without changing the quantity on
+    // hand, so its stockBefore is simply the level at the time it was recorded.
+    // Writing that back would discard every sale made since — deleting a
+    // month-old transfer would resurrect stock that has long been sold.
 
     // The cash line goes first, on purpose. Deleting it afterwards risks leaving
     // an orphan: a row still marked `source: 'sale'`, which the cash book refuses

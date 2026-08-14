@@ -29,6 +29,7 @@ export default function Businesses() {
   const [list, setList] = useState(businesses);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [switching, setSwitching] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,9 +44,12 @@ export default function Businesses() {
     }
   }, []);
 
+  // `businesses` is deliberately not a dependency: its identity changes once
+  // when /auth/me resolves, which fired this a second time and produced a
+  // duplicate request plus a second skeleton flash on every mount.
   useEffect(() => {
     load();
-  }, [load, businesses]);
+  }, [load]);
 
   if (!can('settings.manage')) {
     return null;
@@ -82,9 +86,13 @@ export default function Businesses() {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      await api.post('/settings/logo', { logo: dataUrl });
+      const { data } = await api.post('/settings/logo', { logo: dataUrl });
+      // Push the new logo into settings rather than firing `rim:business-changed`.
+      // Nothing listening to that event refetches /settings, so the success toast
+      // appeared while every logo on screen kept showing the old image until a
+      // manual reload. Settings.js already does it this way.
+      await updateSettings({ logo: data.logo });
       toast.success('Logo updated for active business');
-      window.dispatchEvent(new CustomEvent('rim:business-changed'));
     } catch (err) {
       toast.error(getErrorMessage(err, 'Could not upload logo'));
     } finally {
@@ -94,9 +102,18 @@ export default function Businesses() {
   };
 
   const applyColors = async (primaryColor, accentColor) => {
+    // Repaint first so the choice is judged live, but put the old palette back
+    // if the save fails — otherwise the app wears a colour the server never
+    // stored, and the rejection goes unhandled.
+    const previous = settings?.primaryColor;
     applyPalette(primaryColor);
-    await updateSettings({ primaryColor, accentColor });
-    toast.success('Brand colours updated');
+    try {
+      await updateSettings({ primaryColor, accentColor });
+      toast.success('Brand colours updated');
+    } catch (err) {
+      applyPalette(previous);
+      toast.error(getErrorMessage(err, 'Could not update brand colours'));
+    }
   };
 
   return (
@@ -133,13 +150,28 @@ export default function Businesses() {
                 {list.map((business) => (
                   <li
                     key={business.id}
-                    className="flex items-center justify-between gap-3 p-3 rounded-card border-hairline/[0.07] surface-card"
+                    className="flex items-center justify-between gap-3 p-3 rounded-card border-hairline/[0.07] surface-card min-w-0"
                   >
-                    <span className="font-medium text-content">{business.name}</span>
+                    <span className="font-medium text-content truncate min-w-0">{business.name}</span>
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => switchBusiness(business.id).then(() => window.location.reload())}
+                      loading={switching === business.id}
+                      disabled={Boolean(switching)}
+                      // Without the in-flight state and the catch, a failed
+                      // switch did nothing visible at all — no spinner, no
+                      // toast, just an unhandled rejection — so the user kept
+                      // clicking and fired the request again and again.
+                      onClick={async () => {
+                        setSwitching(business.id);
+                        try {
+                          await switchBusiness(business.id);
+                          window.location.reload();
+                        } catch (err) {
+                          toast.error(getErrorMessage(err, 'Could not open that business'));
+                          setSwitching(null);
+                        }
+                      }}
                     >
                       Open
                     </Button>
