@@ -278,14 +278,28 @@
    * Genuinely horizontal panes opt back in below, and gesture handlers that need
    * a free axis set `touch-action` on themselves.
    */
-  #root {
+  /**
+   * `#headlessui-portal-root` is not inside `#root`, and that was the hole.
+   * Every modal, sheet and drawer in this app is portaled to the end of
+   * `<body>`, so none of them inherited the claim above — a drag left-to-right
+   * anywhere on an open form was handed straight to history, and "back" from a
+   * sheet is a page the user never asked to leave. The two roots between them
+   * cover everything the app draws.
+   */
+  #root,
+  #headlessui-portal-root {
     touch-action: pan-y;
   }
 
   .scroll-x,
-  [data-scroll-pane],
-  [role='listbox'] {
+  [data-scroll-pane] {
     touch-action: pan-x pan-y;
+  }
+
+  /* A picker sheet scrolls vertically and nothing else; granting it `pan-x`
+     alongside handed the browser back the gesture it was just denied. */
+  [role='listbox'] {
+    touch-action: pan-y;
   }
 
   /* Scrollable panes keep their own momentum and stop the page bouncing behind
@@ -293,17 +307,6 @@
   .scroll-x,
   [data-scroll-pane] {
     overscroll-behavior: contain;
-  }
-
-  /* The scrim behind a picker sheet. Dimming arrives quickly and leaves with
-     the sheet, so the two read as one movement. */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
   }
 
   code {
@@ -823,6 +826,49 @@
 
   .skeleton-appear {
     animation: skeleton-appear 180ms ease-out both;
+  }
+
+  /**
+   * Route entrance. Transform and opacity only — the compositor can run this
+   * without the main thread, which during a route change is mounting a page.
+   */
+  @keyframes route-enter {
+    from {
+      opacity: 0;
+      transform: translate3d(var(--route-x), var(--route-y), 0);
+    }
+  }
+
+  .route-enter {
+    /* The default: a short settle upward, for routes with no place in the tab
+       order. Tab moves override the axis below. */
+    --route-x: 0px;
+    --route-y: 10px;
+    animation: route-enter 240ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  /* Sideways only where there is a tab bar to give the movement a meaning; on
+     a desktop sidebar the tabs are a list, not a row you swipe through. */
+  @media (max-width: 1023px) {
+    .route-enter[data-direction='1'] {
+      --route-x: 26px;
+      --route-y: 0px;
+    }
+
+    .route-enter[data-direction='-1'] {
+      --route-x: -26px;
+      --route-y: 0px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .route-enter,
+    .route-enter[data-direction='1'],
+    .route-enter[data-direction='-1'] {
+      --route-x: 0px;
+      --route-y: 0px;
+      animation-duration: 120ms;
+    }
   }
 
   /* Hairline dividers that follow the theme. */

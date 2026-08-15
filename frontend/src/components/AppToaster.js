@@ -46,7 +46,12 @@ export default function AppToaster() {
             'group !rounded-card !border-0 !bg-surface-1 dark:!bg-surface-2 !text-content ' +
             // `shadow:` type hint required — without it Tailwind reads a bare
             // `var()` as a shadow *colour* and emits no box-shadow at all.
-            '!shadow-[shadow:var(--toast-shadow)] !backdrop-blur-none !w-full sm:!max-w-sm !py-4 !px-5',
+            // No width of its own. Sonner already sizes a phone toast as
+            // `calc(100% - gutter * 2)`; forcing `w-full` on top of that made it
+            // the full width of the screen *starting* at the left gutter, so its
+            // right edge sat 16px off the side of the display and the card
+            // looked like it had no end to it.
+            '!shadow-[shadow:var(--toast-shadow)] !backdrop-blur-none !py-4 !px-5',
           // A notification the user has half a second to read should not be set
           // smaller than the page behind it.
           title: '!text-[15px] !font-semibold !text-content !leading-snug',

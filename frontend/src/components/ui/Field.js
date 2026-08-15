@@ -1,4 +1,3 @@
-import { createPortal } from 'react-dom';
 import React, { Children, forwardRef, isValidElement, useId, useMemo } from 'react';
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 import { FiCheck, FiChevronDown } from 'react-icons/fi';
@@ -104,8 +103,13 @@ export const Input = forwardRef(function Input(
 
   return (
     <div className={className}>
-      <div className={shellClasses(error)}>
-        <ShellLabel htmlFor={inputId} label={label} required={required} />
+      {/* The shell itself is the label, not just the caption inside it. A 56px
+          well where only the 24px text line focuses the input is the difference
+          between a field that feels solid under a thumb and one you have to aim
+          at — the padding, the caption and the empty space to the right of a
+          short value are all part of the control now. */}
+      <label htmlFor={inputId} className={shellClasses(error, 'cursor-text')}>
+        <ShellLabel as="span" label={label} required={required} />
         <div className="relative flex items-center min-h-[1.5rem]">
           {Icon && (
             <Icon
@@ -126,7 +130,7 @@ export const Input = forwardRef(function Input(
             {...props}
           />
         </div>
-      </div>
+      </label>
       <FieldMessage error={error} hint={hint} />
     </div>
   );
@@ -230,21 +234,7 @@ export const Select = forwardRef(function Select(
   return (
     <div className={className}>
       <Listbox value={String(value ?? '')} onChange={emitChange} disabled={disabled} name={name}>
-        {({ open }) => (
         <div className="relative">
-          {/* Dim behind the sheet so the choice is the only thing in focus.
-              Portaled to the body: rendered in place it would be trapped inside
-              the modal's transform and cover only the card. */}
-          {open &&
-            createPortal(
-              <div
-                aria-hidden="true"
-                className="sm:hidden fixed inset-0 z-[75] bg-black/45
-                  animate-[fadeIn_160ms_ease-out]"
-              />,
-              document.body
-            )}
-
           <ListboxButton
             ref={ref}
             id={selectId}
@@ -303,17 +293,30 @@ export const Select = forwardRef(function Select(
              * On a pointer device it stays a dropdown, and now scales from the
              * corner it is anchored to rather than its own top — flipping to
              * `origin-bottom` when there is no room below and it opens upward.
+             *
+             * The scrim behind it is this element's own box-shadow, not a
+             * separate overlay. It used to be a div portaled to `document.body`,
+             * and that could never work from inside a modal: Headless UI's
+             * Dialog puts nested portals *inside* the dialog element, which is
+             * `z-50` and therefore its own stacking context — so a body-level
+             * `z-[75]` scrim painted over the whole dialog, sheet included. That
+             * is the grey wash over everything, and why no option could be
+             * tapped: every touch landed on the scrim. A shadow renders in this
+             * element's own layer and takes no pointer events at all, so there
+             * is nothing left to intercept the tap.
              */
             className="z-[80] overflow-y-auto overscroll-contain outline-none bg-surface-1
-              border border-hairline/[0.1] shadow-2xl
+              border border-hairline/[0.1] sm:shadow-2xl
 
               max-sm:!fixed max-sm:!inset-x-0 max-sm:!left-0 max-sm:!right-0 max-sm:!top-auto
               max-sm:!bottom-0 max-sm:!w-full max-sm:!max-w-none max-sm:!max-h-[70dvh]
               max-sm:rounded-t-[28px] max-sm:border-x-0 max-sm:border-b-0 max-sm:p-2
               max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]
-              max-sm:origin-bottom max-sm:transition-transform max-sm:duration-[320ms]
+              max-sm:shadow-[0_0_0_100vmax_rgba(0,0,0,0.45)]
+              max-sm:origin-bottom max-sm:transition-[transform,box-shadow] max-sm:duration-[320ms]
               max-sm:ease-[cubic-bezier(0.32,0.72,0,1)]
               max-sm:data-[closed]:translate-y-full max-sm:data-[closed]:opacity-100
+              max-sm:data-[closed]:shadow-[0_0_0_100vmax_rgba(0,0,0,0)]
 
               sm:w-[var(--button-width)] sm:max-h-60 sm:rounded-well sm:p-1.5
               sm:origin-top data-[anchor~=top]:sm:origin-bottom
@@ -348,7 +351,6 @@ export const Select = forwardRef(function Select(
             ))}
           </ListboxOptions>
         </div>
-        )}
       </Listbox>
       <FieldMessage error={error} hint={hint} />
     </div>
@@ -380,8 +382,8 @@ export const Textarea = forwardRef(function Textarea(
 
   return (
     <div className={className}>
-      <div className={shellClasses(error)}>
-        <ShellLabel htmlFor={textareaId} label={label} required={required} />
+      <label htmlFor={textareaId} className={shellClasses(error, 'cursor-text')}>
+        <ShellLabel as="span" label={label} required={required} />
         <textarea
           ref={ref}
           id={textareaId}
@@ -390,7 +392,7 @@ export const Textarea = forwardRef(function Textarea(
           className="field-shell-control resize-y min-h-[4.5rem] py-0.5"
           {...props}
         />
-      </div>
+      </label>
       <FieldMessage error={error} hint={hint} />
     </div>
   );

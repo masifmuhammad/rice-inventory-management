@@ -60,6 +60,13 @@ export default function Modal({
    * keyboard is already in view and does nothing. Measuring the body's own box
    * and setting `scrollTop` is the only version that answers the question the
    * user is actually asking: can I see what I am typing.
+   *
+   * It moves the least it can get away with. Centring the field looked tidier
+   * in isolation and felt terrible in use: every tap on a field that was
+   * already perfectly visible still yanked the whole form under the finger, so
+   * the sheet never held still long enough to feel like a solid surface. A
+   * field you can already see does not move at all now; one that is clipped
+   * scrolls just far enough to clear the edge.
    */
   const revealFocusedField = useCallback(() => {
     const target = focusedFieldRef.current;
@@ -70,11 +77,14 @@ export default function Modal({
     const fieldBox = shell.getBoundingClientRect();
     const bodyBox = body.getBoundingClientRect();
 
-    // Centre it in whatever height the body actually has right now, clamped so a
-    // field taller than the pane pins to the top rather than scrolling past it.
-    const offset = fieldBox.top - bodyBox.top;
-    const room = Math.max(0, bodyBox.height - fieldBox.height);
-    const delta = offset - room / 2;
+    // Breathing room, so a revealed field is not flush against the pane edge.
+    const margin = 12;
+    const above = fieldBox.top - bodyBox.top - margin;
+    const below = fieldBox.bottom - bodyBox.bottom + margin;
+
+    // Off the top, off the bottom, or already in view — in that order. A field
+    // taller than the pane pins to its top rather than scrolling past it.
+    const delta = above < 0 ? above : below > 0 ? Math.min(below, above) : 0;
 
     if (Math.abs(delta) < 2) return;
 
@@ -179,7 +189,10 @@ export default function Modal({
     >
       <DialogBackdrop
         transition
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+        /* Blur only where a mouse is — see the drawer backdrop in Layout. On a
+           phone this fades in front of every form in the app, and a fading
+           `backdrop-filter` re-blurs the entire page each frame. */
+        className="fixed inset-0 bg-black/50 [@media(pointer:fine)]:backdrop-blur-sm transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
           data-[closed]:opacity-0 motion-reduce:duration-150"
       />
 

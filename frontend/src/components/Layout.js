@@ -349,7 +349,11 @@ export default function Layout() {
       <Dialog open={drawerOpen} onClose={closeDrawer} className="relative z-50 lg:hidden">
         <DialogBackdrop
           transition
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+          /* Blur only where a mouse is. Fading a `backdrop-filter` makes the
+             compositor re-blur the whole page on every frame of the 300ms
+             opening — the same cost the tab bar already refuses to pay — and
+             under a 50% black wash a 4px blur is not visible anyway. */
+          className="fixed inset-0 bg-black/50 [@media(pointer:fine)]:backdrop-blur-sm transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
             data-[closed]:opacity-0 motion-reduce:duration-150"
         />
 

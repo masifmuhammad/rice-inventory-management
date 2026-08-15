@@ -26,11 +26,9 @@ export default function useDrawerEdgeSwipe({ open, onOpen, onClose, enabled = tr
     let startX = 0;
     let startY = 0;
     let mode = null; // 'open' | 'close' | null
-    let claimed = false;
 
     const reset = () => {
       mode = null;
-      claimed = false;
     };
 
     const onTouchStart = (event) => {
@@ -50,7 +48,6 @@ export default function useDrawerEdgeSwipe({ open, onOpen, onClose, enabled = tr
       const touch = event.touches[0];
       startX = touch.clientX;
       startY = touch.clientY;
-      claimed = false;
 
       if (openRef.current) {
         // Closing: any leftward swipe that starts on the drawer or near the left.
@@ -78,11 +75,19 @@ export default function useDrawerEdgeSwipe({ open, onOpen, onClose, enabled = tr
         return;
       }
 
-      if (mode === 'open' && dx > 12) {
-        // Steal the gesture from Safari/Chrome edge-back before it commits.
-        if (!claimed) {
-          claimed = true;
-        }
+      if (mode === 'open' && dx > 0) {
+        /**
+         * Claim it on the first pixel of rightward travel.
+         *
+         * This used to wait for 12px, and 12px is already too late: WebKit's
+         * edge-pan recogniser commits within the first move or two, and once it
+         * has, the page is sliding away and no `preventDefault` can call it
+         * back. Which is exactly the reported symptom — a drag from the left
+         * edge went "back" to a page that does not work.
+         *
+         * Nothing is lost by claiming early: the angle lock above has already
+         * released anything vertical, and a tap produces no move at all.
+         */
         if (event.cancelable) event.preventDefault();
         if (dx >= OPEN_PX) {
           reset();
