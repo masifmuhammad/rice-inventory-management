@@ -727,28 +727,6 @@
     -webkit-backdrop-filter: blur(24px) saturate(180%);
   }
 
-  /**
-   * The tab bar is fixed and always on screen, so a backdrop-filter on it makes
-   * the compositor re-blur everything behind it on every scrolled frame. At
-   * 120Hz that is an 8ms budget for a 24px blur over the full bar width, which
-   * is why scrolling never felt as smooth as the display can go. Phones get an
-   * opaque bar instead — the tonal step already separates it from the page, and
-   * the blur was never legible at this size anyway.
-   */
-  @media (hover: none) and (pointer: coarse) {
-    .chrome-raised {
-      background-color: rgb(var(--surface-1));
-      background-image: none;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-    }
-
-    .dark .chrome-raised {
-      background-color: rgb(var(--surface-2));
-      background-image: none;
-    }
-  }
-
   .dark .chrome-raised {
     background-color: rgb(var(--surface-2) / 0.72);
     background-image: linear-gradient(
@@ -761,13 +739,53 @@
       0 12px 40px -8px rgb(0 0 0 / 0.6);
   }
 
-  /* No translucency wanted — fall back to an opaque panel. */
-  @media (prefers-reduced-transparency: reduce) {
-    .chrome-raised {
-      background-color: rgb(var(--surface-1));
+  /**
+   * The tab bar is fixed and always on screen, so a backdrop-filter on it makes
+   * the compositor re-blur everything behind it on every scrolled frame. At
+   * 120Hz that is an 8ms budget for a 24px blur over the full bar width, which
+   * is why scrolling never felt as smooth as the display can go. Phones get an
+   * opaque bar instead — the tonal step already separates it from the page, and
+   * the blur was never legible at this size anyway.
+   *
+   * These two blocks must stay *below* the translucent defaults above. A media
+   * query adds no specificity, so while `.dark .chrome-raised` sat after this
+   * one, a dark-mode phone took the 72%-opaque background from it and the
+   * `backdrop-filter: none` from here — a see-through bar with nothing blurring
+   * behind it. The dashboard read straight through the tab bar, which is the
+   * haze that looked like a blur and was in fact the opposite of one.
+   */
+  @media (hover: none) and (pointer: coarse) {
+    .chrome-raised,
+    .dark .chrome-raised {
       background-image: none;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
+    }
+
+    .chrome-raised {
+      background-color: rgb(var(--surface-1));
+    }
+
+    .dark .chrome-raised {
+      background-color: rgb(var(--surface-2));
+    }
+  }
+
+  /* No translucency wanted — fall back to an opaque panel. */
+  @media (prefers-reduced-transparency: reduce) {
+    .chrome-raised,
+    .dark .chrome-raised {
+      background-image: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .chrome-raised {
+      background-color: rgb(var(--surface-1));
+    }
+
+    .dark .chrome-raised {
+      background-color: rgb(var(--surface-2));
     }
   }
 

@@ -1,6 +1,50 @@
 import React, { Children, forwardRef, isValidElement, useId, useMemo } from 'react';
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 import { FiCheck, FiChevronDown } from 'react-icons/fi';
+import useMediaQuery from '../../hooks/useMediaQuery';
+
+/**
+ * Everything the return key should be able to reach, in document order.
+ *
+ * Deliberately no picker button. Headless UI's listbox button handles Enter by
+ * calling `attemptSubmit` — so landing the return key on one would hand the user
+ * a submitted, half-filled form where they expected to carry on. The return key
+ * belongs to the fields you type into; a picker is a tap either way, and a
+ * required one that gets skipped is caught by validation on submit.
+ */
+const FORM_FIELDS = 'input:not([type="hidden"]), textarea, select';
+
+/**
+ * Return moves to the next field rather than submitting the form.
+ *
+ * On a phone this is the whole difference between filling a form and fighting
+ * one. The keyboard covers two thirds of the screen, so the default behaviour —
+ * submit, or nothing — leaves the only way forward as dismissing the keyboard,
+ * finding the next field under where it was, tapping it, and waiting for the
+ * keyboard to come back. Seven fields is seven of those. With this, the whole
+ * form is one hand: type, return, type, return.
+ *
+ * The last field still submits, because by then that is what the return key
+ * genuinely means. Shift+Return is left alone for anyone on a hardware
+ * keyboard, and so is anything a caller has already handled.
+ */
+function advanceOnEnter(event) {
+  if (event.key !== 'Enter' || event.defaultPrevented || event.shiftKey) return;
+
+  const field = event.currentTarget;
+  const form = field.form || field.closest('form');
+  if (!form) return;
+
+  const fields = Array.from(form.querySelectorAll(FORM_FIELDS)).filter(
+    (node) => !node.disabled && node.tabIndex !== -1 && node.offsetParent !== null
+  );
+
+  const next = fields[fields.indexOf(field) + 1];
+  if (!next) return;
+
+  event.preventDefault();
+  next.focus();
+}
 
 // Flat controls (filters, bare selects) keep the older single-line chrome.
 const flatSizing = 'px-3.5 py-2.5 min-h-[44px]';
@@ -66,11 +110,33 @@ function ShellLabel({ htmlFor, label, required, as: Tag = 'label' }) {
 }
 
 export const Input = forwardRef(function Input(
-  { label, hint, error, required, icon: Icon, prefix, className = '', id, ...props },
+  {
+    label,
+    hint,
+    error,
+    required,
+    icon: Icon,
+    prefix,
+    className = '',
+    id,
+    // Android and iOS both label the return key from this. Every form in the
+    // app ends on a textarea or a picker, so "next" is the truth on every
+    // <Input> there is; a caller with a one-field form can still say otherwise.
+    enterKeyHint = 'next',
+    onKeyDown,
+    ...props
+  },
   ref
 ) {
   const generatedId = useId();
   const inputId = id || generatedId;
+
+  const handleKeyDown = (event) => {
+    onKeyDown?.(event);
+    advanceOnEnter(event);
+  };
+
+  const keyboardProps = { enterKeyHint, onKeyDown: handleKeyDown };
 
   // No label → flat control (search bars, compact toolbars).
   if (!label) {
@@ -93,6 +159,7 @@ export const Input = forwardRef(function Input(
             id={inputId}
             aria-invalid={error ? 'true' : undefined}
             className={controlClasses(error, `${flatSizing} ${Icon || prefix ? 'pl-11' : ''}`)}
+            {...keyboardProps}
             {...props}
           />
         </div>
@@ -127,6 +194,7 @@ export const Input = forwardRef(function Input(
             id={inputId}
             aria-invalid={error ? 'true' : undefined}
             className={`field-shell-control ${Icon || prefix ? 'pl-7' : ''}`}
+            {...keyboardProps}
             {...props}
           />
         </div>
@@ -183,6 +251,7 @@ export const Select = forwardRef(function Select(
   const generatedId = useId();
   const selectId = id || generatedId;
   const options = useMemo(() => flattenOptions(children), [children]);
+  const isPhone = useMediaQuery('(max-width: 639px)');
 
   const chevronStyle = {
     backgroundImage: CHEVRON_BG,
@@ -274,7 +343,29 @@ export const Select = forwardRef(function Select(
           </ListboxButton>
 
           <ListboxOptions
-            anchor="bottom start"
+            portal
+            /**
+             * A phone sheet is not anchored to anything, so it must not be
+             * *anchored*.
+             *
+             * `anchor` starts a positioning engine that measures the button and
+             * writes `position`, `left`, `top` and `max-height` as inline
+             * styles, and re-runs on every scroll and every viewport resize.
+             * Overriding all of that with `!important` produced the right
+             * picture most of the time, and the rest of the time — a keyboard
+             * opening or closing underneath it, which is exactly when a picker
+             * is used — the engine recomputed against a viewport that was
+             * mid-resize and the sheet jumped or came back the wrong size.
+             * That is the unreliability, and there is nothing to fix in it: a
+             * sheet pinned to the bottom edge of the screen has no anchor to
+             * compute. `portal` alone gets it out of the modal; the classes do
+             * the rest, with no `!important` left to fight.
+             *
+             * The engine stays where it earns its keep: on a pointer device the
+             * dropdown genuinely does hang off the button and genuinely does
+             * need to flip when there is no room below.
+             */
+            anchor={isPhone ? undefined : 'bottom start'}
             transition
             /**
              * A phone gets a sheet, not a dropdown.
@@ -308,8 +399,8 @@ export const Select = forwardRef(function Select(
             className="z-[80] overflow-y-auto overscroll-contain outline-none bg-surface-1
               border border-hairline/[0.1] sm:shadow-2xl
 
-              max-sm:!fixed max-sm:!inset-x-0 max-sm:!left-0 max-sm:!right-0 max-sm:!top-auto
-              max-sm:!bottom-0 max-sm:!w-full max-sm:!max-w-none max-sm:!max-h-[70dvh]
+              max-sm:fixed max-sm:inset-x-0 max-sm:top-auto
+              max-sm:bottom-0 max-sm:w-full max-sm:max-h-[70dvh]
               max-sm:rounded-t-[28px] max-sm:border-x-0 max-sm:border-b-0 max-sm:p-2
               max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]
               max-sm:shadow-[0_0_0_100vmax_rgba(0,0,0,0.45)]
