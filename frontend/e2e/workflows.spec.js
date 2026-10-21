@@ -144,7 +144,8 @@ test('small-screen sheets keep focused inputs and keyboard navigation visible', 
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Amount').fill('1250');
   await page.evaluate(() => window.__testKeyboard(390));
-  await expect(dialog.getByRole('toolbar', { name: 'Keyboard controls' })).toBeVisible();
+  const bar = dialog.getByRole('toolbar', { name: 'Form controls' });
+  await expect(bar).toBeVisible();
   await dialog.getByLabel('Purpose').focus();
   await expect(dialog.getByRole('button', { name: 'Previous field', exact: true })).toBeEnabled();
   const expectFocusedFieldVisible = async () => {
@@ -162,9 +163,15 @@ test('small-screen sheets keep focused inputs and keyboard navigation visible', 
   await dialog.getByRole('button', { name: 'Next field', exact: true }).click();
   await expect(dialog.getByLabel('Purpose')).toBeFocused();
   await expectFocusedFieldVisible();
-  await dialog.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(dialog.getByLabel('Purpose')).not.toBeFocused();
+  // On the last field the next arrow has grown into the form's own action,
+  // and the sheet has no second footer competing for the space.
+  await expect(bar.getByRole('button', { name: 'Record money out', exact: true })).toBeVisible();
+  await expect(bar.getByRole('button', { name: 'Next field', exact: true })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0);
   await page.evaluate(() => window.__testKeyboard(innerHeight));
+  // Keyboard down: the bar is just the full-width action.
+  await expect(bar.getByRole('button', { name: 'Previous field', exact: true })).toHaveCount(0);
+  await expect(bar.getByRole('button', { name: 'Record money out', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
 });
 

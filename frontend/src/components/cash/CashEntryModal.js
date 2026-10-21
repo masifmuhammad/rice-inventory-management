@@ -3,7 +3,6 @@ import { FiArrowDownLeft, FiArrowUpRight } from 'react-icons/fi';
 import { useSettings } from '../../context/SettingsContext';
 import { isValidDate, todayInput } from '../../utils/date';
 import Modal from '../ui/Modal';
-import Button from '../ui/Button';
 import { Input, Select, Textarea } from '../ui/Field';
 
 // Local, not `toISOString()`. In PKT (UTC+5) the UTC day is still yesterday
@@ -131,21 +130,12 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
       busy={saving}
       title={isEditing ? 'Edit cash entry' : copy.title}
       size="md"
-      footer={
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            form="cash-form"
-            loading={saving}
-            variant={values.direction === 'in' ? 'success' : 'danger'}
-          >
-            {isEditing ? 'Save changes' : copy.button}
-          </Button>
-        </div>
-      }
+      submit={{
+        form: 'cash-form',
+        label: isEditing ? 'Save changes' : copy.button,
+        loading: saving,
+        variant: values.direction === 'in' ? 'success' : 'danger',
+      }}
     >
       <form id="cash-form" onSubmit={handleSubmit} className="space-y-2.5" noValidate>
         {/* A two-way switch rather than a dropdown: direction is the single most

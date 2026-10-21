@@ -6,6 +6,7 @@ import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import useVisualViewport from '../../hooks/useVisualViewport';
 import { springSheet, reducedTransition } from '../../utils/motion';
 import KeyboardToolbar from './KeyboardToolbar';
+import Button from './Button';
 
 const sizes = {
   sm: 'sm:max-w-md',
@@ -29,6 +30,11 @@ export default function Modal({
   size = 'md',
   children,
   footer,
+  /* A form sheet's one action: { label, form, loading, variant }. On a phone it
+     lives in the keyboard toolbar, which grows into a full-width pill on the
+     last field or with the keyboard down; the header's close button is the
+     cancel. Wider screens get the usual Cancel and submit pair. */
+  submit,
   closeOnBackdrop = true,
   disableClose = false,
   busy = false,
@@ -271,7 +277,22 @@ export default function Modal({
                 {children}
               </div>
 
-              {keyboardOpen && <KeyboardToolbar bodyRef={bodyRef} focusedField={focusedFieldRef} onDone={() => focusedFieldRef.current?.blur()} />}
+              {(keyboardOpen || submit) && (
+                <div className={`flex-shrink-0 ${submit ? 'sm:hidden' : ''} ${keyboardOpen ? '' : 'pb-[env(safe-area-inset-bottom)]'}`}>
+                  <KeyboardToolbar bodyRef={bodyRef} submit={submit} keyboardOpen={keyboardOpen} onDone={() => focusedFieldRef.current?.blur()} />
+                </div>
+              )}
+
+              {submit && (
+                <div className="hidden sm:flex justify-end gap-2 flex-shrink-0 px-6 py-4 border-t border-hairline/[0.06]">
+                  <Button variant="secondary" onClick={handleClose} disabled={disableClose || submit.loading}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" form={submit.form} loading={submit.loading} variant={submit.variant}>
+                    {submit.label}
+                  </Button>
+                </div>
+              )}
 
               {footer && (
                 /* The home-indicator inset is real estate the keyboard is

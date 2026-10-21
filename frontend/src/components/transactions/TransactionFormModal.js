@@ -6,7 +6,6 @@ import { formatMoney, formatQuantity } from '../../utils/currency';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../../utils/motion';
 import Modal from '../ui/Modal';
-import Button from '../ui/Button';
 import { Input, Select, Textarea } from '../ui/Field';
 
 const TYPES = [
@@ -154,16 +153,7 @@ export default function TransactionFormModal({
           : 'Stock moves and the ledger updates together.'
       }
       size="md"
-      footer={
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button type="submit" form="transaction-form" loading={saving}>
-            {editing ? 'Save correction' : 'Record transaction'}
-          </Button>
-        </div>
-      }
+      submit={{ form: 'transaction-form', label: editing ? 'Save correction' : 'Record transaction', loading: saving }}
     >
       <form id="transaction-form" onSubmit={handleSubmit} className="space-y-2.5" noValidate>
         <Select label="Type" required value={values.type} onChange={set('type')}>

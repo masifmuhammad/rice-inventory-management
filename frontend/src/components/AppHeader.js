@@ -201,8 +201,11 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
         <div className="lg:hidden absolute left-14 right-[7.25rem] sm:left-[4.5rem] sm:right-[14rem] z-20 flex justify-center pointer-events-none">
           {collapsed ? (
             <div className="min-w-0 text-center pointer-events-auto" data-testid="compact-page-header">
-              <p className="text-[15px] font-semibold tracking-tight text-content truncate">{pageTitle}</p>
-              {summary && <p className="text-[11px] leading-[13px] text-content-muted mt-0.5 tabular-nums" title={summary}>{summary.split(" | ").map((part) => <span key={part} className="block whitespace-nowrap">{part}</span>)}</p>}
+              {/* Two lines at most: stacking every summary part overflowed the
+                  60px bar onto the page below. The summary is one quiet line
+                  that truncates; the page itself repeats the full figures. */}
+              <p className="text-[16px] leading-5 font-semibold tracking-tight text-content truncate">{pageTitle}</p>
+              {summary && <p className="text-[12px] leading-4 text-content-muted truncate tabular-nums" title={summary}>{summary.split(' | ').join(' · ')}</p>}
             </div>
           ) : <BusinessSwitcher className="pointer-events-auto min-w-0 max-w-[14rem]" centered showLogo />}
         </div>

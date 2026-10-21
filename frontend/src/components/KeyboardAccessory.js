@@ -29,9 +29,13 @@ export default function KeyboardAccessory({ viewport }) {
     return () => clearTimeout(timer);
   }, [active, viewport.height, viewport.offsetTop, viewport.keyboard]);
   if (!active?.isConnected || viewport.keyboard <= 120) return null;
+  // A page form finishes from the same bar: its own submit button, by label.
+  const form = active.form;
+  const button = form?.querySelector('button[type="submit"]') || (form?.id && document.querySelector(`button[type="submit"][form="${form.id}"]`));
+  const submit = button && !button.disabled ? { label: button.textContent.trim() || 'Submit', onClick: () => form.requestSubmit(button) } : undefined;
   return (
     <div data-keyboard-accessory className="fixed inset-x-0 z-[90]" style={{ top: Math.max(0, viewport.offsetTop + viewport.height - 57) }}>
-      <KeyboardToolbar bodyRef={bodyRef} onDone={() => setActive(null)} />
+      <KeyboardToolbar bodyRef={bodyRef} submit={submit} onDone={() => setActive(null)} />
     </div>
   );
 }

@@ -5,7 +5,6 @@ import { formatMoney, marginPercent } from '../../utils/currency';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../../utils/motion';
 import Modal from '../ui/Modal';
-import Button from '../ui/Button';
 import { Input, Select, Textarea } from '../ui/Field';
 
 const EMPTY = {
@@ -157,16 +156,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
       title={isEditing ? 'Edit product' : 'Add product'}
       description={isEditing ? product?.name : 'Everything except pricing can be changed later.'}
       size="lg"
-      footer={
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button type="submit" form="product-form" loading={saving}>
-            {isEditing ? 'Save changes' : 'Create product'}
-          </Button>
-        </div>
-      }
+      submit={{ form: 'product-form', label: isEditing ? 'Save changes' : 'Create product', loading: saving }}
     >
       <form id="product-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
         <section className="space-y-2.5">
