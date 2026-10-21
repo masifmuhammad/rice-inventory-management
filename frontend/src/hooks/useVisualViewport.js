@@ -12,7 +12,7 @@ const readViewport = () => {
 
   // Soft keyboards shrink visualViewport. Layout viewport (innerHeight) stays
   // large, so the delta is the keyboard occlusion we need to pan around.
-  const keyboard = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+  const keyboard = vv.scale > 1.05 ? 0 : Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
 
   return {
     height: vv.height,
@@ -31,7 +31,14 @@ export default function useVisualViewport(enabled = true) {
   useEffect(() => {
     if (!enabled) return undefined;
 
-    const sync = () => setViewport(readViewport());
+    let frame;
+    const sync = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const next = readViewport();
+        setViewport((current) => current.height === next.height && current.offsetTop === next.offsetTop && current.keyboard === next.keyboard ? current : next);
+      });
+    };
     sync();
 
     const vv = window.visualViewport;
@@ -40,6 +47,7 @@ export default function useVisualViewport(enabled = true) {
     window.addEventListener('resize', sync);
 
     return () => {
+      cancelAnimationFrame(frame);
       vv?.removeEventListener('resize', sync);
       vv?.removeEventListener('scroll', sync);
       window.removeEventListener('resize', sync);

@@ -1,3 +1,5 @@
+import usePageState from '../hooks/usePageState';
+import { Input } from '../components/ui/Field';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
@@ -7,7 +9,6 @@ import {
   FiArrowUpRight,
   FiBookOpen,
   FiEdit2,
-  FiSearch,
   FiTrash2,
   FiTrendingUp,
   FiDollarSign,
@@ -48,9 +49,9 @@ export default function CashBook() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState('all');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const [tab, setTab] = usePageState('cashbook.tab', 'all');
+  const [search, setSearch] = usePageState('cashbook.search', '');
+  const [page, setPage] = usePageState('cashbook.page', 1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [defaultDirection, setDefaultDirection] = useState('in');
@@ -128,7 +129,7 @@ export default function CashBook() {
         throw error;
       }
     },
-    [editing, refreshAll]
+    [editing, refreshAll, setPage]
   );
 
   const handleDelete = useCallback(
@@ -153,7 +154,7 @@ export default function CashBook() {
         toast.error(getErrorMessage(error, 'Could not delete the entry'));
       }
     },
-    [confirm, currencySymbol, refreshAll, entries.length]
+    [confirm, currencySymbol, refreshAll, entries.length, setPage]
   );
 
   const loading = ledger.loading && !ledger.data;
@@ -164,6 +165,7 @@ export default function CashBook() {
   return (
     <div className="space-y-6">
       <PageHeader
+        summary={'Balance ' + formatCompactMoney(balance, currencySymbol)}
         title="Cash Book"
         description="Money in and money out, with a running balance. Sales post themselves."
         actions={
@@ -181,11 +183,11 @@ export default function CashBook() {
       {summaryLoading ? (
         <SkeletonStatCards count={4} />
       ) : (
-        <StatGrid>
+        <StatGrid className="cash-overview">
           <StatCard
             title="Cash balance"
             rawValue={balance}
-            valueType="compactMoney"
+            valueType="money"
             currencySymbol={currencySymbol}
             fullValue={formatMoney(balance, currencySymbol)}
             hint={balance >= 0 ? 'In hand' : 'More out than in'}
@@ -240,11 +242,7 @@ export default function CashBook() {
           />
 
           <div className="relative flex-1">
-            <FiSearch
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-content-subtle"
-              aria-hidden="true"
-            />
-            <input
+            <Input label="Search cash entries"
               type="search"
               value={search}
               onChange={(event) => {
@@ -253,7 +251,7 @@ export default function CashBook() {
               }}
               placeholder="Search purpose, person or reference…"
               aria-label="Search cash entries"
-              className="field-control w-full pl-11 pr-10 py-2.5 min-h-[44px]"
+
             />
             {search && (
               <button
@@ -320,7 +318,7 @@ export default function CashBook() {
                       <div className="flex items-start gap-3 sm:gap-4 min-w-0 sm:flex-1">
                       <span
                         className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
-                          isIn ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
+                          isIn ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'
                         }`}
                       >
                         {isIn ? (
@@ -365,8 +363,8 @@ export default function CashBook() {
                           sm:w-auto sm:flex-col sm:items-end sm:justify-start sm:gap-1 sm:pl-0 sm:flex-shrink-0"
                       >
                         <span
-                          className={`text-sm font-semibold tabular-nums whitespace-nowrap ${
-                            isIn ? 'text-emerald-500' : 'text-red-500'
+                          className={`font-money text-base font-bold tabular-nums whitespace-nowrap ${
+                            isIn ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                           }`}
                         >
                           {isIn ? '+' : '−'}
@@ -397,7 +395,7 @@ export default function CashBook() {
                               type="button"
                               onClick={() => handleDelete(entry)}
                               aria-label="Delete entry"
-                              className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                              className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-red-700 dark:text-red-400 hover:bg-red-500/10 transition-colors"
                             >
                               <FiTrash2 className="w-4 h-4" />
                             </button>
@@ -445,7 +443,7 @@ export default function CashBook() {
                   </span>
                   <span
                     className={`text-sm font-medium tabular-nums whitespace-nowrap ${
-                      row.direction === 'in' ? 'text-emerald-500' : 'text-red-500'
+                      row.direction === 'in' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'
                     }`}
                   >
                     {formatMoney(row.total, currencySymbol)}

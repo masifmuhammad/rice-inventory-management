@@ -1,3 +1,4 @@
+const { dateRange, dayStart, localDay } = require('../db/dates');
 const express = require('express');
 const router = express.Router();
 const { body, query } = require('express-validator');
@@ -11,8 +12,7 @@ const { requireCapability } = require('../middleware/permissions');
 const { round2 } = require('../db/helpers');
 
 const startOfMonth = () => {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1);
+  return dayStart(`${localDay().slice(0, 7)}-01`);
 };
 
 const buildFilter = ({ direction, category, source, startDate, endDate, search }, businessId) => {
@@ -22,18 +22,10 @@ const buildFilter = ({ direction, category, source, startDate, endDate, search }
   if (category) filter.category = category;
   if (source) filter.source = source;
 
-  if (startDate || endDate) {
-    filter.occurredAt = {};
-    if (startDate) filter.occurredAt.$gte = new Date(startDate);
-    if (endDate) {
-      const end = new Date(endDate);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(String(endDate))) end.setHours(23, 59, 59, 999);
-      filter.occurredAt.$lte = end;
-    }
-  }
+  if (startDate || endDate) filter.occurredAt = dateRange({ startDate, endDate });
 
   if (search) {
-    const rx = new RegExp(String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const rx = { source: String(search).trim() };
     filter.$or = [{ purpose: rx }, { party: rx }, { reference: rx }, { notes: rx }, { category: rx }];
   }
 

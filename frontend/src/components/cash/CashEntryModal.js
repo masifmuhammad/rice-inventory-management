@@ -179,6 +179,8 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <Input
             label="Amount"
+            className="amount-entry [&_input]:font-money"
+            style={{ fontSize: '2rem', lineHeight: 1.2, fontWeight: 600, letterSpacing: '-0.03em' }}
             required
             type="number"
             step="0.01"
@@ -229,7 +231,9 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
           placeholder={copy.purposePlaceholder}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <details className="group rounded-xl border border-hairline/[0.08] px-3.5">
+          <summary className="min-h-[44px] flex items-center text-sm font-medium text-content-muted cursor-pointer">Person, reference &amp; notes <span className="ml-auto text-lg group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
+          <div className="space-y-2.5 pb-3.5">
           <Input
             label={copy.partyLabel}
             value={values.party}
@@ -242,9 +246,9 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
             onChange={set('reference')}
             placeholder="Voucher or receipt no."
           />
-        </div>
-
         <Textarea label="Notes" value={values.notes} onChange={set('notes')} placeholder="Optional details…" />
+          </div>
+        </details>
       </form>
     </Modal>
   );

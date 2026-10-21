@@ -3,10 +3,10 @@ import React from 'react';
 const tones = {
   neutral: 'bg-hairline/[0.08] text-content-muted ring-hairline/[0.08]',
   primary: 'bg-primary-500/12 text-primary-600 dark:text-primary-400 ring-primary-500/20',
-  success: 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20',
-  warning: 'bg-amber-500/12 text-amber-600 dark:text-amber-400 ring-amber-500/20',
+  success: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 ring-emerald-500/20',
+  warning: 'bg-amber-500/12 text-amber-700 dark:text-amber-400 ring-amber-500/20',
   danger: 'bg-red-500/12 text-red-600 dark:text-red-400 ring-red-500/20',
-  purple: 'bg-violet-500/12 text-violet-600 dark:text-violet-400 ring-violet-500/20',
+  purple: 'bg-hairline/[0.06] text-content-muted ring-hairline/[0.08]',
 };
 
 export default function Badge({ tone = 'neutral', icon: Icon, className = '', children }) {

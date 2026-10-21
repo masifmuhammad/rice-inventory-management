@@ -18,6 +18,16 @@ const AuthContext = createContext(null);
 const BUSINESS_ID_KEY = 'rim.businessId';
 const BUSINESSES_KEY = 'rim.businesses';
 
+const readBusinessId = () => {
+  try { return localStorage.getItem(BUSINESS_ID_KEY); } catch { return null; }
+};
+const storeValue = (key, value) => {
+  try {
+    if (value == null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch { /* Session still works in memory when storage is unavailable. */ }
+};
+
 const ROLE_RANK = { worker: 1, accountant: 2, admin: 3 };
 const CAPABILITY_MIN_ROLE = {
   'products.view': 'worker',
@@ -76,7 +86,7 @@ export const useAuth = () => {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => (getToken() ? getCachedUser() : null));
-  const [businessId, setBusinessId] = useState(() => localStorage.getItem(BUSINESS_ID_KEY) || null);
+  const [businessId, setBusinessId] = useState(readBusinessId);
   const [businesses, setBusinesses] = useState(readBusinesses);
   const [capabilities, setCapabilities] = useState(() => {
     if (!getToken()) return {};
@@ -96,7 +106,7 @@ export function AuthProvider({ children }) {
     setBusinessId(nextBusinessId || nextUser?.businessId || null);
     setBusinesses(nextBusinesses || []);
     if (nextBusinessId || nextUser?.businessId) {
-      localStorage.setItem(BUSINESS_ID_KEY, nextBusinessId || nextUser.businessId);
+      storeValue(BUSINESS_ID_KEY, nextBusinessId || nextUser.businessId);
     }
     writeBusinesses(nextBusinesses || []);
   }, []);
@@ -109,8 +119,8 @@ export function AuthProvider({ children }) {
     setCapabilities({});
     setBusinessId(null);
     setBusinesses([]);
-    localStorage.removeItem(BUSINESS_ID_KEY);
-    localStorage.removeItem(BUSINESSES_KEY);
+    storeValue(BUSINESS_ID_KEY, null);
+    storeValue(BUSINESSES_KEY, null);
   }, []);
 
   useEffect(() => {
@@ -131,7 +141,7 @@ export function AuthProvider({ children }) {
         setCachedCapabilities(resolved);
         setBusinessId(data.businessId || data.user?.businessId);
         setBusinesses(data.businesses || []);
-        if (data.businessId) localStorage.setItem(BUSINESS_ID_KEY, data.businessId);
+        if (data.businessId) storeValue(BUSINESS_ID_KEY, data.businessId);
         writeBusinesses(data.businesses || []);
       })
       .catch((error) => {
@@ -166,17 +176,37 @@ export function AuthProvider({ children }) {
         setCachedUser(next);
         return next;
       });
-      if (!window.location.pathname.startsWith('/change-password')) {
-        window.location.assign('/change-password');
-      }
+
     };
 
     const onStorage = (event) => {
       if (event.key === TOKEN_KEY && !event.newValue) {
+        setToken(null);
         setUser(null);
         setCapabilities({});
         setBusinessId(null);
         setBusinesses([]);
+        setInitialising(false);
+        return;
+      }
+      if (event.key === TOKEN_KEY && event.newValue) {
+        // Synchronize identity in React; route changes never need a document reload.
+        const incomingToken = event.newValue;
+        setToken(incomingToken);
+        setUser(null);
+        setCapabilities({});
+        setBusinessId(null);
+        setBusinesses([]);
+        setInitialising(true);
+        api.get('/auth/me').then(({ data }) => {
+          if (getToken() !== incomingToken) return;
+          applySession(incomingToken, data.user, data.capabilities, data.businessId, data.businesses);
+          setInitialising(false);
+        }).catch((error) => {
+          if (getToken() !== incomingToken) return;
+          if (error.response?.status === 401) clearSession();
+          setInitialising(false);
+        });
         return;
       }
 
@@ -205,7 +235,7 @@ export function AuthProvider({ children }) {
       window.removeEventListener(PASSWORD_CHANGE_EVENT, onPasswordChangeRequired);
       window.removeEventListener('storage', onStorage);
     };
-  }, [clearSession, businessId]);
+  }, [clearSession, businessId, applySession]);
 
   const login = useCallback(
     async (email, password) => {
@@ -247,7 +277,6 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     clearSession();
     toast.success('Signed out');
-    window.location.assign('/login');
   }, [clearSession]);
 
   const updateUser = useCallback((nextUser) => {

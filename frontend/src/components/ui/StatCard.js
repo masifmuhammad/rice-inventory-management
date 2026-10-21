@@ -18,8 +18,8 @@ export function StatGrid({ children, className = '' }) {
 const figureTones = {
   neutral: 'text-content',
   success: 'text-content',
-  danger: 'text-red-500',
-  warning: 'text-amber-500',
+  danger: 'text-red-600 dark:text-red-400',
+  warning: 'text-amber-700 dark:text-amber-400',
 };
 
 /**
@@ -49,7 +49,7 @@ export default function StatCard({
 
   const figureSize = size === 'sm' ? 'stat-figure-sm' : 'stat-figure';
   // 600, not 700 — the reference's figures are semibold and tracked in tight.
-  const figureClassName = `font-display font-semibold tabular-nums ${figureSize} ${
+  const figureClassName = `${valueType.includes('Money') || valueType === 'money' ? 'font-money font-bold' : 'font-display font-semibold'} tabular-nums ${figureSize} ${
     figureTones[tone] || figureTones.neutral
   }`;
   const unitClassName = 'text-caption font-semibold text-content-subtle';

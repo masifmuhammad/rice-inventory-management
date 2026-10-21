@@ -25,6 +25,7 @@ const mapProductRow = (row) => attachCreator(rowToDoc(row), row);
 class Product {
   constructor(row) {
     Object.assign(this, mapProductRow(row));
+    Object.defineProperty(this, '_originalStock', { value: this.currentStock, writable: true });
   }
 
   toObject() {
@@ -36,10 +37,10 @@ class Product {
     const { rows } = await pool.query(
       `UPDATE products SET
         name = $1, sku = $2, category = $3, description = $4, unit = $5,
-        current_stock = $6, min_stock_level = $7, max_stock_level = $8,
+        current_stock = CASE WHEN $18 THEN $6 ELSE current_stock END, min_stock_level = $7, max_stock_level = $8,
         cost_price = $9, selling_price = $10, location = $11, batch_number = $12,
         expiry_date = $13, supplier = $14, is_active = $15, updated_at = NOW()
-      WHERE id = $16 AND business_id = $17
+      WHERE id = $16 AND business_id = $17 AND (NOT $18 OR current_stock = $19)
       RETURNING *`,
       [
         this.name,
@@ -59,6 +60,8 @@ class Product {
         this.isActive,
         this.id,
         this.businessId,
+        Number(this.currentStock) !== Number(this._originalStock),
+        this._originalStock,
       ]
     );
 
@@ -66,12 +69,13 @@ class Product {
     // Without this check the miss would surface as a TypeError deep inside the
     // row mapper rather than as the 404 it actually is.
     if (!rows[0]) {
-      const error = new Error('Product not found');
-      error.status = 404;
+      const error = new Error('Stock changed while you were editing. Reload the product and try again.');
+      error.status = 409;
       throw error;
     }
 
     Object.assign(this, mapProductRow(rows[0]));
+    this._originalStock = this.currentStock;
     return this;
   }
 
@@ -219,7 +223,7 @@ class Product {
       name: 'p.name ASC',
       newest: 'p.created_at DESC',
       stock: 'p.current_stock DESC',
-      value: 'p.created_at DESC',
+      value: '(p.current_stock * p.cost_price) DESC',
       currentStock: 'p.current_stock ASC',
       expiryDate: 'p.expiry_date ASC',
     };

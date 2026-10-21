@@ -34,6 +34,8 @@ export const TAB_ROUTES = ['/', '/products', '/transactions', '/cash-book'];
  */
 export function usePrefetchTabs() {
   useEffect(() => {
+    const connection = navigator.connection;
+    if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '')) return undefined;
     const warm = () => {
       TAB_ROUTES.forEach((path) => importers[path]?.().catch(() => {}));
     };

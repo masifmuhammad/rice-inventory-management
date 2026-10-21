@@ -91,14 +91,7 @@ export const readableTextOn = (hex) => {
 };
 
 const USER_AVATAR_PALETTES = [
-  { bg: 'bg-primary-500/15', text: 'text-primary-600 dark:text-primary-400', ring: 'ring-primary-500/25', stripe: 'bg-primary-500' },
-  { bg: 'bg-violet-500/15', text: 'text-violet-600 dark:text-violet-400', ring: 'ring-violet-500/25', stripe: 'bg-violet-500' },
-  { bg: 'bg-amber-500/15', text: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-500/25', stripe: 'bg-amber-500' },
-  { bg: 'bg-rose-500/15', text: 'text-rose-600 dark:text-rose-400', ring: 'ring-rose-500/25', stripe: 'bg-rose-500' },
-  { bg: 'bg-cyan-500/15', text: 'text-cyan-600 dark:text-cyan-400', ring: 'ring-cyan-500/25', stripe: 'bg-cyan-500' },
-  { bg: 'bg-orange-500/15', text: 'text-orange-600 dark:text-orange-400', ring: 'ring-orange-500/25', stripe: 'bg-orange-500' },
-  { bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', ring: 'ring-emerald-500/25', stripe: 'bg-emerald-500' },
-  { bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-600 dark:text-fuchsia-400', ring: 'ring-fuchsia-500/25', stripe: 'bg-fuchsia-500' },
+  { bg: 'bg-hairline/[0.07]', text: 'text-content-muted', ring: 'ring-hairline/10', stripe: 'bg-content-muted' },
 ];
 
 const hashString = (value) => {

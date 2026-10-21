@@ -1,16 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
-import { AnimatePresence, motion } from 'framer-motion';
-import { FiEye, FiEyeOff, FiLock, FiMail, FiUser } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiArrowRight } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import api, { getErrorMessage, isCancel } from '../services/api';
 import BrandLogo from '../components/BrandLogo';
 import Button from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Field';
-import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
-import { iconSwap, staggerContainer, staggerItem, staggerItemReduced, springUI } from '../utils/motion';
 
 export default function Login() {
   const [mode, setMode] = useState('login');
@@ -22,15 +19,13 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   const { login, register } = useAuth();
-  const { businessName, settings } = useSettings();
+  const { businessName } = useSettings();
   const navigate = useNavigate();
   const location = useLocation();
   const firstFieldRef = useRef(null);
 
   const isLogin = mode === 'login';
   const redirectTo = location.state?.from?.pathname || '/';
-  const reducedMotion = usePrefersReducedMotion();
-  const item = reducedMotion ? staggerItemReduced : staggerItem;
 
   /**
    * The business list for the signup form.
@@ -61,7 +56,7 @@ export default function Login() {
   }, [mode]);
 
   useEffect(() => {
-    firstFieldRef.current?.focus();
+    if (window.matchMedia('(pointer: fine)').matches) firstFieldRef.current?.focus();
   }, [mode]);
 
   const update = (field) => (event) => {
@@ -109,189 +104,55 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center p-4 py-10">
-      <motion.div
-        className="w-full max-w-md"
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
-      >
-        <motion.div variants={item} className="text-center mb-6">
-          <div className="inline-flex items-center justify-center mb-4">
-            <BrandLogo size={64} rounded="rounded-2xl" className="shadow-sm border border-hairline/[0.07]" />
-          </div>
-          <h1 className="text-xl sm:text-2xl font-display font-bold text-content tracking-[-0.02em] text-balance">
-            {businessName}
-          </h1>
-          <p className="text-sm text-content-subtle mt-1">
-            {settings?.tagline || 'Inventory Management System'}
-          </p>
-        </motion.div>
-
-        <motion.div variants={item} className="surface-card rounded-card p-6 sm:p-7">
-          <h2 className="text-lg font-semibold text-content">
-            {isLogin ? 'Sign in' : 'Create your account'}
-          </h2>
-          <p className="text-sm text-content-muted mt-1 mb-5">
-            {isLogin
-              ? 'Enter your details to open the dashboard.'
-              : 'Request an account. An administrator must approve it before you can sign in.'}
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-2.5" noValidate>
-            {!isLogin && (
-              <>
-                <Input
-                  ref={firstFieldRef}
-                  label="Full name"
-                  required
-                  icon={FiUser}
-                  name="name"
-                  autoComplete="name"
-                  placeholder="Your name"
-                  value={form.name}
-                  onChange={update('name')}
-                  disabled={submitting}
-                />
-                <Select
-                  label="Business"
-                  required
-                  name="businessId"
-                  value={form.businessId}
-                  onChange={update('businessId')}
-                  disabled={submitting || loadingBusinesses}
-                  hint={loadingBusinesses ? undefined : 'Choose where you will work'}
-                >
-                  {loadingBusinesses ? (
-                    <option value="">Loading businesses…</option>
-                  ) : (
-                    <>
-                      <option value="">Select a business</option>
-                      {businesses.map((business) => (
-                        <option key={business.id} value={business.id}>
-                          {business.name}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </Select>
-              </>
-            )}
-
-            <Input
-              ref={isLogin ? firstFieldRef : undefined}
-              label="Email address"
-              required
-              type="email"
-              icon={FiMail}
-              name="email"
-              autoComplete="email"
-              inputMode="email"
-              autoCapitalize="none"
-              spellCheck="false"
-              placeholder="you@example.com"
-              value={form.email}
-              onChange={update('email')}
-              disabled={submitting}
-            />
-
+    <div className="login-screen min-h-[100dvh] bg-surface-1 lg:grid lg:grid-cols-[1fr_1.1fr]">
+      <aside className="hidden lg:flex flex-col justify-between bg-[#17251f] text-white p-12 xl:p-16">
+        <div className="flex items-center gap-3">
+          <BrandLogo size={44} rounded="rounded-xl" />
+          <span className="text-base font-medium tracking-tight">{businessName}</span>
+        </div>
+        <div className="py-16 max-w-lg">
+          <p className="text-sm text-white/65 mb-6">Stock & cash, in balance.</p>
+          <h2 className="text-[clamp(3rem,4.6vw,4.75rem)] leading-[1.07] tracking-[-0.04em] font-medium">Every bag.<br />Every rupee.<br />Accounted for.</h2>
+          <p className="mt-8 text-base leading-relaxed text-white/70 max-w-sm">A clear record of your rice business. From the first delivery to the last sale of the day.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-8 border-t border-white/20 pt-7">
+          <div><p className="text-sm font-medium">Your inventory</p><p className="text-sm text-white/65 mt-2">Stock, deliveries & sales</p></div>
+          <div><p className="text-sm font-medium">Your cash book</p><p className="text-sm text-white/65 mt-2">Income, expenses & balances</p></div>
+        </div>
+      </aside>
+      <main className="flex min-h-[100dvh] flex-col px-6 sm:px-10 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] lg:justify-center">
+        <div className="lg:hidden flex items-center gap-3">
+          <BrandLogo size={44} rounded="rounded-xl" />
+          <span className="text-base font-semibold tracking-tight text-content">{businessName}</span>
+        </div>
+        <div className="w-full max-w-[400px] mx-auto mt-14 sm:mt-20 lg:mt-0">
+          <h1 className="text-[34px] sm:text-[40px] leading-tight font-semibold tracking-[-0.04em] text-content">{isLogin ? 'Sign in' : 'Create your account'}</h1>
+          <p className="text-[15px] leading-relaxed text-content-muted mt-3 mb-8">{isLogin ? 'Your stock, sales and cash book. All together.' : 'Choose your business below. An administrator will approve your account.'}</p>
+          <form onSubmit={handleSubmit} className="space-y-3" aria-busy={submitting}>
+            {!isLogin && <>
+              <Input ref={firstFieldRef} label="Full name" required name="name" maxLength={80} autoComplete="name" value={form.name} onChange={update('name')} disabled={submitting} />
+              <Select label="Business" required name="businessId" value={form.businessId} onChange={update('businessId')} disabled={submitting || loadingBusinesses}>
+                <option value="">{loadingBusinesses ? 'Loading businesses?' : 'Select a business'}</option>
+                {businesses.map((business) => <option key={business.id} value={business.id}>{business.name}</option>)}
+              </Select>
+            </>}
+            <Input ref={isLogin ? firstFieldRef : undefined} label="Email address" required type="email" name="email" maxLength={255} autoComplete="username" inputMode="email" autoCapitalize="none" spellCheck={false} value={form.email} onChange={update('email')} disabled={submitting} />
             <div className="relative">
-              <Input
-                label="Password"
-                required
-                type={showPassword ? 'text' : 'password'}
-                icon={FiLock}
-                name="password"
-                autoComplete={isLogin ? 'current-password' : 'new-password'}
-                placeholder={isLogin ? 'Your password' : 'At least 6 characters'}
-                minLength={6}
-                value={form.password}
-                onChange={update('password')}
-                disabled={submitting}
-                className="[&_.field-shell-control]:pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-10 w-10 grid place-items-center rounded-well
-                  text-content-subtle hover:text-content transition-colors"
-                tabIndex={-1}
-              >
-                <AnimatePresence initial={false} mode="popLayout">
-                  <motion.span
-                    key={showPassword ? 'hide' : 'show'}
-                    initial={iconSwap.initial}
-                    animate={iconSwap.animate}
-                    exit={iconSwap.exit}
-                    transition={reducedMotion ? { duration: 0.12 } : iconSwap.transition}
-                  >
-                    {showPassword ? (
-                      <FiEyeOff className="w-[18px] h-[18px]" />
-                    ) : (
-                      <FiEye className="w-[18px] h-[18px]" />
-                    )}
-                  </motion.span>
-                </AnimatePresence>
+              <Input label="Password" required type={showPassword ? 'text' : 'password'} name="password" autoComplete={isLogin ? 'current-password' : 'new-password'} minLength={6} value={form.password} onChange={update('password')} disabled={submitting} enterKeyHint="go" className="[&_.field-shell-control]:pr-12 [&_.field-shell-label]:pr-10" hint={!isLogin ? 'Use at least 6 characters.' : undefined} />
+              <button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="absolute right-1.5 top-2 h-11 w-11 grid place-items-center rounded-lg text-content-muted hover:text-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-content">
+                {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
               </button>
             </div>
-
-            <AnimatePresence initial={false}>
-              {error && (
-                <motion.div
-                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0, y: -4 }}
-                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, height: 'auto', y: 0 }}
-                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0, y: -4 }}
-                  transition={reducedMotion ? { duration: 0.15 } : springUI}
-                  className="overflow-hidden"
-                >
-                  <div
-                    className="rounded-well border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-500"
-                    role="alert"
-                  >
-                    {error}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <Button type="submit" size="lg" fullWidth loading={submitting}>
-              {submitting
-                ? isLogin
-                  ? 'Signing in…'
-                  : 'Creating account…'
-                : isLogin
-                ? 'Sign in'
-                : 'Create account'}
-            </Button>
+            {error && <div className="rounded-xl border border-red-500/25 bg-red-500/5 px-4 py-3 text-sm text-red-600 dark:text-red-400" role="alert">{error}</div>}
+            <div className="pt-3"><Button type="submit" size="lg" fullWidth loading={submitting} iconRight={FiArrowRight} className="min-h-[54px] rounded-full">{submitting ? (isLogin ? 'Signing in?' : 'Creating account?') : (isLogin ? 'Sign in' : 'Create account')}</Button></div>
           </form>
-
-          <div className="mt-5 pt-5 border-t border-hairline/[0.07] text-center">
-            <button
-              type="button"
-              onClick={switchMode}
-              disabled={submitting}
-              className="text-sm text-content-muted hover:text-content transition-colors disabled:opacity-50"
-            >
-              {isLogin ? (
-                <>
-                  Don&apos;t have an account?{' '}
-                  <span className="font-medium text-primary-600">Sign up</span>
-                </>
-              ) : (
-                <>
-                  Already have an account?{' '}
-                  <span className="font-medium text-primary-600">Sign in</span>
-                </>
-              )}
-            </button>
+          <div className="mt-7 text-center text-sm text-content-muted">
+            <span>{isLogin ? 'New to the team? ' : 'Already have an account? '}</span>
+            <button type="button" onClick={switchMode} disabled={submitting} className="font-semibold text-content underline underline-offset-4 decoration-hairline/30 min-h-[44px] disabled:opacity-50">{isLogin ? 'Sign up' : 'Sign in'}</button>
           </div>
-        </motion.div>
-
-        <motion.p variants={item} className="text-center text-xs text-content-subtle mt-6">
-          Inventory, sales and cash — in one place.
-        </motion.p>
-      </motion.div>
+          <p className="mt-12 text-xs text-center leading-relaxed text-content-subtle">Access is limited to your approved business.<br />Need help signing in? Contact your administrator.</p>
+        </div>
+      </main>
     </div>
   );
 }

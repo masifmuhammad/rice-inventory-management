@@ -92,7 +92,8 @@ class User {
         ]
       );
 
-      Object.assign(this, rowToDoc(rows[0]));
+      const { password: storedPassword, ...saved } = rowToDoc(rows[0]);
+      Object.assign(this, saved);
       this._password = rows[0].password;
       return this;
     }

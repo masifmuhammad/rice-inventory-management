@@ -7,7 +7,6 @@ import {
   FiMenu,
   FiPackage,
   FiPlus,
-  FiSearch,
   FiTrendingUp,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +16,7 @@ import { springSnappy, reducedTransition } from '../utils/motion';
 import NotificationPanel from './NotificationPanel';
 import UserAvatar from './UserAvatar';
 import BusinessSwitcher from './BusinessSwitcher';
+import { Input } from './ui/Field';
 
 function HeaderSearch() {
   const [query, setQuery] = useState('');
@@ -28,23 +28,14 @@ function HeaderSearch() {
   };
 
   return (
-    <form onSubmit={submit} className="hidden md:block relative min-w-[12rem] w-[min(18rem,28vw)]">
-      <FiSearch
-        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-content-subtle"
-        aria-hidden="true"
-      />
-      <input
+    <form onSubmit={submit} className="hidden lg:block relative min-w-[12rem] w-[min(18rem,28vw)]">
+      <Input label="Search products" enterKeyHint="search"
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search anything…"
         aria-label="Search products"
-        className="w-full h-10 pl-10 pr-4 rounded-full text-caption text-content
-          placeholder:text-content-subtle
-          bg-surface-1
-          border border-hairline/[0.06]
-          focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/40
-          transition-[border-color,box-shadow] duration-150"
+
       />
     </form>
   );
@@ -166,7 +157,7 @@ function HeaderCreate({ can }) {
  */
 export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
   const { user, can } = useAuth();
-  const { title: pageTitle } = usePageTitle();
+  const { title: pageTitle, summary, collapsed } = usePageTitle();
 
   return (
     /* No rule under the header — the reference lets it sit flush on the canvas.
@@ -186,9 +177,10 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
           </button>
 
           {pageTitle ? (
-            <h1 className="hidden lg:block font-display text-title text-content truncate">
-              {pageTitle}
-            </h1>
+            <div className="hidden lg:block min-w-0">
+              <h1 className="font-display text-title text-content truncate">{pageTitle}</h1>
+              {collapsed && summary && <p className="text-xs text-content-muted truncate mt-0.5" title={summary}>{summary}</p>}
+            </div>
           ) : null}
         </div>
 
@@ -206,8 +198,13 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
             Raising this above the two z-10 siblings puts the button back in
             front for hit-testing. The wrapper stays `pointer-events-none`, so it
             never steals taps meant for the hamburger or the bell. */}
-        <div className="lg:hidden absolute inset-x-0 z-20 flex justify-center px-[7rem] pointer-events-none">
-          <BusinessSwitcher className="pointer-events-auto min-w-0 max-w-[14rem]" centered showLogo />
+        <div className="lg:hidden absolute left-14 right-[7.25rem] sm:left-[4.5rem] sm:right-[14rem] z-20 flex justify-center pointer-events-none">
+          {collapsed ? (
+            <div className="min-w-0 text-center pointer-events-auto" data-testid="compact-page-header">
+              <p className="text-[15px] font-semibold tracking-tight text-content truncate">{pageTitle}</p>
+              {summary && <p className="text-[11px] leading-[13px] text-content-muted mt-0.5 tabular-nums" title={summary}>{summary.split(" | ").map((part) => <span key={part} className="block whitespace-nowrap">{part}</span>)}</p>}
+            </div>
+          ) : <BusinessSwitcher className="pointer-events-auto min-w-0 max-w-[14rem]" centered showLogo />}
         </div>
 
         <div className="z-10 flex items-center gap-2 sm:gap-2.5 flex-shrink-0 justify-end">

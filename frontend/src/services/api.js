@@ -17,15 +17,17 @@ const api = axios.create({
 
 /* ------------------------------------------------------------ token storage */
 
+let memoryToken = null;
 export const getToken = () => {
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    return localStorage.getItem(TOKEN_KEY) || memoryToken;
   } catch {
-    return null; // private browsing / storage disabled
+    return memoryToken;
   }
 };
 
 export const setToken = (token) => {
+  memoryToken = token || null;
   try {
     if (token) localStorage.setItem(TOKEN_KEY, token);
     else localStorage.removeItem(TOKEN_KEY);
@@ -92,7 +94,10 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
 
-    if (status === 401 && !isCredentialRequest(error.config?.url)) {
+    const sentToken = error.config?.headers?.Authorization;
+    const isCurrentSession = sentToken && sentToken === `Bearer ${getToken()}`;
+    const accountBlocked = status === 403 && /^ACCOUNT_/.test(error.response?.data?.code || '');
+    if ((status === 401 || accountBlocked) && isCurrentSession && !isCredentialRequest(error.config?.url)) {
       setToken(null);
       setCachedUser(null);
       setCachedCapabilities(null);
@@ -104,7 +109,7 @@ api.interceptors.response.use(
     }
 
     if (
-      status === 403 &&
+      status === 403 && isCurrentSession &&
       error.response?.data?.code === 'PASSWORD_CHANGE_REQUIRED' &&
       !window.location.pathname.startsWith('/change-password')
     ) {

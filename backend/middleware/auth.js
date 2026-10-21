@@ -39,8 +39,13 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ message: 'Account no longer exists', code: 'USER_GONE' });
     }
 
-    const issuedAt = decoded.iat * 1000;
-    if (user.sessionsValidFrom && issuedAt < user.sessionsValidFrom.getTime()) {
+    const validFrom = user.sessionsValidFrom?.getTime();
+    // JWT iat only has seconds. An exact version also revokes old tokens when
+    // the password changes twice within the same second.
+    const revoked = decoded.sessionVersion !== undefined
+      ? decoded.sessionVersion !== validFrom
+      : !Number.isFinite(decoded.iat) || decoded.iat < Math.floor(validFrom / 1000);
+    if (validFrom && revoked) {
       return res.status(401).json({
         message: 'Your session is no longer valid. Please sign in again.',
         code: 'SESSION_REVOKED',

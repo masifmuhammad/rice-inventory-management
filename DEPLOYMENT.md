@@ -1,152 +1,75 @@
-# Deployment
+# Deploy to Render
 
-The app ships as **one Docker image**: Express serves the API under `/api` and
-the built React app on every other path. One process, one port, one origin — so
-there is no CORS to configure and only one thing to pay for.
+The production layout is one Docker web service serving both React and Express, with a managed PostgreSQL database. The frontend calls /api on the same HTTPS origin. There is no separate frontend host or CORS setup to maintain.
 
----
+Redis is not required for this single-instance deployment. PostgreSQL remains the
+source of truth for stock, cash and accounts. Add a shared rate-limit store before
+scaling to multiple app instances; consider Redis-compatible storage when shared
+caches or background job queues become necessary. The current in-memory rate
+limits reset on restart. See the [rate-limit guidance](https://express-rate-limit.mintlify.app/overview)
+and [Render Key Value documentation](https://render.com/docs/key-value).
 
-## What it costs
+## Deploy after pushing the reviewed changes
 
-You need two things: somewhere to run the container, and a database.
+1. In Render, choose **New > Blueprint** and connect **masifmuhammad/rice-inventory-management**. Use the branch containing render.yaml.
+2. Review the two paid resources before creating them: the web service and PostgreSQL, both in Singapore. The Blueprint uses the smallest paid compute sizes; check Render's displayed prices before deployment.
+3. Render generates JWT_SECRET and connects DATABASE_URL to the database's private connection string. Leave PORT to Render. Keep REACT_APP_API_URL and CORS_ORIGINS unset for this combined deployment.
+4. Wait for the initial Docker build and the /api/health check to succeed. Startup applies the schema before accepting requests. Overlapping migrations share a PostgreSQL advisory lock.
+5. Bootstrap your admin as described below, then sign in through the HTTPS service URL.
 
-### Database
+Blueprint fields follow [Render's specification](https://render.com/docs/blueprint-spec). Auto-deploys use checksPass, so subsequent GitHub changes deploy only after the Production checks workflow passes. The Blueprint is prepared locally; creating it in Render is a separate deployment step.
 
-**PostgreSQL** runs in Docker Compose locally (`postgres:16-alpine`). For
-production you can use any managed Postgres (Neon, Supabase, RDS, etc.) and set
-`DATABASE_URL`:
+## First administrator
 
-```
-postgresql://USER:PASSWORD@host:5432/rice_inventory
-```
+Temporarily add these environment variables to the **web service** in the Render dashboard:
 
-### Hosting — cheapest first
+- SEED_ADMIN_NAME: your name
+- SEED_ADMIN_EMAIL: your actual sign-in email
+- SEED_ADMIN_PASSWORD: a unique temporary password
+- SEED_BUSINESS_NAME: your business name
 
-| Host | Cost | Sleeps when idle? | Notes |
-|---|---|---|---|
-| **Fly.io** | ~$0–2/mo | No (with autostop: yes) | Best value. `shared-cpu-1x` 256MB is enough. Scale-to-zero means you pay for seconds used. |
-| **Render** | $0 | **Yes — 50s cold start** | Genuinely free, but the first visit after 15 idle minutes takes ~50 seconds. Fine for personal use, painful for staff. $7/mo removes it. |
-| **Railway** | ~$5/mo | No | $5 credit covers a small app. Simplest dashboard of the three. |
-| **Hetzner / Contabo VPS** | €4–5/mo | No | Cheapest if you want several apps on one box, but you maintain the server yourself. |
+After saving the environment, open the service's **Shell** and run **npm run seed** from /app. The first account is an active administrator and must change its password on first sign-in. New registrations require admin approval.
 
-**Recommendation:** Fly.io if you want it always-fast and nearly free; Render if
-you want zero cost and can live with the cold start.
+Remove SEED_ADMIN_PASSWORD after successful setup. Running the seed again leaves existing accounts untouched. SEED_RESET_EXISTING=true is an explicit recovery operation: it resets credentials, activates admin permissions, and requires another password change. Never run npm run reset in production.
 
----
+## Optional AI assistant
 
-## Deploying
+Add OPENROUTER_API_KEY only if you want chat, voice and scanning. It stays on the server. Set OPENROUTER_SITE_URL to the public HTTPS app URL. Without a key, inventory and ledger features still work and the assistant stays hidden. Live AI calls require provider credentials and available models/credits; they are not part of offline tests.
 
-### Fly.io
+## Production behavior
 
-```bash
-# once
-curl -L https://fly.io/install.sh | sh
-fly auth login
+- Render terminates HTTPS; Express trusts one proxy hop and honors the assigned PORT.
+- API responses and the service worker are not cached by shared proxies. Hashed frontend assets are immutable; HTML, manifest, icons and service-worker files revalidate.
+- /api/health probes PostgreSQL and returns 503 when it cannot respond. API and database timeouts are bounded.
+- Stock movements, corrections, reversals and sale cash entries commit together. Product row locks serialize competing changes.
+- Report calendar dates use REPORT_TIMEZONE (Asia/Karachi). TZ also sets the process's local timezone.
+- The database denies public connections in the Blueprint. Images and business logos are stored in PostgreSQL; no persistent web-service disk is needed.
+- Rate limits use process memory. The Blueprint is a single instance; shared rate-limit storage is needed before running multiple instances.
 
-# from the repo root
-fly launch --no-deploy          # detects the Dockerfile; say no to a Postgres db
-fly secrets set DATABASE_URL="postgresql://..." \
-                JWT_SECRET="$(node -e "console.log(require('crypto').randomBytes(48).toString('hex'))")"
-fly deploy
-```
+## Verify after deployment
 
-In `fly.toml`, set `internal_port = 5000` and add this so it costs nearly nothing
-while idle:
+Open /api/health and confirm status OK and database connected. Then check sign-in and first password change, product creation, a stock-in, a sale, its matching cash-book line, a reversal, reports, business switching, and a receipt download/share. Refresh /products directly to check SPA routing.
 
-```toml
-[http_service]
-  internal_port = 5000
-  force_https = true
-  auto_stop_machines = true
-  auto_start_machines = true
-  min_machines_running = 0
-```
+On an actual iPhone, open the HTTPS URL in Safari, then **Share > Add to Home Screen**. Check portrait and landscape, numeric keyboards, the last field in each form, Previous/Next/Done, date/category pickers, the home indicator, and light/dark mode. Browser automation tests layout and the WebKit engine; real iOS keyboard animation and the system share sheet still need a physical-device pass.
 
-### Render
+The PWA shows its shell offline and a connection notice. It does not queue stock or cash writes offline; reconnect before recording entries. Updates prompt before reloading an open form.
 
-New → **Web Service** → connect the repo → Runtime **Docker**. Render reads the
-`Dockerfile` at the repo root. Add the environment variables below. Health check
-path: `/api/health`.
+## Existing production data and recovery
 
-### Railway
+The Blueprint creates a new empty database. Existing business records are **not** imported automatically. Before replacing a deployed system, export its PostgreSQL database and restore it into the target database, then validate record counts, stock balances and cash totals before directing staff to it. Keep the original deployment available during that verification.
 
-New Project → Deploy from GitHub. Railway detects the Dockerfile. Add the
-environment variables, then Settings → Networking → Generate Domain.
+Take a backup before deploying schema changes. Use Render's database backup/recovery controls and confirm the retention available on the selected plan. Redeploying the previous Docker image rolls back application code; restoring a database backup is a separate operation. The schema additions in this change preserve existing columns and records.
 
-### Any VPS
+## Local verification
 
-```bash
-git clone <your-repo> && cd rice-inventory-management
-echo "JWT_SECRET=$(openssl rand -hex 48)" > .env
-docker compose up -d --build
-```
+Use Node 22+ and PostgreSQL 16. Install locked dependencies with npm ci in backend and frontend. Build the frontend with npm run build; Docker also sets INLINE_RUNTIME_CHUNK=false and GENERATE_SOURCEMAP=false.
 
-That brings up PostgreSQL alongside the app. Put Caddy or nginx in front for HTTPS.
+Backend checks: set TEST_DATABASE_URL to a **dedicated test database** whose name contains test or readiness, then run npm test in backend. The integration suite refuses to fall back to DATABASE_URL and cleans up only its own fixture businesses.
 
----
+Browser checks: in frontend, run npx playwright install chromium webkit, then npm run test:e2e with the same TEST_DATABASE_URL. The fixture server uses port 5055. Never point these fixtures at real business data. CI runs the database checks, production frontend build, browser checks, runtime dependency audits and Docker build.
 
-## Environment variables
+The legacy Create React App build tooling still has development-only audit findings. It is confined to the build stage and is absent from the production image. Both runtime dependency trees are audited separately. Replacing that build system should be a separate, verified migration.
 
-| Variable | Required | Purpose |
-|---|---|---|
-| `DATABASE_URL` | **yes** | Postgres connection string. |
-| `JWT_SECRET` | **yes** | Signs login tokens. The server refuses to boot in production without it. Generate: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
-| `NODE_ENV` | set to `production` | Already set inside the image. |
-| `PORT` | no | Defaults to 5000. Most hosts inject their own — the server reads it. |
-| `JWT_EXPIRES_IN` | no | Defaults to `30d`. |
-| `CORS_ORIGINS` | no | **Leave empty.** Only needed if you host the frontend on a different domain than the API. |
+## Historical profit figures
 
-Never commit `JWT_SECRET`. Changing it signs everyone out, which is exactly what
-you want if it ever leaks.
-
----
-
-## First run
-
-The database starts empty. Create the admin account from the command line:
-
-```bash
-SEED_ADMIN_EMAIL=you@example.com SEED_ADMIN_PASSWORD='a-strong-password' npm run seed
-```
-
-Sign in with those credentials. On first login you will be asked to set a new
-password. After that, open **Users** to approve anyone who signed up through the
-registration form — they cannot use the app until you do.
-
----
-
-## Verifying a deploy
-
-```bash
-curl https://your-app.fly.dev/api/health
-# {"status":"OK","database":"connected","uptime":12,...}
-```
-
-`"database":"disconnected"` with a 503 means the app is up but cannot reach
-Postgres — almost always a mistyped password or the app cannot reach the database host.
-
----
-
-## Running it locally
-
-```bash
-# terminal 1
-cd backend && cp .env.example .env   # fill in JWT_SECRET
-npm install && npm run dev
-
-# terminal 2
-cd frontend && npm install && npm start
-```
-
-The frontend dev server proxies `/api` to port 5000, so it behaves exactly like
-production without any extra configuration.
-
-To test the real production image locally:
-
-```bash
-docker build -t rice-inventory .
-docker run --rm -p 5000:5000 \
-  -e DATABASE_URL="postgresql://..." \
-  -e JWT_SECRET="$(openssl rand -hex 48)" \
-  rice-inventory
-```
+New stock movements retain the product cost at recording time, so later price edits do not change their historical margin. Legacy movements without a cost snapshot retain the previous fallback to current product cost; their original costs cannot be reconstructed automatically. Review imported historical margins with your accountant.

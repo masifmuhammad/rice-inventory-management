@@ -1,3 +1,4 @@
+import usePageState from '../hooks/usePageState';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
@@ -8,7 +9,6 @@ import {
   FiEdit2,
   FiPackage,
   FiPlus,
-  FiSearch,
   FiTrash2,
   FiX,
 } from 'react-icons/fi';
@@ -16,6 +16,7 @@ import {
 import api, { getErrorMessage } from '../services/api';
 import useApi from '../hooks/useApi';
 import useDebounce from '../hooks/useDebounce';
+import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { useConfirm } from '../components/ui/ConfirmProvider';
 import { formatCompactMoney, formatMoney, formatQuantity } from '../utils/currency';
@@ -24,7 +25,7 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import StatCard, { StatGrid } from '../components/ui/StatCard';
-import { Select } from '../components/ui/Field';
+import { Input, Select } from '../components/ui/Field';
 import { EmptyState, ErrorState, InlineError } from '../components/ui/States';
 import { SkeletonStatCards, SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
@@ -40,14 +41,15 @@ const isLowStock = (product) => product.currentStock <= product.minStockLevel;
 
 export default function Products() {
   const { currencySymbol } = useSettings();
+  const { can } = useAuth();
   const confirm = useConfirm();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
-  const [lowStockOnly, setLowStockOnly] = useState(false);
-  const [sort, setSort] = useState('newest');
+  const [search, setSearch] = usePageState('products.search', '');
+  const [category, setCategory] = usePageState('products.category', '');
+  const [lowStockOnly, setLowStockOnly] = usePageState('products.lowStockOnly', false);
+  const [sort, setSort] = usePageState('products.sort', 'newest');
   const [editing, setEditing] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -63,7 +65,7 @@ export default function Products() {
       setModalOpen(true);
     }
     navigate(location.pathname, { replace: true, state: null });
-  }, [location.pathname, location.state, navigate]);
+  }, [location.pathname, location.state, navigate, setLowStockOnly, setSearch]);
 
   // One request when typing stops, instead of one per keystroke.
   const debouncedSearch = useDebounce(search, 350);
@@ -196,10 +198,11 @@ export default function Products() {
   return (
     <div className="space-y-6">
       <PageHeader
+        summary={totals.total + ' products | ' + formatCompactMoney(totals.value, currencySymbol) + ' stock'}
         title="Products"
-        description="Everything you stock, what it cost and what it is worth."
+        description="Live stock, prices and reorder levels."
         actions={
-          <Button icon={FiPlus} onClick={openCreate}>
+          <Button hidden={!can('products.manage')} icon={FiPlus} onClick={openCreate}>
             Add product
           </Button>
         }
@@ -212,7 +215,7 @@ export default function Products() {
       ) : loadingStats ? (
         <SkeletonStatCards count={4} />
       ) : (
-        <StatGrid>
+        <StatGrid className="products-overview">
           <StatCard title="Products" rawValue={totals.total} icon={FiPackage} />
           <StatCard
             title="Stock value"
@@ -234,19 +237,15 @@ export default function Products() {
 
       {/* Filters */}
       <Card className="p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="relative lg:col-span-2">
-            <FiSearch
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-content-subtle"
-              aria-hidden="true"
-            />
-            <input
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="relative col-span-2">
+            <Input label="Search products"
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search name, SKU or supplier…"
               aria-label="Search products"
-              className="field-control w-full pl-11 pr-10 py-2.5 min-h-[44px]"
+
             />
             {search && (
               <button
@@ -283,7 +282,7 @@ export default function Products() {
             type="button"
             onClick={() => setLowStockOnly((v) => !v)}
             aria-pressed={lowStockOnly}
-            className={`inline-flex items-center gap-2 px-3 py-2 min-h-[40px] rounded-lg text-sm font-medium border transition-colors ${
+            className={`inline-flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium border transition-colors ${
               lowStockOnly
                 ? 'bg-red-500/10 border-red-500/20 text-red-500'
                 : 'bg-surface-1 border-hairline/[0.12] text-content-muted hover:bg-hairline/[0.05]'
@@ -330,7 +329,7 @@ export default function Products() {
                   Clear filters
                 </Button>
               ) : (
-                <Button icon={FiPlus} onClick={openCreate}>
+                <Button hidden={!can('products.manage')} icon={FiPlus} onClick={openCreate}>
                   Add product
                 </Button>
               )
@@ -354,22 +353,22 @@ export default function Products() {
                       </p>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      <button
+                      {can('products.manage') && <button
                         type="button"
                         onClick={() => openEdit(product)}
                         aria-label={`Edit ${product.name}`}
                         className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/12 transition-colors"
                       >
                         <FiEdit2 className="w-4 h-4" />
-                      </button>
-                      <button
+                      </button>}
+                      {can('products.delete') && <button
                         type="button"
                         onClick={() => handleDelete(product)}
                         aria-label={`Archive ${product.name}`}
                         className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
                       >
                         <FiTrash2 className="w-4 h-4" />
-                      </button>
+                      </button>}
                     </div>
                   </div>
 
@@ -380,7 +379,7 @@ export default function Products() {
                     <div>
                       <dt className="text-xs text-content-subtle">Stock</dt>
                       <dd
-                        className={`font-medium tabular-nums text-[13px] leading-tight break-words ${
+                        className={`font-medium tabular-nums text-[15px] leading-tight break-words ${
                           isLowStock(product) ? 'text-red-500' : 'text-content'
                         }`}
                       >
@@ -389,13 +388,13 @@ export default function Products() {
                     </div>
                     <div>
                       <dt className="text-xs text-content-subtle">Sell price</dt>
-                      <dd className="font-medium text-content tabular-nums text-[13px] leading-tight break-words">
+                      <dd className="font-medium text-content tabular-nums text-[15px] leading-tight break-words">
                         {formatMoney(product.sellingPrice, currencySymbol)}
                       </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-content-subtle">Value</dt>
-                      <dd className="font-medium text-content tabular-nums text-[13px] leading-tight break-words">
+                      <dd className="font-medium text-content tabular-nums text-[15px] leading-tight break-words">
                         {formatCompactMoney(product.currentStock * product.costPrice, currencySymbol)}
                       </dd>
                     </div>
@@ -412,7 +411,7 @@ export default function Products() {
                       <th
                         key={heading || i}
                         scope="col"
-                        className={`px-6 py-3 text-xs font-semibold text-content-subtle uppercase tracking-wide ${
+                        className={`px-6 py-3 text-xs font-semibold text-content-subtle tracking-normal ${
                           i >= 2 && i <= 5 ? 'text-right' : i === 6 ? 'text-right' : 'text-left'
                         }`}
                       >
@@ -466,22 +465,22 @@ export default function Products() {
                       </td>
                       <td className="px-6 py-3.5">
                         <div className="flex items-center justify-end gap-1">
-                          <button
+                          {can('products.manage') && <button
                             type="button"
-                            onClick={() => openEdit(product)}
+                        onClick={() => openEdit(product)}
                             aria-label={`Edit ${product.name}`}
                             className="p-2 rounded-lg text-content-subtle hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/12 transition-colors"
                           >
                             <FiEdit2 className="w-4 h-4" />
-                          </button>
-                          <button
+                          </button>}
+                          {can('products.delete') && <button
                             type="button"
-                            onClick={() => handleDelete(product)}
+                        onClick={() => handleDelete(product)}
                             aria-label={`Archive ${product.name}`}
                             className="p-2 rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
                           >
                             <FiTrash2 className="w-4 h-4" />
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>

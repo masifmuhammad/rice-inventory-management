@@ -15,6 +15,7 @@ import {
   unlockFeedbackAudio,
 } from '../utils/feedback';
 import PageHeader from '../components/PageHeader';
+import BrandLogo from '../components/BrandLogo';
 import SettingsSkeleton from '../components/skeletons/SettingsSkeleton';
 import Button from '../components/ui/Button';
 import Card, { CardBody, CardHeader } from '../components/ui/Card';
@@ -25,7 +26,7 @@ const PRESET_COLORS = [
   { hex: '#059669', name: 'Emerald' },
   { hex: '#d97706', name: 'Amber' },
   { hex: '#dc2626', name: 'Red' },
-  { hex: '#7c3aed', name: 'Violet' },
+  { hex: '#3f3f46', name: 'Graphite' },
   { hex: '#0f172a', name: 'Slate' },
 ];
 
@@ -268,7 +269,7 @@ export default function Settings() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <PageHeader title="Settings" description="Your business details, branding and account." />
+      <PageHeader summary={settings?.businessName || 'Your business'} title="Settings" description="Your business details, branding and account." />
 
       {/* Business */}
       <Card>
@@ -301,7 +302,7 @@ export default function Settings() {
                 onChange={setBusinessField('phone')}
                 placeholder="+92 300 0000000"
               />
-              <Input label="Email" type="email" value={business.email} onChange={setBusinessField('email')} placeholder="shop@example.com" />
+              <Input label="Email" type="email" value={business.email} onChange={setBusinessField('email')} placeholder="Business email address" />
               <Input
                 label="City"
                 value={business.address?.city || ''}
@@ -378,14 +379,11 @@ export default function Settings() {
         <CardBody className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="w-20 h-20 rounded-xl border border-hairline/[0.07] bg-surface-sunken flex items-center justify-center overflow-hidden flex-shrink-0">
-              {settings.logo ? (
-                <img src={settings.logo} alt="Business logo" className="w-full h-full object-contain" />
-              ) : (
-                <FiImage className="w-7 h-7 text-content-subtle" aria-hidden="true" />
-              )}
+              <BrandLogo size={78} rounded="rounded-xl" />
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {!settings.logo && <span className="w-full text-xs text-content-muted">Default mill logo</span>}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -525,9 +523,9 @@ export default function Settings() {
             label="Haptic vibration"
             description={
               getHapticsSupportHint() === 'vibrate'
-                ? 'Uses the Vibration API on this device (typical on Android). Toggle to feel a test pulse.'
+                ? 'Feel a short pulse after an action. Turn on to try it.'
                 : getHapticsSupportHint() === 'ios-switch'
-                  ? 'iPhone still blocks the normal vibration API — even as a Home Screen app. We try Apple’s switch haptic when the OS allows it; keep Sound on as backup.'
+                  ? 'Available for some iPhone interactions. Keep sound on if you prefer audible feedback.'
                   : 'Not available in this browser. Sound effects still work.'
             }
             checked={feedbackPrefs.haptics}

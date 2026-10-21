@@ -1,3 +1,5 @@
+import usePageState from '../hooks/usePageState';
+import { Input } from '../components/ui/Field';
 import React, { useCallback, useMemo, useState } from 'react';
 import { toast } from '../utils/toast';
 import {
@@ -46,12 +48,12 @@ export default function Reports() {
   const { user } = useAuth();
   const { isDark } = useTheme();
   const [exporting, setExporting] = useState(false);
-  const [range, setRange] = useState({ startDate: isoDaysAgo(30), endDate: todayInput() });
+  const [range, setRange] = usePageState('reports.range', { startDate: isoDaysAgo(30), endDate: todayInput() });
 
   const chartTheme = useMemo(
     () => ({
       grid: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(9,9,11,0.07)',
-      axis: isDark ? '#8a8a95' : '#8e8e97',
+      axis: isDark ? '#a1a1aa' : '#62626b',
       legend: isDark ? '#9f9faa' : '#6a6a74',
       tooltip: {
         contentStyle: {
@@ -114,6 +116,7 @@ export default function Reports() {
     () =>
       (movement.data || []).slice(0, isWide ? 12 : 6).map((item) => ({
         name: item.product.name.length > 16 ? `${item.product.name.slice(0, 15)}…` : item.product.name,
+        unit: item.product.unit,
         'Stock in': item.stockIn,
         'Stock out': item.stockOut,
       })),
@@ -174,6 +177,7 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <PageHeader
+        summary={range.startDate + ' to ' + range.endDate}
         title="Reports"
         description="What you are holding, what moved and what it earned."
         actions={
@@ -187,29 +191,23 @@ export default function Reports() {
       <Card className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <div className="flex-1">
-            <label htmlFor="start" className="block text-sm font-medium text-content-muted mb-1.5">
-              From
-            </label>
-            <input
+            <Input label="From"
               id="start"
               type="date"
               value={range.startDate}
               max={range.endDate}
               onChange={(event) => setRange((r) => ({ ...r, startDate: event.target.value }))}
-              className="field-control w-full px-3.5 py-2.5 min-h-[44px]"
+
             />
           </div>
           <div className="flex-1">
-            <label htmlFor="end" className="block text-sm font-medium text-content-muted mb-1.5">
-              To
-            </label>
-            <input
+            <Input label="To"
               id="end"
               type="date"
               value={range.endDate}
               min={range.startDate}
               onChange={(event) => setRange((r) => ({ ...r, endDate: event.target.value }))}
-              className="field-control w-full px-3.5 py-2.5 min-h-[44px]"
+
             />
           </div>
           <div className="flex gap-2">
@@ -306,7 +304,7 @@ export default function Reports() {
                 { label: 'Sales', value: profit.data.summary.transactionCount },
               ].map((item) => (
                 <div key={item.label} className="rounded-well bg-surface-sunken px-4 py-3">
-                  <p className="text-xs font-medium text-content-subtle uppercase tracking-wide">{item.label}</p>
+                  <p className="text-xs font-medium text-content-subtle tracking-normal">{item.label}</p>
                   <p className="text-lg font-semibold text-content mt-1 tabular-nums">
                     <AnimatedValue
                       value={item.value}
@@ -328,7 +326,7 @@ export default function Reports() {
       {/* Movement chart */}
       <RefetchSection active={refetchingMovement}>
       <Card>
-        <CardHeader title="Movement by product" subtitle="Top 12 by volume" icon={FiBarChart2} />
+        <CardHeader title="Movement by product" subtitle="Quantities in each product&apos;s own unit" icon={FiBarChart2} />
         <CardBody className="pt-2">
           {movement.loading && !movement.data ? (
             <SkeletonChart height={340} />
@@ -356,10 +354,10 @@ export default function Reports() {
                     axisLine={false}
                   />
                   <YAxis tick={{ fontSize: 11, fill: chartTheme.axis }} tickLine={false} axisLine={false} width={48} />
-                  <Tooltip cursor={{ fill: 'rgba(148,163,184,0.08)' }} {...chartTheme.tooltip} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: chartTheme.legend }} />
-                  <Bar dataKey="Stock in" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={36} />
-                  <Bar dataKey="Stock out" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                  <Tooltip cursor={{ fill: 'rgba(148,163,184,0.08)' }} formatter={(value, name, item) => [formatQuantity(value, item.payload.unit), name]} {...chartTheme.tooltip} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} formatter={(value) => <span style={{ color: chartTheme.legend }}>{value}</span>} />
+                  <Bar dataKey="Stock in" fill={isDark ? "#34d399" : "#047857"} radius={[4, 4, 0, 0]} maxBarSize={36} />
+                  <Bar dataKey="Stock out" fill={isDark ? "#a1a1aa" : "#62626b"} radius={[4, 4, 0, 0]} maxBarSize={36} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -413,7 +411,7 @@ export default function Reports() {
                         <th
                           key={heading}
                           scope="col"
-                          className={`px-6 py-3 text-xs font-semibold text-content-subtle uppercase tracking-wide ${
+                          className={`px-6 py-3 text-xs font-semibold text-content-subtle tracking-normal ${
                             index >= 2 ? 'text-right' : 'text-left'
                           }`}
                         >
@@ -445,7 +443,7 @@ export default function Reports() {
                       <td className="px-6 py-3.5 text-right text-content-muted tabular-nums">
                         {formatMoney(product.potentialValue, currencySymbol)}
                       </td>
-                      <td className="px-6 py-3.5 text-right text-emerald-500 font-medium tabular-nums">
+                      <td className="px-6 py-3.5 text-right text-emerald-700 dark:text-emerald-400 font-medium tabular-nums">
                         {formatMoney(product.potentialProfit, currencySymbol)}
                       </td>
                     </tr>
@@ -462,7 +460,7 @@ export default function Reports() {
                     <td className="px-6 py-3.5 text-right tabular-nums">
                       {formatMoney(summary?.totalPotentialValue, currencySymbol)}
                     </td>
-                    <td className="px-6 py-3.5 text-right text-emerald-500 tabular-nums">
+                    <td className="px-6 py-3.5 text-right text-emerald-700 dark:text-emerald-400 tabular-nums">
                       {formatMoney(summary?.totalPotentialProfit, currencySymbol)}
                     </td>
                   </tr>

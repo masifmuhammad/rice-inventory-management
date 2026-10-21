@@ -5,14 +5,14 @@
 # — which also means no CORS configuration and no second service to pay for.
 
 # --------------------------------------------------------------- frontend ---
-FROM node:20-alpine AS frontend
+FROM node:22-alpine AS frontend
 
 WORKDIR /app/frontend
 
 # Dependencies are copied first so this layer is reused whenever only source
 # files change, which is most of the time.
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 
 COPY frontend/ ./
 
@@ -22,22 +22,21 @@ ENV GENERATE_SOURCEMAP=false
 # strict `script-src 'self'` policy, which would block that inline script and
 # leave a blank page, so keep it as a separate file.
 ENV INLINE_RUNTIME_CHUNK=false
-# Linting already ran in development; running it here only risks failing a
-# deploy on a stylistic warning.
-ENV DISABLE_ESLINT_PLUGIN=true
+# Treat frontend build warnings as failures so broken builds do not deploy.
+ENV CI=true
 
 RUN npm run build
 
 # ---------------------------------------------------------- backend deps ---
-FROM node:20-alpine AS backend-deps
+FROM node:22-alpine AS backend-deps
 
 WORKDIR /app
 
 COPY backend/package.json backend/package-lock.json* ./
-RUN npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund
+RUN npm ci --omit=dev --no-audit --no-fund
 
 # ---------------------------------------------------------------- runtime ---
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 
 # tini reaps zombies and forwards SIGTERM, which is what lets the server shut
 # down gracefully instead of being killed mid-request during a deploy.

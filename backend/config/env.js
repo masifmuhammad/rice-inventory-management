@@ -29,6 +29,12 @@ const loadEnv = () => {
     problems.push('DATABASE_URL is required in production.');
   }
 
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: process.env.REPORT_TIMEZONE || 'Asia/Karachi' }).format();
+  } catch {
+    problems.push('REPORT_TIMEZONE must be a valid IANA timezone.');
+  }
+
   if (problems.length) {
     console.error('\n❌ Invalid configuration:\n' + problems.map((p) => `  • ${p}`).join('\n') + '\n');
     process.exit(1);

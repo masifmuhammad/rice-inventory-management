@@ -47,6 +47,7 @@ export default function AnimatedValue({
   }
 
   const isMoney = type === 'money' || type === 'compactMoney';
+  const digitsClass = [figureClassName, isMoney ? 'font-money font-bold' : ''].join(' ');
   const amount = compact ? compact.amount : numeric;
   const unit = compact ? compact.unit : '';
 
@@ -81,14 +82,14 @@ export default function AnimatedValue({
           value={amount}
           format={format}
           locales="en-PK"
-          className={figureClassName}
+          className={digitsClass}
           willChange
           transformTiming={scrollTiming}
           spinTiming={scrollTiming}
           opacityTiming={fadeTiming}
         />
       ) : (
-        <span className={figureClassName}>{amount.toLocaleString('en-PK', format)}</span>
+        <span className={digitsClass}>{amount.toLocaleString('en-PK', format)}</span>
       )}
       {unit && <span className={unitClassName}>{unit}</span>}
     </span>

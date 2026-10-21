@@ -1,0 +1,62 @@
+name: Production checks
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rims_test
+          POSTGRES_PASSWORD: rims_ci_test
+          POSTGRES_DB: rims_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rims_test -d rims_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://rims_test:rims_ci_test@127.0.0.1:5432/rims_test
+      CI: "true"
+      GENERATE_SOURCEMAP: "false"
+      INLINE_RUNTIME_CHUNK: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci --no-fund
+        working-directory: backend
+      - run: npm ci --no-fund
+        working-directory: frontend
+      - run: npm audit --omit=dev
+        working-directory: backend
+      - run: npm audit --omit=dev
+        working-directory: frontend
+      - run: npm test
+        working-directory: backend
+      - run: npm run build
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium webkit
+        working-directory: frontend
+      - run: npm run test:e2e
+        working-directory: frontend
+      - run: docker build --tag rice-inventory:ci .
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failures
+          path: frontend/test-results/
+          retention-days: 7

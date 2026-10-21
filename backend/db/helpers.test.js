@@ -50,3 +50,7 @@ assert.strictEqual(likePattern('a_b'), '%a\\_b%');
 assert.strictEqual(likePattern('plain'), '%plain%');
 
 console.log('helpers: all money-rounding checks passed');
+
+assert.strictEqual(round2(1e-7), 0);
+assert.strictEqual(round4(5e-7), 0);
+assert.strictEqual(round2(1.005e4), 10050);

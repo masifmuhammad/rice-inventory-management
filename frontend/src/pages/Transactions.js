@@ -1,3 +1,4 @@
+import usePageState from '../hooks/usePageState';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
@@ -8,7 +9,6 @@ import {
   FiEdit,
   FiEdit2,
   FiPlus,
-  FiSearch,
   FiTrash2,
   FiTrendingDown,
   FiTrendingUp,
@@ -26,7 +26,7 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge, { transactionTone } from '../components/ui/Badge';
 import Pagination from '../components/ui/Pagination';
-import { Select } from '../components/ui/Field';
+import { Input, Select } from '../components/ui/Field';
 import { EmptyState, ErrorState } from '../components/ui/States';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
@@ -56,9 +56,9 @@ export default function Transactions() {
   const { currencySymbol, settings } = useSettings();
   const confirm = useConfirm();
 
-  const [page, setPage] = useState(1);
-  const [type, setType] = useState('');
-  const [search, setSearch] = useState('');
+  const [page, setPage] = usePageState('transactions.page', 1);
+  const [type, setType] = usePageState('transactions.type', '');
+  const [search, setSearch] = usePageState('transactions.search', '');
   const [modalOpen, setModalOpen] = useState(false);
   const [scanPrefill, setScanPrefill] = useState(null);
   const location = useLocation();
@@ -83,7 +83,7 @@ export default function Transactions() {
     }
 
     if (location.state?.openCreate) {
-      setScanPrefill(null);
+      setScanPrefill({ type: location.state.transactionType || 'stock_in' });
       setModalOpen(true);
       navigate(location.pathname, { replace: true, state: null });
     }
@@ -146,7 +146,7 @@ export default function Transactions() {
         throw error;
       }
     },
-    [transactions, products]
+    [transactions, products, setPage]
   );
 
   /**
@@ -199,7 +199,7 @@ export default function Transactions() {
         toast.error(getErrorMessage(error, 'Could not reverse the transaction'));
       }
     },
-    [confirm, transactions, products, list.length]
+    [confirm, transactions, products, list.length, setPage]
   );
 
   const handleReceipt = useCallback(
@@ -245,6 +245,7 @@ export default function Transactions() {
   return (
     <div className="space-y-6">
       <PageHeader
+        summary={(pagination?.total || 0) + ' movements' + (type ? ' | ' + (TYPE_FILTERS.find((option) => option.value === type)?.label || type) : '')}
         title="Transactions"
         description="Every movement in and out of the warehouse."
         actions={
@@ -257,17 +258,13 @@ export default function Transactions() {
       <Card className="p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="relative sm:col-span-2">
-            <FiSearch
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-content-subtle"
-              aria-hidden="true"
-            />
-            <input
+            <Input label="Search transactions"
               type="search"
               value={search}
               onChange={(event) => changeFilter(setSearch)(event.target.value)}
               placeholder="Search reference, supplier, customer or notes…"
               aria-label="Search transactions"
-              className="field-control w-full pl-11 pr-10 py-2.5 min-h-[44px]"
+
             />
             {search && (
               <button

@@ -29,14 +29,14 @@ const FORM_FIELDS = 'input:not([type="hidden"]), textarea, select';
  * keyboard, and so is anything a caller has already handled.
  */
 function advanceOnEnter(event) {
-  if (event.key !== 'Enter' || event.defaultPrevented || event.shiftKey) return;
+  if (event.key !== 'Enter' || event.defaultPrevented || event.shiftKey || event.isComposing || event.nativeEvent?.isComposing) return;
 
   const field = event.currentTarget;
   const form = field.form || field.closest('form');
   if (!form) return;
 
   const fields = Array.from(form.querySelectorAll(FORM_FIELDS)).filter(
-    (node) => !node.disabled && node.tabIndex !== -1 && node.offsetParent !== null
+    (node) => !node.disabled && node.tabIndex !== -1 && node.offsetParent !== null && !node.closest('details:not([open])')
   );
 
   const next = fields[fields.indexOf(field) + 1];
@@ -56,16 +56,16 @@ const shellClasses = (invalid, extra = '') =>
   ['field-shell', invalid ? 'field-shell-invalid' : '', extra].filter(Boolean).join(' ');
 
 /** Hint / error sit under the shell so the control height stays predictable. */
-function FieldMessage({ error, hint }) {
+function FieldMessage({ error, hint, id }) {
   if (error) {
     return (
-      <p className="mt-1.5 text-sm text-red-500" role="alert">
+      <p id={id} className="mt-1.5 text-sm text-red-500" role="alert">
         {error}
       </p>
     );
   }
   if (hint) {
-    return <p className="mt-1.5 text-xs text-content-subtle">{hint}</p>;
+    return <p id={id} className="mt-1.5 text-xs text-content-subtle">{hint}</p>;
   }
   return null;
 }
@@ -110,96 +110,33 @@ function ShellLabel({ htmlFor, label, required, as: Tag = 'label' }) {
 }
 
 export const Input = forwardRef(function Input(
-  {
-    label,
-    hint,
-    error,
-    required,
-    icon: Icon,
-    prefix,
-    className = '',
-    id,
-    // Android and iOS both label the return key from this. Every form in the
-    // app ends on a textarea or a picker, so "next" is the truth on every
-    // <Input> there is; a caller with a one-field form can still say otherwise.
-    enterKeyHint = 'next',
-    onKeyDown,
-    ...props
-  },
-  ref
+  { label, hint, error, required, icon: Icon, prefix, className = '', id,
+    enterKeyHint = 'next', onKeyDown, placeholder, type = 'text', ...props }, ref
 ) {
   const generatedId = useId();
   const inputId = id || generatedId;
-
+  const caption = label || props['aria-label'] || placeholder;
+  const pinned = ['date', 'time', 'datetime-local', 'month', 'week', 'color'].includes(type);
   const handleKeyDown = (event) => {
     onKeyDown?.(event);
     advanceOnEnter(event);
   };
-
-  const keyboardProps = { enterKeyHint, onKeyDown: handleKeyDown };
-
-  // No label → flat control (search bars, compact toolbars).
-  if (!label) {
-    return (
-      <div className={className}>
-        <div className="relative">
-          {Icon && (
-            <Icon
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-content-subtle"
-              aria-hidden="true"
-            />
-          )}
-          {prefix && (
-            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-content-subtle">
-              {prefix}
-            </span>
-          )}
-          <input
-            ref={ref}
-            id={inputId}
-            aria-invalid={error ? 'true' : undefined}
-            className={controlClasses(error, `${flatSizing} ${Icon || prefix ? 'pl-11' : ''}`)}
-            {...keyboardProps}
-            {...props}
-          />
-        </div>
-        <FieldMessage error={error} hint={hint} />
-      </div>
-    );
-  }
-
   return (
     <div className={className}>
-      {/* The shell itself is the label, not just the caption inside it. A 56px
-          well where only the 24px text line focuses the input is the difference
-          between a field that feels solid under a thumb and one you have to aim
-          at — the padding, the caption and the empty space to the right of a
-          short value are all part of the control now. */}
-      <label htmlFor={inputId} className={shellClasses(error, 'cursor-text')}>
-        <ShellLabel as="span" label={label} required={required} />
-        <div className="relative flex items-center min-h-[1.5rem]">
-          {Icon && (
-            <Icon
-              className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-content-subtle"
-              aria-hidden="true"
-            />
-          )}
-          {prefix && (
-            <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-sm font-medium text-content-subtle tabular-nums">
-              {prefix}
-            </span>
-          )}
-          <input
-            ref={ref}
-            id={inputId}
+      <label htmlFor={inputId} className={shellClasses(error, caption ? 'field-shell-floating cursor-text' : 'cursor-text')} data-pinned={pinned || undefined}>
+        <ShellLabel as="span" label={caption} required={required} />
+        <div className="field-input-line relative flex items-center min-h-[1.5rem]">
+          {Icon && <Icon className="field-floating-adornment pointer-events-none absolute left-0 w-4 h-4 text-content-subtle" aria-hidden="true" />}
+          {prefix && <span className="field-floating-adornment pointer-events-none absolute left-0 text-sm text-content-subtle tabular-nums">{prefix}</span>}
+          <input ref={ref} id={inputId} type={type}
             aria-invalid={error ? 'true' : undefined}
-            className={`field-shell-control ${Icon || prefix ? 'pl-7' : ''}`}
-            {...keyboardProps}
-            {...props}
-          />
+            aria-describedby={error || hint ? inputId + '-message' : undefined}
+            required={required} placeholder={placeholder || ' '}
+            className={['field-shell-control', Icon || prefix ? 'pl-7' : ''].join(' ')}
+            enterKeyHint={enterKeyHint} onKeyDown={handleKeyDown} {...props} />
         </div>
       </label>
-      <FieldMessage error={error} hint={hint} />
+      <FieldMessage error={error} hint={hint} id={inputId + '-message'} />
     </div>
   );
 });
@@ -275,6 +212,8 @@ export const Select = forwardRef(function Select(
         onChange={onChange}
         disabled={disabled}
         aria-invalid={error ? 'true' : undefined}
+            aria-describedby={error || hint ? selectId + '-message' : undefined}
+            aria-required={required || undefined}
         className={controlClasses(
           error,
           `${flatSizing} appearance-none pr-10 bg-no-repeat ${selectClassName}`.trim()
@@ -308,6 +247,8 @@ export const Select = forwardRef(function Select(
             ref={ref}
             id={selectId}
             aria-invalid={error ? 'true' : undefined}
+            aria-describedby={error || hint ? selectId + '-message' : undefined}
+            aria-required={required || undefined}
             /* `...props` carries the `aria-label` that every unlabelled toolbar
                filter relies on for its accessible name. Dropping it left the
                category, sort, type and status dropdowns announcing only their
@@ -443,48 +384,28 @@ export const Select = forwardRef(function Select(
           </ListboxOptions>
         </div>
       </Listbox>
-      <FieldMessage error={error} hint={hint} />
+      <FieldMessage error={error} hint={hint} id={selectId + '-message'} />
     </div>
   );
 });
 
 export const Textarea = forwardRef(function Textarea(
-  { label, hint, error, required, className = '', id, rows = 3, ...props },
-  ref
+  { label, hint, error, required, className = '', id, rows = 3, placeholder, ...props }, ref
 ) {
   const generatedId = useId();
   const textareaId = id || generatedId;
-
-  if (!label) {
-    return (
-      <div className={className}>
-        <textarea
-          ref={ref}
-          id={textareaId}
-          rows={rows}
-          aria-invalid={error ? 'true' : undefined}
-          className={controlClasses(error, 'px-3.5 py-2.5 resize-y')}
-          {...props}
-        />
-        <FieldMessage error={error} hint={hint} />
-      </div>
-    );
-  }
-
+  const caption = label || props['aria-label'] || placeholder;
   return (
     <div className={className}>
-      <label htmlFor={textareaId} className={shellClasses(error, 'cursor-text')}>
-        <ShellLabel as="span" label={label} required={required} />
-        <textarea
-          ref={ref}
-          id={textareaId}
-          rows={rows}
+      <label htmlFor={textareaId} className={shellClasses(error, 'field-shell-floating field-shell-textarea cursor-text')}>
+        <ShellLabel as="span" label={caption} required={required} />
+        <textarea ref={ref} id={textareaId} rows={rows}
           aria-invalid={error ? 'true' : undefined}
-          className="field-shell-control resize-y min-h-[4.5rem] py-0.5"
-          {...props}
-        />
+          aria-describedby={error || hint ? textareaId + '-message' : undefined}
+          required={required} placeholder={placeholder || ' '}
+          className="field-shell-control resize-y min-h-[4.5rem]" {...props} />
       </label>
-      <FieldMessage error={error} hint={hint} />
+      <FieldMessage error={error} hint={hint} id={textareaId + '-message'} />
     </div>
   );
 });

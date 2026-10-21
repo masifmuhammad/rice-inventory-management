@@ -26,10 +26,8 @@ const DESKTOP_ACTIONS = [
  * drifted against the tab bar beside it. Splitting the transform onto a child
  * did not fix it either.
  *
- * The overlap never needed a gesture. The page's own bottom padding now reserves
- * the space this button occupies (see Layout), so it cannot cover anything, and
- * with no transform there is nothing to drift. Fewer moving parts, and nothing
- * for the user to discover.
+ * Layout reserves a side gutter from tablet size upward and extra bottom
+ * space on phones, keeping the trigger clear of form actions and final rows.
  */
 export default function AssistantFab() {
   const isMobile = useMediaQuery('(max-width: 1023px)');
@@ -77,7 +75,7 @@ export default function AssistantFab() {
           mobile browser toolbar collapses during scroll, which moves anything
           positioned with it. */}
       <div
-        className="fixed z-50 flex flex-col items-end gap-3 pointer-events-none
+        className="assistant-floating fixed z-50 flex flex-col items-end gap-3 pointer-events-none
           right-4 sm:right-6
           bottom-[calc(var(--app-tabbar-height)+1.5rem)] lg:bottom-6"
         onMouseEnter={() => !isMobile && setHovered(true)}

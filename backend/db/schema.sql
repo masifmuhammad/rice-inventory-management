@@ -100,6 +100,10 @@ CREATE INDEX IF NOT EXISTS idx_transactions_business_created ON transactions (bu
 CREATE INDEX IF NOT EXISTS idx_transactions_product_created ON transactions (product_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_transactions_type_created ON transactions (type, created_at DESC);
 
+-- Preserve the cost basis of new movements when a product price changes later.
+-- Old movements remain nullable because their historical cost cannot be recovered.
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cost_price_snapshot NUMERIC(14, 4);
+
 CREATE TABLE IF NOT EXISTS cash_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
@@ -123,6 +127,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_cash_entries_migrated_from
   ON cash_entries (migrated_from) WHERE migrated_from IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_cash_entries_business_occurred ON cash_entries (business_id, occurred_at DESC);
+
+-- Sale references/customer names accept 120 characters on transactions too.
+ALTER TABLE cash_entries ALTER COLUMN party TYPE VARCHAR(120);
+ALTER TABLE cash_entries ALTER COLUMN reference TYPE VARCHAR(120);
+CREATE INDEX IF NOT EXISTS idx_cash_entries_business_page ON cash_entries (business_id, occurred_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_business_type_created ON transactions (business_id, type, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -5,6 +5,9 @@ node_modules/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+!frontend/.env.development
 .env.local
 .env.development.local
 .env.test.local
@@ -34,3 +37,17 @@ frontend/.pnp.js
 # Backend
 backend/uploads/
 backend/*.db
+
+# Browser verification output
+frontend/test-results/
+frontend/playwright-report/
+
+# Local design tool installations and generated review caches
+.agents/
+.codex/
+.taste-skill/
+verification/
+
+.impeccable/
+skills-lock.json
+debug-*

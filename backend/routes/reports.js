@@ -12,36 +12,10 @@ const { round2 } = require('../db/helpers');
 /** How many individual sales the profit report lists. Totals are not capped by it. */
 const DETAIL_LIMIT = 1000;
 
-const daysAgo = (n) => {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
-const daysFromNow = (n) => {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  d.setHours(23, 59, 59, 999);
-  return d;
-};
-
-/** Builds a createdAt filter from query params, falling back to a rolling window. */
-const dateRange = (query, defaultDays = 30) => {
-  const { startDate, endDate } = query;
-  if (!startDate && !endDate) return { $gte: daysAgo(defaultDays) };
-
-  const range = {};
-  if (startDate) range.$gte = new Date(startDate);
-  if (endDate) {
-    // A plain `YYYY-MM-DD` end date parses to midnight, which would silently drop
-    // everything recorded on that final day.
-    const end = new Date(endDate);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(String(endDate))) end.setHours(23, 59, 59, 999);
-    range.$lte = end;
-  }
-  return range;
-};
+const { dateRange: buildDateRange, dayStart, localDay, shiftDay } = require('../db/dates');
+const daysAgo = (n) => dayStart(shiftDay(localDay(), -n));
+const daysFromNow = (n) => new Date(dayStart(shiftDay(localDay(), n + 1)).getTime() - 1);
+const dateRange = (query, defaultDays = 30) => buildDateRange(query, defaultDays);
 
 /** Percentage change, guarding the divide-by-zero a new business always hits. */
 const percentChange = (current, previous) => {
@@ -58,10 +32,11 @@ router.get(
   requireCapability('products.view'),
   asyncHandler(async (req, res) => {
     const biz = req.businessId;
+    const financial = can(req.user.role, 'reports.view');
     const windowStart = daysAgo(30);
     const previousStart = daysAgo(60);
 
-    const [inventory, lowStock, movement, previousMovement, withdrawals, expiringSoon] =
+    const [inventory, lowStock, movement, previousMovement, withdrawals, expiringSoon, stockSummary, cashTotals] =
       await Promise.all([
         Product.aggregate(
           [
@@ -114,6 +89,11 @@ router.get(
           },
           { sort: { expiryDate: 1 }, limit: 10, select: 'name sku expiryDate currentStock unit' }
         ),
+        Product.aggregate([{ $group: { _id: null, total: { $sum: 1 } } }], { businessId: biz }),
+        can(req.user.role, 'cash.view') ? CashEntry.aggregate([
+          { $match: { businessId: biz } },
+          { $group: { _id: '$direction', total: { $sum: '$amount' } } },
+        ]) : Promise.resolve([]),
       ]);
 
     const byType = (rows, type) => rows.find((r) => r._id === type) || { quantity: 0, value: 0, count: 0 };
@@ -141,11 +121,15 @@ router.get(
     const cashIn = withdrawals.find((r) => r._id === 'in') || { total: 0, count: 0 };
 
     res.json({
+      cashBalance: can(req.user.role, 'cash.view') ? round2(
+        (cashTotals.find((row) => row._id === 'in')?.total || 0) -
+        (cashTotals.find((row) => row._id === 'out')?.total || 0)
+      ) : undefined,
       totalProducts: totals.totalProducts,
-      totalStockValue: round2(totals.totalStockValue),
+      totalStockValue: financial ? round2(totals.totalStockValue) : undefined,
       totalStockQuantity: round2(totals.totalStockQuantity),
-      totalPotentialValue: round2(totals.totalPotentialValue),
-      lowStockCount: lowStock.length,
+      totalPotentialValue: financial ? round2(totals.totalPotentialValue) : undefined,
+      lowStockCount: stockSummary[0]?.lowStock || 0,
       lowStockProducts: lowStock.map((p) => ({
         id: p._id,
         name: p.name,
@@ -165,19 +149,19 @@ router.get(
       recentActivity: {
         stockIn: round2(current.stockIn.quantity),
         stockOut: round2(current.stockOut.quantity),
-        revenue: round2(current.stockOut.value),
+        revenue: financial ? round2(current.stockOut.value) : undefined,
         transactions: transactionCount,
-        cashWithdrawals: cashOut.count,
-        totalWithdrawn: round2(cashOut.total),
-        cashIn: round2(cashIn.total),
-        cashInCount: cashIn.count,
-        netCash: round2(cashIn.total - cashOut.total),
+        cashWithdrawals: financial ? cashOut.count : undefined,
+        totalWithdrawn: financial ? round2(cashOut.total) : undefined,
+        cashIn: financial ? round2(cashIn.total) : undefined,
+        cashInCount: financial ? cashIn.count : undefined,
+        netCash: financial ? round2(cashIn.total - cashOut.total) : undefined,
       },
       // Measured against the preceding 30 days — no placeholder percentages.
       trends: {
         stockIn: percentChange(current.stockIn.quantity, previous.stockIn.quantity),
         stockOut: percentChange(current.stockOut.quantity, previous.stockOut.quantity),
-        revenue: percentChange(current.stockOut.value, previous.stockOut.value),
+        revenue: financial ? percentChange(current.stockOut.value, previous.stockOut.value) : undefined,
         transactions: percentChange(transactionCount, previousCount),
       },
     });
@@ -423,10 +407,10 @@ router.get(
     );
 
     const transactions = sales.map((t) => {
-      const costPrice = t.product?.costPrice || 0;
-      const sellingPrice = t.price || t.product?.sellingPrice || 0;
+      const costPrice = t.costPriceSnapshot ?? t.product?.costPrice ?? 0;
+      const sellingPrice = t.price ?? t.product?.sellingPrice ?? 0;
       const revenue = t.totalValue ?? sellingPrice * t.quantity;
-      const profit = (sellingPrice - costPrice) * t.quantity;
+      const profit = revenue - costPrice * t.quantity;
 
       return {
         transactionId: t._id,

@@ -9,7 +9,7 @@ const DEFAULT_BRAND_LOGO = `${process.env.PUBLIC_URL || ''}/brand/hm-logo.png`;
  * Falls back to the bundled brand asset (not the generic package icon).
  */
 export default function BrandLogo({ size = 40, className = '', rounded = 'rounded-lg' }) {
-  const { logo } = useSettings();
+  const { logo, businessName } = useSettings();
   // Prefer uploaded logo only when it looks like a real image data URL / path.
   const src = logo || DEFAULT_BRAND_LOGO;
   const [failed, setFailed] = useState(false);
@@ -37,7 +37,7 @@ export default function BrandLogo({ size = 40, className = '', rounded = 'rounde
   return (
     <img
       src={displaySrc}
-      alt="Haji Muhammad Rice Mills"
+      alt={logo ? `${businessName || "Business"} logo` : "Default mill logo"}
       width={size}
       height={size}
       style={dimensions}

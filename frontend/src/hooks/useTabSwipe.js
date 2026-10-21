@@ -4,8 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 /** The tab bar's own order — swiping should match what the bar shows. */
 const TABS = ['/', '/products', '/transactions', '/cash-book'];
 
-const indexOf = (pathname) =>
-  TABS.findIndex((path) => (path === '/' ? pathname === '/' : pathname.startsWith(path)));
+const indexOf = (pathname, tabs) =>
+  tabs.findIndex((path) => (path === '/' ? pathname === '/' : pathname.startsWith(path)));
 
 /**
  * Travel before a horizontal drag counts as a page change.
@@ -52,13 +52,14 @@ const MIN_TRAVEL = 44;
  * Bails out when the gesture starts anywhere that owns horizontal movement of
  * its own: a swipeable row, a scrollable pane, a modal, or a range input.
  */
-export default function useTabSwipe({ enabled = true } = {}) {
+export default function useTabSwipe({ enabled = true, canViewCash = true } = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const start = useRef(null);
 
   useEffect(() => {
     if (!enabled) return undefined;
+    const tabs = canViewCash ? TABS : TABS.slice(0, 3);
 
     const onTouchStart = (event) => {
       if (event.touches.length !== 1) {
@@ -125,25 +126,25 @@ export default function useTabSwipe({ enabled = true } = {}) {
       const velocity = Math.abs(dx) / elapsed;
       if (Math.abs(dx) < DISTANCE && velocity < VELOCITY) return;
 
-      const current = indexOf(location.pathname);
+      const current = indexOf(location.pathname, tabs);
       if (current < 0) return; // a drawer route has no neighbours
 
       // Swiping left moves forward, the way pages advance.
       const next = current + (dx < 0 ? 1 : -1);
-      if (next < 0 || next >= TABS.length) return;
+      if (next < 0 || next >= tabs.length) return;
 
-      navigate(TABS[next]);
+      navigate(tabs[next]);
     };
 
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchend', onTouchEnd, { passive: true });
-    window.addEventListener('touchcancel', () => {
-      start.current = null;
-    }, { passive: true });
+    const cancel = () => { start.current = null; };
+    window.addEventListener('touchcancel', cancel, { passive: true });
 
     return () => {
       window.removeEventListener('touchstart', onTouchStart);
       window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', cancel);
     };
-  }, [enabled, location.pathname, navigate]);
+  }, [enabled, canViewCash, location.pathname, navigate]);
 }

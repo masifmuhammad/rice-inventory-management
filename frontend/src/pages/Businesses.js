@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import { FiBriefcase, FiPlus } from 'react-icons/fi';
 import api, { getErrorMessage } from '../services/api';
@@ -16,11 +17,12 @@ import { Skeleton, SkeletonGate } from '../components/ui/Skeleton';
 const COLOR_PRESETS = [
   { name: 'Forest', primary: '#059669', accent: '#10b981' },
   { name: 'Ocean', primary: '#0284c7', accent: '#0ea5e9' },
-  { name: 'Royal', primary: '#4f46e5', accent: '#6366f1' },
+  { name: 'Royal', primary: '#44403c', accent: '#78716c' },
   { name: 'Slate', primary: '#334155', accent: '#64748b' },
 ];
 
 export default function Businesses() {
+  const navigate = useNavigate();
   const { businesses, can, switchBusiness } = useAuth();
   const { settings, updateSettings } = useSettings();
   const [creating, setCreating] = useState(false);
@@ -119,6 +121,7 @@ export default function Businesses() {
   return (
     <div className="space-y-6">
       <PageHeader
+        summary={list.length + ' accessible businesses'}
         title="Businesses"
         description="Manage organisations, branding, and logos. Only admins can change logos."
       />
@@ -166,7 +169,7 @@ export default function Businesses() {
                         setSwitching(business.id);
                         try {
                           await switchBusiness(business.id);
-                          window.location.reload();
+                          navigate('/');
                         } catch (err) {
                           toast.error(getErrorMessage(err, 'Could not open that business'));
                           setSwitching(null);
@@ -209,7 +212,7 @@ export default function Businesses() {
                   type="button"
                   onClick={() => applyColors(preset.primary, preset.accent)}
                   className="px-3 py-2 min-h-[44px] rounded-full text-xs font-medium border border-hairline/[0.07] hover:border-primary-400 transition-colors"
-                  style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.accent})`, color: '#fff' }}
+                  style={{ background: preset.primary, color: '#fff' }}
                 >
                   {preset.name}
                 </button>

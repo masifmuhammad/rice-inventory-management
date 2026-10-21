@@ -3,17 +3,17 @@ import { FiLoader } from 'react-icons/fi';
 import { feedbackTick } from '../../utils/feedback';
 
 const base =
-  'inline-flex items-center justify-center gap-2 font-medium rounded-xl select-none ' +
+  'inline-flex items-center justify-center gap-2 font-medium select-none ' +
   'transition-[background-color,box-shadow,transform,opacity,border-color] duration-150 ease-out ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base focus-visible:ring-primary-500 ' +
   'disabled:opacity-55 disabled:cursor-not-allowed disabled:pointer-events-none';
 
 // The press effect is the only transform, so it never fights a parent animation.
-const press = 'active:scale-[0.96] motion-reduce:active:scale-100 motion-reduce:transition-none';
+const press = 'active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none';
 
 const variants = {
   primary:
-    'bg-primary-600 text-white shadow-[0_1px_2px_rgb(0_0_0/0.12),inset_0_1px_0_rgb(255_255_255/0.12)] hover:bg-primary-500',
+    'bg-content text-surface-1 hover:opacity-85',
   secondary:
     'bg-surface-1 text-content border border-hairline/[0.12] hover:border-hairline/20 hover:bg-surface-3',
   ghost: 'text-content-muted hover:bg-hairline/[0.06] hover:text-content',
@@ -23,7 +23,7 @@ const variants = {
 };
 
 const sizes = {
-  sm: 'text-sm px-3 py-1.5 min-h-[36px]',
+  sm: 'text-sm px-3 py-1.5 min-h-[44px] sm:min-h-[36px]',
   // 44px is the comfortable touch target on a phone.
   md: 'text-sm px-4 py-2.5 min-h-[44px]',
   lg: 'text-base px-6 py-3 min-h-[48px]',
@@ -61,6 +61,8 @@ const Button = forwardRef(function Button(
     onPointerDown?.(event);
   };
 
+  if (props.hidden) return null;
+
   return (
     <button
       ref={ref}
@@ -70,6 +72,7 @@ const Button = forwardRef(function Button(
       onPointerDown={handlePointerDown}
       className={[
         base,
+        className.includes('rounded-') ? '' : 'rounded-xl',
         !isStatic && press,
         variants[variant] || variants.primary,
         sizes[size] || sizes.md,

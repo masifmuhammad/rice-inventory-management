@@ -21,6 +21,16 @@ const notFound = (req, res) => {
 
 /* eslint-disable no-unused-vars */
 const errorHandler = (err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ message: 'The request contains invalid JSON.' });
+  }
+  if (err.code === '23514') {
+    return res.status(400).json({ message: 'Check the amounts and stock levels in this entry.' });
+  }
+  if (['57014', '53300', '57P01', 'ECONNREFUSED', 'ECONNRESET'].includes(err.code)) {
+    return res.status(503).json({ message: 'The database is temporarily unavailable. Please try again shortly.' });
+  }
   if (err.code === '22P02' || err.name === 'CastError') {
     return res.status(400).json({ message: err.path ? `Invalid ${err.path}` : 'Invalid identifier' });
   }

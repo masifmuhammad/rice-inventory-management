@@ -13,6 +13,8 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import ChangePassword from './pages/ChangePassword';
 import InstallPrompt from './components/InstallPrompt';
+import ConnectionStatus from './components/ConnectionStatus';
+import MobileViewport from './components/MobileViewport';
 import AuthShellSkeleton from './components/skeletons/AuthShellSkeleton';
 import { lazyPage } from './utils/lazyPage';
 import { unlockFeedbackAudio } from './utils/feedback';
@@ -105,9 +107,9 @@ function AppRoutes() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/products" element={<Products />} />
         <Route path="/transactions" element={<Transactions />} />
-        <Route path="/cash-book" element={<CashBook />} />
+        <Route path="/cash-book" element={<RequireCapability capability="cash.view"><CashBook /></RequireCapability>} />
         <Route path="/cash-withdrawals" element={<Navigate to="/cash-book" replace />} />
-        <Route path="/reports" element={<Reports />} />
+        <Route path="/reports" element={<RequireCapability capability="reports.view"><Reports /></RequireCapability>} />
         <Route path="/settings" element={<Settings />} />
         <Route
           path="/admin/users"
@@ -164,7 +166,9 @@ export default function App() {
               <PageTitleProvider>
                 <ConfirmProvider>
                   <ScrollToTop />
+                  <MobileViewport />
                   <AppRoutes />
+                  <ConnectionStatus />
                   <InstallPrompt />
                   <AppToaster />
                 </ConfirmProvider>

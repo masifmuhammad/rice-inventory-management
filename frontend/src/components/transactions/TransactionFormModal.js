@@ -10,9 +10,9 @@ import Button from '../ui/Button';
 import { Input, Select, Textarea } from '../ui/Field';
 
 const TYPES = [
-  { value: 'stock_in', label: 'Stock in — purchase or delivery received' },
-  { value: 'stock_out', label: 'Stock out — sale or issue' },
-  { value: 'adjustment', label: 'Adjustment — correct the recorded level' },
+  { value: 'stock_in', label: 'Delivery · stock in' },
+  { value: 'stock_out', label: 'Sale · stock out' },
+  { value: 'adjustment', label: 'Stock adjustment' },
 ];
 
 const EMPTY = {
@@ -263,7 +263,7 @@ export default function TransactionFormModal({
                       </span>
                     </span>
                     {preview.total > 0 && (
-                      <span className="font-semibold text-content tabular-nums whitespace-nowrap">
+                      <span className="font-money font-bold text-content tabular-nums whitespace-nowrap">
                         {formatMoney(preview.total, currencySymbol)}
                       </span>
                     )}
@@ -282,6 +282,9 @@ export default function TransactionFormModal({
           <Input label="Customer" value={values.customer} onChange={set('customer')} placeholder="Who you sold to" />
         )}
 
+        <details className="group rounded-xl border border-hairline/[0.08] px-3.5">
+          <summary className="min-h-[44px] flex items-center text-sm font-medium text-content-muted cursor-pointer">Reference &amp; notes <span className="ml-auto text-lg group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
+          <div className="space-y-2.5 pb-3.5">
         <Input
           label="Reference"
           value={values.reference}
@@ -290,6 +293,8 @@ export default function TransactionFormModal({
         />
 
         <Textarea label="Notes" value={values.notes} onChange={set('notes')} placeholder="Anything worth remembering…" />
+          </div>
+        </details>
 
         {values.type === 'stock_out' && (
           <p className="text-xs text-content-subtle">

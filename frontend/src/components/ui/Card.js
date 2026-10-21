@@ -20,12 +20,12 @@ export function CardHeader({ title, subtitle, icon: Icon, action, className = ''
     >
       <div className="flex items-start gap-3 min-w-0">
         {Icon && (
-          <span className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-well bg-hairline/[0.05] text-content-muted flex items-center justify-center">
+          <span className="mt-0.5 flex-shrink-0 w-5 h-6 text-content-muted flex items-center justify-center">
             <Icon className="w-4 h-4" aria-hidden="true" />
           </span>
         )}
         <div className="min-w-0">
-          <h2 className="font-display text-heading text-content truncate">{title}</h2>
+          <h2 className="font-display text-lg font-semibold text-content truncate">{title}</h2>
           {subtitle && <p className="text-caption text-content-subtle mt-1">{subtitle}</p>}
         </div>
       </div>

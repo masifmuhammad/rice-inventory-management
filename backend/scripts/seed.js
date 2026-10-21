@@ -5,7 +5,6 @@
  */
 require('../config/env');
 const { connectDB, closeDB } = require('../config/db');
-const { runMigrations } = require('../db/migrate');
 const User = require('../models/User');
 const Business = require('../models/Business');
 const BusinessSettings = require('../models/BusinessSettings');
@@ -15,7 +14,7 @@ const run = async () => {
   const email = (process.env.SEED_ADMIN_EMAIL || '').toLowerCase().trim();
   const password = process.env.SEED_ADMIN_PASSWORD || '';
   const primaryBusiness = process.env.SEED_BUSINESS_NAME || 'Haji Rice Mills';
-  const secondaryBusiness = process.env.SEED_SECOND_BUSINESS || '999';
+  const secondaryBusiness = process.env.SEED_SECOND_BUSINESS || '';
 
   if (!email || !password) {
     console.error('❌ Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD before seeding.');
@@ -28,7 +27,6 @@ const run = async () => {
   }
 
   await connectDB({ retries: 3 });
-  await runMigrations();
 
   const ensureBusiness = async (businessName) => {
     const slug = businessName
@@ -50,33 +48,20 @@ const run = async () => {
 
   const existing = await User.findOne({ email });
   if (existing) {
-    let updated = false;
+    if (process.env.SEED_RESET_EXISTING !== 'true') {
+      console.log('Account already exists. No credentials or permissions were changed.');
+      await closeDB();
+      return;
+    }
     existing.password = password;
+    existing.role = 'admin';
+    existing.status = 'active';
     existing.failedLoginAttempts = 0;
     existing.lockedUntil = undefined;
-    updated = true;
-    if (existing.role !== 'admin') {
-      existing.role = 'admin';
-      updated = true;
-    }
-    if (existing.status !== 'active') {
-      existing.status = 'active';
-      updated = true;
-    }
-    if (!existing.businessId) {
-      existing.businessId = haji.id;
-      updated = true;
-    }
-    if (existing.mustChangePassword) {
-      existing.mustChangePassword = false;
-      updated = true;
-    }
-    if (updated) {
-      await existing.save();
-      console.log(`✅ Updated ${email} (password reset, active admin).`);
-    } else {
-      console.log(`ℹ️  ${email} already exists as an active admin.`);
-    }
+    existing.businessId = existing.businessId || haji.id;
+    existing.mustChangePassword = true;
+    await existing.save();
+    console.log('Existing admin reset; a password change is required at next login.');
     await Business.addAdminMembership(existing.id, haji.id);
     if (second) await Business.addAdminMembership(existing.id, second.id);
   } else {
@@ -87,7 +72,7 @@ const run = async () => {
       businessId: haji.id,
       role: 'admin',
       status: 'active',
-      mustChangePassword: process.env.SEED_FORCE_PASSWORD_CHANGE === 'true',
+      mustChangePassword: process.env.SEED_FORCE_PASSWORD_CHANGE !== 'false',
     });
     await Business.addAdminMembership(admin.id, haji.id);
     if (second) await Business.addAdminMembership(admin.id, second.id);

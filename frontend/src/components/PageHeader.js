@@ -1,27 +1,44 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { usePageTitle } from '../context/PageTitleContext';
 
 /**
  * Page chrome: publishes the title into the app header, keeps description +
  * actions in the page body so the top bar never feels empty on desktop.
  */
-export default function PageHeader({ title, description, actions, className = '' }) {
-  const { setTitle } = usePageTitle();
+export default function PageHeader({ title, description, actions, summary = '', className = '' }) {
+  const { setTitle, setSummary, setCollapsed } = usePageTitle();
+  const headingRef = useRef(null);
 
   useEffect(() => {
     setTitle(title || '');
     return () => setTitle('');
   }, [title, setTitle]);
 
+  useEffect(() => {
+    setSummary(summary);
+    return () => setSummary('');
+  }, [summary, setSummary]);
+
+  useEffect(() => {
+    setCollapsed(false);
+    const target = headingRef.current;
+    if (!target || !window.IntersectionObserver) return undefined;
+    const observer = new IntersectionObserver(([entry]) => {
+      setCollapsed(!entry.isIntersecting && entry.boundingClientRect.bottom <= 64);
+    }, { rootMargin: '-64px 0px 0px 0px' });
+    observer.observe(target);
+    return () => { observer.disconnect(); setCollapsed(false); };
+  }, [title, setCollapsed]);
+
   // The header's own <h1> is `hidden lg:block`, and the mobile one lives here —
   // so returning nothing left a title-only page with no heading at all under
   // 1024px. Every current page passes a description, but the next one might not.
   if (!description && !actions) {
-    return <h1 className="lg:hidden font-display text-heading text-content">{title}</h1>;
+    return <h1 ref={headingRef} className="lg:hidden font-display text-heading text-content">{title}</h1>;
   }
 
   return (
-    <div className={`flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${className}`}>
+    <div ref={headingRef} className={`flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${className}`}>
       <div className="min-w-0">
         {/* Mobile still needs a visible page name — desktop reads it from the header. */}
         <h1 className="lg:hidden font-display text-heading text-content">{title}</h1>

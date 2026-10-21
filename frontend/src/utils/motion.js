@@ -72,7 +72,7 @@ export const routeVariantsReduced = {
  */
 export const staggerContainer = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } },
+  show: { transition: { staggerChildren: 0.035, delayChildren: 0 } },
 };
 
 export const staggerItem = {

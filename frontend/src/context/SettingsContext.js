@@ -70,12 +70,13 @@ export function SettingsProvider({ children }) {
     api
       .get('/settings', { signal: controller.signal })
       .then(({ data }) => {
+        if (controller.signal.aborted) return;
         const merged = { ...DEFAULT_SETTINGS, ...data };
         setSettings(merged);
         writeCache(businessId, merged);
       })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
 
     const onBusinessChanged = () => {
       controller.abort();

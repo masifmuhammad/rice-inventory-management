@@ -20,6 +20,7 @@ const DEFAULT_URI = 'postgresql://postgres:postgres@127.0.0.1:5432/rice_inventor
 types.setTypeParser(types.builtins.NUMERIC, (value) => (value === null ? null : Number(value)));
 
 let pool;
+let schemaReady = false;
 
 const getPool = () => {
   if (!pool) {
@@ -40,7 +41,9 @@ const connectDB = async ({ retries = 5 } = {}) => {
     connectionString,
     max: 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 3000,
+    statement_timeout: 15000,
+    idle_in_transaction_session_timeout: 30000,
   });
 
   pool.on('error', (error) => {
@@ -50,12 +53,17 @@ const connectDB = async ({ retries = 5 } = {}) => {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const client = await pool.connect();
-      const { rows } = await client.query('SELECT current_database() AS name');
-      client.release();
+      let rows;
+      try {
+        ({ rows } = await client.query('SELECT current_database() AS name'));
+      } finally {
+        client.release();
+      }
       console.log(`✅ Connected to PostgreSQL (${rows[0].name})`);
 
       const { runMigrations } = require('../db/migrate');
       await runMigrations();
+      schemaReady = true;
       console.log('✅ Database schema ready');
 
       return pool;
@@ -97,9 +105,18 @@ const withTransaction = async (fn) => {
   }
 };
 
-const isDbReady = () => Boolean(pool);
+const isDbReady = async () => {
+  if (!pool || !schemaReady) return false;
+  try {
+    await pool.query('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const closeDB = async () => {
+  schemaReady = false;
   if (!pool) return;
   await pool.end();
   pool = null;

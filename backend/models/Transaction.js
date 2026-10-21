@@ -238,7 +238,7 @@ class Transaction {
     const { rows } = await pool.query(
       `SELECT
          COALESCE(SUM(COALESCE(t.total_value, COALESCE(t.price, p.selling_price, 0) * t.quantity)), 0) AS revenue,
-         COALESCE(SUM((COALESCE(t.price, p.selling_price, 0) - COALESCE(p.cost_price, 0)) * t.quantity), 0) AS profit,
+         COALESCE(SUM(COALESCE(t.total_value, COALESCE(t.price, p.selling_price, 0) * t.quantity) - COALESCE(t.cost_price_snapshot, p.cost_price, 0) * t.quantity), 0) AS profit,
          COUNT(*)::int AS count
        FROM transactions t
        LEFT JOIN products p ON p.id = t.product_id

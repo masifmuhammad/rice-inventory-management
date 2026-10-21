@@ -8,7 +8,7 @@ const compression = require('compression');
 const env = require('./config/env');
 const { connectDB, closeDB, isDbReady } = require('./config/db');
 const { apiLimiter } = require('./middleware/rateLimiters');
-const { notFound, errorHandler } = require('./middleware/errorHandler');
+const { notFound, errorHandler, asyncHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
@@ -46,7 +46,7 @@ app.use(
     crossOriginResourcePolicy: { policy: 'same-site' },
     // HSTS only helps once we terminate TLS; sending it on raw HTTP confuses
     // browsers after a failed HTTPS attempt.
-    hsts: false,
+    hsts: env.isProduction ? { maxAge: 15552000, includeSubDomains: false } : false,
   })
 );
 
@@ -64,9 +64,9 @@ app.use((req, res, next) => {
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) return callback(null, true); // curl, health checks, native apps
-    if (env.corsOrigins.length === 0) return callback(null, true);
+    // Same-origin requests need no CORS permission. Extra origins are opt-in.\n    if (env.corsOrigins.length === 0) return callback(null, false);
     if (env.corsOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    callback(null, false);
   },
   credentials: true,
   maxAge: 86400,
@@ -82,14 +82,21 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 /* ------------------------------------------------------------------ /api/* */
 
-app.get('/api/health', (req, res) => {
-  const ready = isDbReady();
+app.get('/api/health', asyncHandler(async (req, res) => {
+  const ready = await isDbReady();
+  res.setHeader('Cache-Control', 'no-store');
   res.status(ready ? 200 : 503).json({
     status: ready ? 'OK' : 'DEGRADED',
     database: ready ? 'connected' : 'disconnected',
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
+}));
+
+// Authenticated business data must never enter a shared proxy/browser cache.
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
 });
 
 app.use('/api', apiLimiter);
@@ -132,8 +139,11 @@ if (clientBuild) {
       index: false,
       maxAge: '1y',
       setHeaders(res, filePath) {
-        if (path.basename(filePath) === 'index.html') {
+        const relative = path.relative(clientBuild, filePath).split(path.sep).join('/');
+        if (!/^static\/.+\.[a-f0-9]{8,}\./.test(relative)) {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         }
       },
     })
@@ -176,6 +186,7 @@ const start = async () => {
   server = app.listen(env.port, () => {
     console.log(`🚀 Server running on port ${env.port} (${env.isProduction ? 'production' : 'development'})`);
   });
+  return server;
 };
 
 const shutdown = (signal) => () => {
@@ -204,9 +215,10 @@ process.on('unhandledRejection', (reason) => {
   console.error('❌ Unhandled promise rejection:', reason);
 });
 
-start().catch((error) => {
+if (require.main === module) start().catch((error) => {
   console.error('❌ Failed to start server:', error.message);
   process.exit(1);
 });
 
 module.exports = app;
+module.exports.start = start;

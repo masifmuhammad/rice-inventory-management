@@ -23,8 +23,6 @@ const CATEGORY_PREFIX = {
   Other: 'GEN',
 };
 
-/** Escapes user input before it reaches a $regex, so `.` or `(` can't blow up the query. */
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
  * Builds a unique SKU like `BAS-0007`.
@@ -61,7 +59,7 @@ router.get(
     const filter = { isActive: true, businessId: req.businessId };
 
     if (search) {
-      const rx = new RegExp(escapeRegex(search.trim()), 'i');
+      const rx = { source: String(search).trim() };
       filter.$or = [{ name: rx }, { sku: rx }, { supplier: rx }, { batchNumber: rx }];
     }
 
@@ -72,7 +70,7 @@ router.get(
       name: { name: 1 },
       newest: { createdAt: -1 },
       stock: { currentStock: -1 },
-      value: { createdAt: -1 },
+      value: { value: -1 },
     };
 
     const products = await Product.find(filter, { sort: sortMap[sort], limit });
@@ -144,7 +142,7 @@ router.get(
 const productValidators = [
   body('name').trim().notEmpty().withMessage('Product name is required').isLength({ max: 120 }),
   body('sku').optional({ values: 'falsy' }).trim().isLength({ max: 40 }),
-  body('category').isIn(CATEGORIES).withMessage('Pick a valid category'),
+  body('category').isString().trim().notEmpty().isLength({ max: 30 }).withMessage('Use a category name of up to 30 characters'),
   body('unit').optional().isIn(UNITS).withMessage('Pick a valid unit'),
   body('currentStock').isFloat({ min: 0 }).withMessage('Stock must be 0 or greater').toFloat(),
   body('minStockLevel').isFloat({ min: 0 }).withMessage('Minimum stock must be 0 or greater').toFloat(),
@@ -157,6 +155,7 @@ const productValidators = [
   body('location').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
   body('batchNumber').optional({ values: 'falsy' }).trim().isLength({ max: 80 }),
   body('supplier').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
+  body('expiryDate').optional({ values: 'falsy' }).isISO8601().withMessage('Enter a valid expiry date'),
 ];
 
 // @route   POST /api/products
@@ -216,8 +215,9 @@ router.put(
     // keys its UPDATE off `this.id`. Letting `id` through the spread would point
     // the write at another business's row; letting `isActive` through would hand
     // an accountant the archive/restore power that DELETE reserves for admins.
-    const { sku, createdBy, _id, id, businessId, isActive, createdAt, updatedAt, ...updates } =
-      req.body;
+    const { sku } = req.body;
+    const editable = ['name', 'category', 'description', 'unit', 'currentStock', 'minStockLevel', 'maxStockLevel', 'costPrice', 'sellingPrice', 'location', 'batchNumber', 'expiryDate', 'supplier'];
+    const updates = Object.fromEntries(editable.filter((key) => req.body[key] !== undefined).map((key) => [key, req.body[key]]));
 
     if (sku !== undefined) {
       const nextSku = (sku || '').trim().toUpperCase();

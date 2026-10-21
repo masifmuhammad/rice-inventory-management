@@ -1,3 +1,4 @@
+import usePageState from '../hooks/usePageState';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -7,7 +8,6 @@ import {
   FiChevronUp,
   FiClock,
   FiFilter,
-  FiSearch,
   FiX,
 } from 'react-icons/fi';
 
@@ -21,7 +21,7 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Pagination from '../components/ui/Pagination';
-import { Select } from '../components/ui/Field';
+import { Input, Select } from '../components/ui/Field';
 import { EmptyState, ErrorState } from '../components/ui/States';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
@@ -57,7 +57,7 @@ function DetailBlock({ label, value }) {
 
   return (
     <div>
-      <p className="text-xs font-semibold text-content-subtle uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-xs font-semibold text-content-subtle tracking-normal mb-1">{label}</p>
       <pre className="text-xs text-content-muted bg-surface-sunken rounded-well p-3 overflow-x-auto whitespace-pre-wrap break-words">
         {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
       </pre>
@@ -130,13 +130,13 @@ function ActivityRow({ entry, expanded, onToggle }) {
 
 export default function AdminActivity() {
   const { can } = useAuth();
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [userId, setUserId] = useState('');
-  const [action, setAction] = useState('');
-  const [resourceType, setResourceType] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [page, setPage] = usePageState('adminactivity.page', 1);
+  const [search, setSearch] = usePageState('adminactivity.search', '');
+  const [userId, setUserId] = usePageState('adminactivity.userId', '');
+  const [action, setAction] = usePageState('adminactivity.action', '');
+  const [resourceType, setResourceType] = usePageState('adminactivity.resourceType', '');
+  const [startDate, setStartDate] = usePageState('adminactivity.startDate', '');
+  const [endDate, setEndDate] = usePageState('adminactivity.endDate', '');
   const [expandedId, setExpandedId] = useState(null);
 
   const debouncedSearch = useDebounce(search, 350);
@@ -186,7 +186,7 @@ export default function AdminActivity() {
       setStartDate('');
       setEndDate('');
     }
-  }, []);
+  }, [setEndDate, setPage, setStartDate]);
 
   const clearFilters = useCallback(() => {
     setSearch('');
@@ -196,7 +196,7 @@ export default function AdminActivity() {
     setStartDate('');
     setEndDate('');
     setPage(1);
-  }, []);
+  }, [setAction, setEndDate, setPage, setResourceType, setSearch, setStartDate, setUserId]);
 
   const hasFilters = search || userId || action || resourceType || startDate || endDate;
 
@@ -210,6 +210,7 @@ export default function AdminActivity() {
   return (
     <div className="space-y-6">
       <PageHeader
+        summary="Business audit history"
         title="Activity log"
         description="Permanent record of every change — who did it, what changed, and exactly when."
         actions={
@@ -234,9 +235,9 @@ export default function AdminActivity() {
               key={preset.id}
               type="button"
               onClick={() => applyPreset(preset.id)}
-              className="px-3 py-2 min-h-[40px] rounded-well border border-hairline/[0.12] bg-surface-1 text-sm font-medium
+              className="px-3 py-2 min-h-[44px] rounded-well border border-hairline/[0.12] bg-surface-1 text-sm font-medium
                 text-content-muted hover:bg-surface-3 hover:text-content hover:border-hairline/20
-                active:scale-[0.96] transition-all duration-150"
+                active:scale-[0.96] transition-[background-color,border-color,color,transform] duration-150"
             >
               {preset.label}
             </button>
@@ -245,10 +246,7 @@ export default function AdminActivity() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label htmlFor="activity-from" className="block text-sm font-medium text-content-muted mb-1.5">
-              From
-            </label>
-            <input
+            <Input label="From"
               id="activity-from"
               type="date"
               value={startDate}
@@ -257,14 +255,11 @@ export default function AdminActivity() {
                 setStartDate(event.target.value);
                 setPage(1);
               }}
-              className="field-control px-3 py-2.5 min-h-[44px]"
+
             />
           </div>
           <div>
-            <label htmlFor="activity-to" className="block text-sm font-medium text-content-muted mb-1.5">
-              To
-            </label>
-            <input
+            <Input label="To"
               id="activity-to"
               type="date"
               value={endDate}
@@ -273,7 +268,7 @@ export default function AdminActivity() {
                 setEndDate(event.target.value);
                 setPage(1);
               }}
-              className="field-control px-3 py-2.5 min-h-[44px]"
+
             />
           </div>
           <Select
@@ -325,14 +320,7 @@ export default function AdminActivity() {
             ))}
           </Select>
           <div className="relative">
-            <label htmlFor="activity-search" className="block text-sm font-medium text-content-muted mb-1.5">
-              Search
-            </label>
-            <FiSearch
-              className="pointer-events-none absolute left-3.5 top-[2.65rem] w-[18px] h-[18px] text-content-subtle"
-              aria-hidden="true"
-            />
-            <input
+            <Input label="Search activity"
               id="activity-search"
               type="search"
               value={search}
@@ -341,7 +329,7 @@ export default function AdminActivity() {
                 setPage(1);
               }}
               placeholder="Name, action or summary…"
-              className="field-control pl-11 pr-10 py-2.5 min-h-[44px]"
+
             />
             {search && (
               <button

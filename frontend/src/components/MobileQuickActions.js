@@ -37,7 +37,7 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
   const navigate = useNavigate();
   const { can } = useAuth();
   const { currencySymbol, settings } = useSettings();
-  const { record, order } = useActionUsage();
+  const { record } = useActionUsage();
   const reducedMotion = usePrefersReducedMotion();
   const [downloading, setDownloading] = useState(false);
 
@@ -81,14 +81,14 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
       label: 'Record sale',
       icon: FiTrendingUp,
       to: '/transactions',
-      state: { openCreate: true },
+      state: { openCreate: true, transactionType: 'stock_out' },
     },
     can('transactions.create') && {
       id: 'stock-in',
       label: 'Stock in',
       icon: FiPackage,
       to: '/transactions',
-      state: { openCreate: true },
+      state: { openCreate: true, transactionType: 'stock_in' },
     },
     can('cash.manage') && {
       id: 'cash-in',
@@ -118,7 +118,7 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
    * costs a glance rather than a mis-tap.
    */
   const [primary, ...secondary] = available;
-  const rest = order(secondary);
+  const rest = secondary;
 
   const go = (action) => {
     record(action.id);

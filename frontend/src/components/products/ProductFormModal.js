@@ -170,7 +170,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
     >
       <form id="product-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
         <section className="space-y-2.5">
-          <h3 className="text-xs font-semibold text-content-subtle uppercase tracking-wide">Basics</h3>
+          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">Basics</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Input
               label="Product name"
@@ -254,7 +254,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
         </section>
 
         <section className="space-y-2.5 pt-4 border-t border-hairline/[0.07]">
-          <h3 className="text-xs font-semibold text-content-subtle uppercase tracking-wide">Stock</h3>
+          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">Stock</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <Input
               label="Current stock"
@@ -296,7 +296,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
         </section>
 
         <section className="space-y-2.5 pt-4 border-t border-hairline/[0.07]">
-          <h3 className="text-xs font-semibold text-content-subtle uppercase tracking-wide">
+          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">
             Pricing (per {values.unit})
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -346,7 +346,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
         </section>
 
         <section className="space-y-2.5 pt-4 border-t border-hairline/[0.07]">
-          <h3 className="text-xs font-semibold text-content-subtle uppercase tracking-wide">Details</h3>
+          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">Details</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Input
               label="Storage location"

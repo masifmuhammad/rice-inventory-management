@@ -72,7 +72,7 @@ export const formatQuantity = (quantity, unit = '') => {
 
   const formatted = value.toLocaleString('en-PK', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 4,
   });
 
   return unit ? `${formatted} ${unit}` : formatted;

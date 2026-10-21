@@ -1,3 +1,4 @@
+const { dateRange } = require('../db/dates');
 const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
@@ -81,7 +82,7 @@ router.get(
     if (status !== 'all') filter.status = status;
     filter.businessId = req.businessId;
     if (search) {
-      const rx = new RegExp(String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const rx = { source: String(search).trim() };
       filter.$or = [{ name: rx }, { email: rx }];
     }
 
@@ -297,18 +298,10 @@ router.get(
     if (action) filter.action = action;
     if (resourceType) filter.resourceType = resourceType;
 
-    if (startDate || endDate) {
-      filter.createdAt = {};
-      if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(String(endDate))) end.setHours(23, 59, 59, 999);
-        filter.createdAt.$lte = end;
-      }
-    }
+    if (startDate || endDate) filter.createdAt = dateRange({ startDate, endDate });
 
     if (search) {
-      const rx = new RegExp(String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const rx = { source: String(search).trim() };
       filter.$or = [{ userName: rx }, { action: rx }, { summary: rx }];
     }
 

@@ -25,7 +25,6 @@ import BrandLogo from './BrandLogo';
 import ErrorBoundary from './ErrorBoundary';
 import BusinessSwitcher from './BusinessSwitcher';
 import MobileTabBar from './MobileTabBar';
-import MicPermissionPrompt from './MicPermissionPrompt';
 import BusinessSwitchOverlay from './BusinessSwitchOverlay';
 import AppHeader from './AppHeader';
 import PageTransition from './PageTransition';
@@ -279,7 +278,7 @@ export default function Layout() {
 
   // Swipe left and right to move between the tab-bar pages. Disabled while the
   // drawer is open, which owns horizontal movement for as long as it is up.
-  useTabSwipe({ enabled: !drawerOpen });
+  useTabSwipe({ enabled: !drawerOpen, canViewCash: can('cash.view') });
 
   // Every tab chunk warmed during idle time, so a swipe never waits on a fetch.
   usePrefetchTabs();
@@ -391,18 +390,17 @@ export default function Layout() {
              that floats above it — 5rem covers the button's 3.5rem plus its
              1.5rem gap. Without it the button sits on top of the last row of a
              short list, which is exactly where a delete control lives. */
-          className={`px-4 sm:px-6 lg:px-7 py-5 sm:py-6 pb-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom)+5rem)] lg:pb-[max(1.5rem,env(safe-area-inset-bottom))] transition-opacity duration-500 ease-[cubic-bezier(0.2,0,0,1)] ${
+          className={`px-4 sm:px-6 lg:px-7 py-5 sm:py-6 pb-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-[max(1.5rem,env(safe-area-inset-bottom))] transition-opacity duration-500 ease-[cubic-bezier(0.2,0,0,1)] ${
             contentPulse ? 'opacity-70' : 'opacity-100'
           }`}
         >
-          <ErrorBoundary resetKeys={[location.pathname, businessId]}>
+          <ErrorBoundary key={businessId} resetKeys={[location.pathname, businessId]}>
             <PageTransition />
           </ErrorBoundary>
         </main>
       </div>
 
       <MobileTabBar />
-      <MicPermissionPrompt />
       <BusinessSwitchOverlay />
       <Suspense fallback={null}>
         <AssistantShell />

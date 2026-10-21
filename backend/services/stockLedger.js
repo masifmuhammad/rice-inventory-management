@@ -1,0 +1,131 @@
+const { withTransaction } = require('../config/db');
+const { ApiError } = require('../middleware/errorHandler');
+const { round2, round4 } = require('../db/helpers');
+const Transaction = require('../models/Transaction');
+
+const effect = (type, quantity) =>
+  type === 'stock_in' ? quantity : type === 'stock_out' ? -quantity : 0;
+
+// Lock the product first on every path. This serializes movements, corrections
+// and reversals for one product without blocking unrelated products.
+const lockProduct = async (client, id, businessId, active = false) => {
+  const { rows } = await client.query(
+    `SELECT * FROM products WHERE id = $1 AND business_id = $2 FOR UPDATE`,
+    [id, businessId]
+  );
+  if (!rows[0] || (active && !rows[0].is_active)) throw new ApiError(404, 'Product not found');
+  return rows[0];
+};
+
+const writeStock = async (client, product, stock) => {
+  if (stock < 0) throw new ApiError(400, 'Not enough stock. This change would take the stock below zero.');
+  await client.query(
+    'UPDATE products SET current_stock = $1, updated_at = NOW() WHERE id = $2 AND business_id = $3',
+    [stock, product.id, product.business_id]
+  );
+};
+
+const postCash = async (client, row, product, userId) => {
+  if (row.type !== 'stock_out' || Number(row.total_value) <= 0) return;
+  await client.query(
+    `INSERT INTO cash_entries
+      (business_id, direction, amount, category, purpose, party, reference,
+       source, transaction_id, occurred_at, created_by)
+     VALUES ($1, 'in', $2, 'Sale', $3, $4, $5, 'sale', $6, $7, $8)`,
+    [row.business_id, row.total_value, `Sale — ${product.name}`, row.customer || '',
+      row.reference || '', row.id, row.created_at, userId]
+  );
+};
+
+const present = (row, product, user) => {
+  const transaction = new Transaction(row);
+  transaction.product = {
+    id: product.id, _id: product.id, name: product.name, sku: product.sku,
+    category: product.category, unit: product.unit,
+    costPrice: Number(product.cost_price), sellingPrice: Number(product.selling_price),
+  };
+  transaction.createdBy = { id: user.id, _id: user.id, name: user.name, email: user.email };
+  return transaction;
+};
+
+const createMovement = (data, businessId, user) => withTransaction(async (client) => {
+  const product = await lockProduct(client, data.product, businessId, true);
+  const quantity = round4(data.quantity);
+  if (['stock_in', 'stock_out', 'transfer'].includes(data.type) && quantity <= 0) {
+    throw new ApiError(400, 'Quantity must be at least 0.0001');
+  }
+  const stockBefore = Number(product.current_stock);
+  const stockAfter = data.type === 'adjustment' ? quantity : round4(stockBefore + effect(data.type, quantity));
+  await writeStock(client, product, stockAfter);
+  const price = round4(data.price ?? Number(data.type === 'stock_out' ? product.selling_price : product.cost_price));
+  const { rows } = await client.query(
+    `INSERT INTO transactions
+      (business_id, type, product_id, quantity, unit, price, total_value, reference,
+       batch_number, expiry_date, supplier, customer, notes, created_by, stock_before, stock_after, cost_price_snapshot, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,clock_timestamp()) RETURNING *`,
+    [businessId, data.type, product.id, quantity, product.unit, price, round2(price * quantity),
+      data.reference ?? null, data.batchNumber ?? null, data.expiryDate || null,
+      data.supplier ?? null, data.customer ?? null, data.notes ?? null, user.id, stockBefore, stockAfter, product.cost_price]
+  );
+  await postCash(client, rows[0], product, user.id);
+  return present(rows[0], product, user);
+});
+
+const changeMovement = (id, businessId, user, data) => withTransaction(async (client) => {
+  const initial = await client.query('SELECT product_id FROM transactions WHERE id = $1 AND business_id = $2', [id, businessId]);
+  if (!initial.rows[0]) throw new ApiError(404, 'Transaction not found');
+  const product = await lockProduct(client, initial.rows[0].product_id, businessId);
+  const { rows: locked } = await client.query('SELECT * FROM transactions WHERE id = $1 AND business_id = $2 FOR UPDATE', [id, businessId]);
+  const before = locked[0];
+  if (!before) throw new ApiError(404, 'Transaction not found');
+
+  const changesStock = !data || data.type !== before.type || round4(data.quantity) !== Number(before.quantity);
+  if (changesStock) {
+    const laterAdjustment = await client.query(
+      "SELECT id FROM transactions WHERE product_id=$1 AND business_id=$2 AND type='adjustment' AND created_at >= $3 AND id <> $4 LIMIT 1",
+      [product.id, businessId, before.created_at, id]
+    );
+    if (laterAdjustment.rows.length) throw new ApiError(409, 'A later stock adjustment exists. Reverse newer adjustments before changing this movement.');
+  }
+  let stockAfter;
+  let row;
+  if (data) {
+    const quantity = round4(data.quantity);
+    if (['stock_in', 'stock_out', 'transfer'].includes(data.type) && quantity <= 0) {
+      throw new ApiError(400, 'Quantity must be at least 0.0001');
+    }
+    const movementChanged = data.type !== before.type || quantity !== Number(before.quantity);
+    if (movementChanged && (data.type === 'adjustment' || before.type === 'adjustment')) {
+      throw new ApiError(400, 'Reverse the adjustment and record a new one to change its quantity or type.');
+    }
+    stockAfter = round4(Number(product.current_stock) + effect(data.type, quantity) - effect(before.type, Number(before.quantity)));
+    await writeStock(client, product, stockAfter);
+    const price = round4(data.price ?? Number(before.price ?? 0));
+    const { rows } = await client.query(
+      `UPDATE transactions SET type=$1, quantity=$2, price=$3, total_value=$4,
+        reference=$5, batch_number=$6, supplier=$7, customer=$8, notes=$9,
+        stock_before=$10, stock_after=$11, updated_at=NOW()
+       WHERE id=$12 AND business_id=$13 RETURNING *`,
+      [data.type, quantity, price, round2(price * quantity), data.reference ?? null,
+        data.batchNumber ?? null, data.supplier ?? null, data.customer ?? null, data.notes ?? null,
+        // Editing an adjustment's wording must preserve the original snapshot.
+        data.type === 'adjustment' ? before.stock_before : round4(stockAfter - effect(data.type, quantity)),
+        data.type === 'adjustment' ? before.stock_after : stockAfter, id, businessId]
+    );
+    row = rows[0];
+  } else {
+    // Undo the adjustment's actual delta, preserving sales made since it.
+    const delta = before.type === 'adjustment'
+      ? Number(before.stock_after) - Number(before.stock_before)
+      : effect(before.type, Number(before.quantity));
+    stockAfter = round4(Number(product.current_stock) - delta);
+    await writeStock(client, product, stockAfter);
+  }
+  await client.query("DELETE FROM cash_entries WHERE transaction_id=$1 AND business_id=$2 AND source='sale'", [id, businessId]);
+  if (data) await postCash(client, row, product, before.created_by);
+  else await client.query('DELETE FROM transactions WHERE id=$1 AND business_id=$2', [id, businessId]);
+  const creator = row ? (await client.query('SELECT id, name, email FROM users WHERE id=$1', [before.created_by])).rows[0] : null;
+  return { before: new Transaction(before), transaction: row ? present(row, product, creator) : null };
+});
+
+module.exports = { createMovement, changeMovement };

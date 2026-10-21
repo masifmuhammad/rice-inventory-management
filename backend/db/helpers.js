@@ -59,11 +59,16 @@ const likePattern = (search) => `%${String(search).replace(/[\\%_]/g, (char) => 
  * entirely. The sign is applied separately because Math.round breaks ties
  * toward +Infinity, so -1.005 would round to -1.00 rather than -1.01.
  */
+// Shift the exponent rather than appending a second exponent to values such as 1e-7.
+const shiftDecimal = (value, places) => {
+  const [coefficient, exponent = '0'] = String(value).split('e');
+  return Number(coefficient + 'e' + (Number(exponent) + places));
+};
 const round2 = (n) => {
   const v = Number(n);
   if (!Number.isFinite(v)) return 0;
   const sign = v < 0 ? -1 : 1;
-  return sign * Number(`${Math.round(Number(`${Math.abs(v)}e2`))}e-2`);
+  return sign * shiftDecimal(Math.round(shiftDecimal(Math.abs(v), 2)), -2);
 };
 
 /** Same, at the four decimal places the quantity columns store. */
@@ -71,7 +76,7 @@ const round4 = (n) => {
   const v = Number(n);
   if (!Number.isFinite(v)) return 0;
   const sign = v < 0 ? -1 : 1;
-  return sign * Number(`${Math.round(Number(`${Math.abs(v)}e4`))}e-4`);
+  return sign * shiftDecimal(Math.round(shiftDecimal(Math.abs(v), 4)), -4);
 };
 
 const pgError = (error) => {

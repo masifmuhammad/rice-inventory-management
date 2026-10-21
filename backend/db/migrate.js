@@ -21,23 +21,30 @@ const tableExists = async (pool, table) => {
 };
 
 const runMigrations = async () => {
-  const pool = getPool();
+  const pool = await getPool().connect();
+  try {
+    // Overlapping Render deploys must not race CREATE/ALTER statements.
+    await pool.query('SELECT pg_advisory_lock(74109213)');
 
-  // Existing single-tenant databases need business columns before schema indexes run.
-  if ((await tableExists(pool, 'users')) && !(await columnExists(pool, 'users', 'business_id'))) {
-    console.log('⬆️  Upgrading database for multi-tenancy…');
-    const { upgradeMultitenancy } = require('./migrate-multitenancy');
-    await upgradeMultitenancy(pool);
+    // Existing single-tenant databases need business columns before schema indexes run.
+    if ((await tableExists(pool, 'users')) && !(await columnExists(pool, 'users', 'business_id'))) {
+      console.log('⬆️  Upgrading database for multi-tenancy…');
+      const { upgradeMultitenancy } = require('./migrate-multitenancy');
+      await upgradeMultitenancy(pool);
+    }
+
+    if ((await tableExists(pool, 'users')) && !(await columnExists(pool, 'users', 'avatar'))) {
+      console.log('⬆️  Adding user avatar column…');
+      await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT');
+    }
+
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    const sql = fs.readFileSync(schemaPath, 'utf8');
+    await pool.query(sql);
+  } finally {
+    await pool.query('SELECT pg_advisory_unlock(74109213)').catch(() => {});
+    pool.release();
   }
-
-  if ((await tableExists(pool, 'users')) && !(await columnExists(pool, 'users', 'avatar'))) {
-    console.log('⬆️  Adding user avatar column…');
-    await pool.query('ALTER TABLE users ADD COLUMN avatar TEXT');
-  }
-
-  const schemaPath = path.join(__dirname, 'schema.sql');
-  const sql = fs.readFileSync(schemaPath, 'utf8');
-  await pool.query(sql);
 };
 
 module.exports = { runMigrations };

@@ -16,7 +16,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     expose:
       - '5432'
     healthcheck:
@@ -31,9 +31,9 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    # Not published. Caddy reaches this over the compose network; exposing it on
-    # the host as well would leave a plain-HTTP door open beside the TLS one,
-    # which a bookmarked old URL would keep walking through.
+    # Local access only; Render terminates HTTPS in production.
+    ports:
+      - '127.0.0.1:5000:5000'
     expose:
       - '5000'
     environment:

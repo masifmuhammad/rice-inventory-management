@@ -5,6 +5,7 @@
   "//": "The API is same-origin in production; this proxy makes it same-origin in dev too, so `/api` works in both without an env var.",
   "proxy": "http://127.0.0.1:5000",
   "dependencies": {
+    "@fontsource/manrope": "^5.3.0",
     "@headlessui/react": "^2.2.9",
     "@number-flow/react": "^0.6.2",
     "axios": "^1.5.1",
@@ -15,7 +16,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^4.11.0",
-    "react-router-dom": "^6.16.0",
+    "react-router-dom": "^7.18.4",
     "recharts": "^2.8.0",
     "sonner": "^2.0.8",
     "workbox-core": "^7.3.0",
@@ -28,7 +29,8 @@
     "start": "craco start",
     "build": "craco build",
     "test": "craco test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "test:e2e": "playwright test"
   },
   "eslintConfig": {
     "extends": [
@@ -49,10 +51,14 @@
   },
   "devDependencies": {
     "@craco/craco": "^7.1.0",
+    "@playwright/test": "^1.64.1",
     "autoprefixer": "^10.4.15",
     "postcss": "^8.4.29",
     "react-scripts": "5.0.1",
     "tailwindcss": "^3.3.3",
     "workbox-webpack-plugin": "^7.3.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

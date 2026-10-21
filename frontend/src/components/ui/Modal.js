@@ -5,6 +5,7 @@ import { FiX } from 'react-icons/fi';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import useVisualViewport from '../../hooks/useVisualViewport';
 import { springSheet, reducedTransition } from '../../utils/motion';
+import KeyboardToolbar from './KeyboardToolbar';
 
 const sizes = {
   sm: 'sm:max-w-md',
@@ -94,32 +95,13 @@ export default function Modal({
     });
   }, [reducedMotion]);
 
-  // Remember which field is focused. Scrolling on focus alone is not enough —
-  // see the effect below.
-  useEffect(() => {
-    if (!open) return undefined;
-
-    const body = bodyRef.current;
-    if (!body) return undefined;
-
-    const onFocusIn = (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement) || !target.matches(FOCUSABLE_FIELD)) return;
-      focusedFieldRef.current = target;
-      requestAnimationFrame(revealFocusedField);
-    };
-
-    const onFocusOut = (event) => {
-      if (event.target === focusedFieldRef.current) focusedFieldRef.current = null;
-    };
-
-    body.addEventListener('focusin', onFocusIn);
-    body.addEventListener('focusout', onFocusOut);
-    return () => {
-      body.removeEventListener('focusin', onFocusIn);
-      body.removeEventListener('focusout', onFocusOut);
-    };
-  }, [open, revealFocusedField]);
+  // React capture handlers attach when Headless UI mounts its portal. An
+  // open-effect can run before the portalled body exists and miss every focus.
+  const rememberField = (event) => {
+    if (!event.target.matches(FOCUSABLE_FIELD)) return;
+    focusedFieldRef.current = event.target;
+    requestAnimationFrame(revealFocusedField);
+  };
 
   /**
    * Re-reveal the focused field whenever the keyboard changes the visible area.
@@ -172,6 +154,7 @@ export default function Modal({
   return (
     <Dialog
       open={open}
+      data-keyboard-open={keyboardOpen || undefined}
       /* Headless UI funnels backdrop clicks and the Escape key through this one
          callback, so `closeOnBackdrop={false}` was silently killing keyboard
          dismissal too — an accessibility regression for any dialog that only
@@ -185,7 +168,7 @@ export default function Modal({
               onClose();
             }
       }
-      className="relative z-50"
+      className="fixed inset-0 z-50"
     >
       <DialogBackdrop
         transition
@@ -275,13 +258,20 @@ export default function Modal({
 
               <div
                 ref={bodyRef}
-                className={`overflow-y-auto overscroll-contain px-5 sm:px-6 flex-1 transition-opacity duration-150 ${
+                data-modal-body=""
+                onFocusCapture={rememberField}
+                onBlurCapture={(event) => {
+                  if (event.target === focusedFieldRef.current) focusedFieldRef.current = null;
+                }}
+                className={`min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 flex-1 transition-opacity duration-150 ${
                   keyboardOpen ? 'py-2.5' : 'py-4 sm:py-5'
                 } ${busy ? 'opacity-60 pointer-events-none' : ''}`}
                 aria-busy={busy || undefined}
               >
                 {children}
               </div>
+
+              {keyboardOpen && <KeyboardToolbar bodyRef={bodyRef} focusedField={focusedFieldRef} onDone={() => focusedFieldRef.current?.blur()} />}
 
               {footer && (
                 /* The home-indicator inset is real estate the keyboard is

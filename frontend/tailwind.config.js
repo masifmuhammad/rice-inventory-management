@@ -56,31 +56,14 @@ module.exports = {
       },
       borderRadius: {
         // Measured off the reference: cards 28px, panels nested in them 20px.
-        card: '28px',
-        well: '20px',
+        card: '16px',
+        well: '12px',
         pill: '12px',
       },
       fontFamily: {
-        sans: [
-          'Inter Tight',
-          'Inter var',
-          'Inter',
-          '-apple-system',
-          'BlinkMacSystemFont',
-          'Segoe UI',
-          'Roboto',
-          'Helvetica Neue',
-          'Arial',
-          'sans-serif',
-        ],
-        // The reference sets headings and figures in the same face as the UI.
-        display: [
-          'Inter Tight',
-          'Inter var',
-          'Inter',
-          'system-ui',
-          'sans-serif',
-        ],
+        money: ['Manrope', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        display: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         // Nastaliq for Urdu body copy — pair with generous line-height in CSS.
         urdu: [
           '"Noto Nastaliq Urdu"',
@@ -96,9 +79,9 @@ module.exports = {
        * display sizes need it pulled in hard, 13px body text needs none at all.
        */
       fontSize: {
-        figure: ['3rem', { lineHeight: '1', letterSpacing: '-0.03em', fontWeight: '600' }],
+        figure: ['2rem', { lineHeight: '1', letterSpacing: '-0.03em', fontWeight: '600' }],
         title: ['2rem', { lineHeight: '1.15', letterSpacing: '-0.022em', fontWeight: '600' }],
-        heading: ['1.25rem', { lineHeight: '1.3', letterSpacing: '-0.016em', fontWeight: '600' }],
+        heading: ['1.5rem', { lineHeight: '1.15', letterSpacing: '-0.025em', fontWeight: '700' }],
         subhead: ['1.125rem', { lineHeight: '1.4', letterSpacing: '-0.014em', fontWeight: '600' }],
         body: ['0.9375rem', { lineHeight: '1.55', letterSpacing: '-0.011em' }],
         caption: ['0.8125rem', { lineHeight: '1.45', letterSpacing: '-0.005em' }],

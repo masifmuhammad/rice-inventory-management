@@ -141,8 +141,10 @@ const chatCompletion = async (messages, { hard = false, json = false, temperatur
     : uniqueModels([env.openrouterModelFree], FREE_FALLBACKS, [env.openrouterModelPaid], PAID_FALLBACKS);
 
   let lastError;
+  const deadline = Date.now() + 22000;
 
   for (let i = 0; i < models.length; i += 1) {
+    if (Date.now() >= deadline) throw new Error('AI took too long. Please try again.');
     const model = models[i];
     const body = {
       model,
@@ -157,6 +159,7 @@ const chatCompletion = async (messages, { hard = false, json = false, temperatur
     try {
       const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
         method: 'POST',
+        signal: AbortSignal.timeout(Math.max(1, Math.min(12000, deadline - Date.now()))),
         headers: headers(),
         body: JSON.stringify(body),
       });
@@ -167,6 +170,7 @@ const chatCompletion = async (messages, { hard = false, json = false, temperatur
 
       return { content, model: data?.model || model, usage: data?.usage };
     } catch (error) {
+      if (['TimeoutError', 'AbortError'].includes(error.name)) throw new Error('AI took too long. Please try again.');
       lastError = error;
 
       // OpenRouter suggested a replacement slug — try it next
@@ -211,13 +215,16 @@ const transcribeAudio = async (base64Audio, format = 'webm', { language = 'ur', 
     : uniqueModels([env.openrouterStt], [env.openrouterSttFallback], ['openai/whisper-1', 'openai/whisper-large-v3']);
 
   let lastError;
+  const deadline = Date.now() + 22000;
 
   for (let i = 0; i < models.length; i += 1) {
+    if (Date.now() >= deadline) throw new Error('AI took too long. Please try again.');
     const model = models[i];
 
     try {
       const response = await fetch(`${OPENROUTER_BASE}/audio/transcriptions`, {
         method: 'POST',
+        signal: AbortSignal.timeout(Math.max(1, Math.min(12000, deadline - Date.now()))),
         headers: headers(),
         body: JSON.stringify({
           model,
@@ -231,6 +238,7 @@ const transcribeAudio = async (base64Audio, format = 'webm', { language = 'ur', 
       if (!text) throw new Error('Could not understand the audio. Please speak clearly and try again.');
       return { text, model };
     } catch (error) {
+      if (['TimeoutError', 'AbortError'].includes(error.name)) throw new Error('AI took too long. Please try again.');
       lastError = error;
       const canRetry = error.retryable || error.status === 429 || error.status === 404;
       if (canRetry && i < models.length - 1) continue;

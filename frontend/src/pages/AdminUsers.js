@@ -1,3 +1,4 @@
+import usePageState from '../hooks/usePageState';
 import React, { useCallback, useMemo, useState } from 'react';
 import { toast } from '../utils/toast';
 import {
@@ -5,7 +6,6 @@ import {
   FiClock,
   FiKey,
   FiRefreshCw,
-  FiSearch,
   FiShield,
   FiUserCheck,
   FiUserX,
@@ -22,7 +22,7 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import StatCard, { StatGrid } from '../components/ui/StatCard';
-import { Select } from '../components/ui/Field';
+import { Input, Select } from '../components/ui/Field';
 import { EmptyState, ErrorState, InlineError } from '../components/ui/States';
 import { SkeletonStatCards, SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
@@ -92,7 +92,7 @@ export default function AdminUsers() {
   const confirm = useConfirm();
 
   const [statusFilter, setStatusFilter] = useState('all');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = usePageState('adminusers.search', '');
   const [tempPassword, setTempPassword] = useState(null);
   const [acting, setActing] = useState(null);
 
@@ -215,6 +215,7 @@ export default function AdminUsers() {
   return (
     <div className="space-y-6">
       <PageHeader
+        summary={(counts?.pending || 0) + ' pending approvals'}
         title="User management"
         description="Approve sign-ups, assign roles and manage access."
       />
@@ -240,17 +241,13 @@ export default function AdminUsers() {
       <Card className="p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="relative lg:col-span-2">
-            <FiSearch
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-content-subtle"
-              aria-hidden="true"
-            />
-            <input
+            <Input label="Search users"
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by name or email…"
               aria-label="Search users"
-              className="field-control w-full pl-11 pr-10 py-2.5 min-h-[44px]"
+
             />
             {search && (
               <button
@@ -362,7 +359,7 @@ export default function AdminUsers() {
                     <th
                       key={heading}
                       scope="col"
-                      className={`px-4 sm:px-6 py-3 text-xs font-semibold text-content-subtle uppercase tracking-wide ${
+                      className={`px-4 sm:px-6 py-3 text-xs font-semibold text-content-subtle tracking-normal ${
                         i === 4 ? 'text-right' : 'text-left'
                       }`}
                     >

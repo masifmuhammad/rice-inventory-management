@@ -5,16 +5,20 @@ import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../utils/motion';
 import Button from './ui/Button';
 import BrandLogo from './BrandLogo';
+import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 
 const DISMISS_KEY = 'rim.pwa.install.dismissed';
 
 export default function InstallPrompt() {
+  const { user } = useAuth();
+  const { businessName } = useSettings();
   const [prompt, setPrompt] = useState(null);
   const [visible, setVisible] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    if (localStorage.getItem(DISMISS_KEY)) return undefined;
+    try { if (localStorage.getItem(DISMISS_KEY)) return undefined; } catch { /* Storage is optional. */ }
 
     const handler = (event) => {
       event.preventDefault();
@@ -35,7 +39,7 @@ export default function InstallPrompt() {
   };
 
   const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, '1');
+    try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* Still dismiss in memory. */ }
     setVisible(false);
   };
 
@@ -51,7 +55,7 @@ export default function InstallPrompt() {
 
   return (
     <AnimatePresence>
-      {visible && (
+      {visible && user && (
         <motion.div
           role="region"
           aria-label="Install app"
@@ -65,7 +69,7 @@ export default function InstallPrompt() {
             <BrandLogo size={40} rounded="rounded-xl" className="shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-content">Install on your device</p>
-              <p className="text-xs text-content-subtle mt-1">Add Haji Muhammad Rice Mills to your home screen for quick access.</p>
+              <p className="text-xs text-content-subtle mt-1">Add {businessName || 'your inventory app'} to your home screen for quick access.</p>
               <div className="mt-3 flex gap-2">
                 <Button size="sm" icon={FiDownload} onClick={install}>
                   Install

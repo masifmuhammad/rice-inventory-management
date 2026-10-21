@@ -20,7 +20,8 @@ const emailSanitizer = (value) => String(value || '').trim().toLowerCase();
 
 const generateToken = (user, businessId) =>
   jwt.sign(
-    { userId: user._id, role: user.role, businessId: businessId || user.businessId },
+    { userId: user._id, role: user.role, businessId: businessId || user.businessId,
+      sessionVersion: user.sessionsValidFrom?.getTime() },
     env.jwtSecret,
     { expiresIn: env.jwtExpiresIn }
   );

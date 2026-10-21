@@ -20,13 +20,13 @@ echo "JWT_SECRET=$(openssl rand -hex 48)" > .env
 docker compose up --build
 ```
 
-Open <http://localhost:5000>. Create the admin account, then sign in:
+Open <http://localhost:5000>. Bootstrap the first administrator inside the running container (replace these values):
 
 ```bash
-cd backend
-cp .env.example .env   # set JWT_SECRET, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD
-npm run seed
+docker compose exec -e SEED_ADMIN_NAME="Your Name" -e SEED_BUSINESS_NAME="Your Rice Mill" -e SEED_ADMIN_EMAIL="your-email" -e SEED_ADMIN_PASSWORD="unique-temporary-password" app npm run seed
 ```
+
+The first administrator must change that password at sign-in. Seeding again preserves existing accounts unless `SEED_RESET_EXISTING=true` is explicitly set.
 
 **Sign-ups through the UI are always pending** until an admin approves them in
 *Users*. There is no self-service admin — the first admin comes from `npm run seed`.
@@ -44,7 +44,7 @@ so there is no CORS to configure and only one service to pay for.
 | Layer | Technology | Notes |
 | :--- | :--- | :--- |
 | Frontend | React 18 + Tailwind | Route-level code splitting; charts and the PDF library load only when opened. |
-| Backend | Node 20 + Express | Helmet, compression, rate limiting, centralised error handling. |
+| Backend | Node 22 + Express | Helmet, compression, rate limiting, centralised error handling. |
 | Database | PostgreSQL 16 | SQL queries and aggregations; runs in Docker alongside the app. |
 | Auth | JWT + bcrypt | Rate-limited login, no user enumeration, graceful session expiry. |
 | PDFs | jsPDF | Generated in the browser, so the server does no rendering work. |
@@ -54,8 +54,7 @@ so there is no CORS to configure and only one service to pay for.
 ## Features
 
 ### Dashboard
-Inventory value, revenue, low stock and expiring batches. Trend percentages are
-measured against the preceding period — there are no placeholder figures.
+Equal stock valuation and cash balance, quick sale/delivery and money-in/out entry, recent movements, stock health and sales history. Every figure comes from the active business.
 
 ### Products
 Search, filter and sort; live margin calculation while you type a price; SKUs
@@ -65,8 +64,9 @@ product so past transactions still add up.
 ### Transactions
 Stock in, stock out and adjustments, each showing the resulting stock level
 *before* you commit. Stock changes are applied atomically, so two people selling
-at once cannot oversell. Any transaction can be reversed, which puts the stock
-back and removes its cash entry.
+at once cannot oversell. Reversals restore the recorded stock change and remove
+the linked cash entry. Older movements protected by a later absolute adjustment
+must be reversed in order, starting with that adjustment.
 
 ### Cash Book
 Money in and money out in one ledger with a running balance.
@@ -90,7 +90,7 @@ a screenshot of a dashboard.
 
 ### Settings
 Business name, logo, contact details, currency symbol, brand colour and light/dark
-theme. The colour is applied across the whole interface at runtime.
+theme. Brand colour is used for meaningful accents at runtime; navigation and primary controls stay neutral.
 
 ### User management (admin)
 Approve or decline sign-up requests, assign roles (worker, accountant, admin),
@@ -120,3 +120,7 @@ production with no extra configuration.
 | :--- | :--- | :--- |
 | `npm run seed` | `backend/` | Create the first admin account from the command line. |
 | `npm run build` | `frontend/` | Production build. |
+
+## Verification and mobile design
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for Render setup, backups, test database requirements and the physical iPhone checklist. Floating labels are shared by sign-in, search, product, transaction, cash and settings fields; they respond to focus, value and autofill, with reduced-motion support.
