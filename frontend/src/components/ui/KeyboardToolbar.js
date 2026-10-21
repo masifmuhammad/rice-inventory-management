@@ -15,8 +15,12 @@ export default function KeyboardToolbar({ bodyRef, onDone }) {
     .filter((field) => !field.disabled && !field.readOnly && field.offsetParent !== null && !field.closest('details:not([open])'));
   const move = (direction) => {
     const list = fields();
-    const index = list.indexOf(active);
-    list[index + direction]?.focus({ preventScroll: true });
+    const next = list[list.indexOf(active) + direction];
+    if (!next) return;
+    next.focus({ preventScroll: true });
+    // Linux WebKit does not fire focusin when a date input is focused from
+    // script, so record the move here instead of waiting for the event.
+    setActive(next);
   };
   const list = fields();
   const index = list.indexOf(active);
