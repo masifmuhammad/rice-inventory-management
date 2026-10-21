@@ -1,6 +1,6 @@
 # Deploy to Render
 
-The production layout is one Docker web service serving both React and Express, with a managed PostgreSQL database. The frontend calls /api on the same HTTPS origin. There is no separate frontend host or CORS setup to maintain.
+The production layout is one Docker web service on Render's free plan serving both React and Express, with a free PostgreSQL database on [Neon](https://neon.tech). Render's own free PostgreSQL is deleted after 30 days, so it is not used. The free web service sleeps after 15 minutes idle; the first visit after that takes about a minute. The frontend calls /api on the same HTTPS origin. There is no separate frontend host or CORS setup to maintain.
 
 Redis is not required for this single-instance deployment. PostgreSQL remains the
 source of truth for stock, cash and accounts. Add a shared rate-limit store before
@@ -11,9 +11,9 @@ and [Render Key Value documentation](https://render.com/docs/key-value).
 
 ## Deploy after pushing the reviewed changes
 
-1. In Render, choose **New > Blueprint** and connect **masifmuhammad/rice-inventory-management**. Use the branch containing render.yaml.
-2. Review the two paid resources before creating them: the web service and PostgreSQL, both in Singapore. The Blueprint uses the smallest paid compute sizes; check Render's displayed prices before deployment.
-3. Render generates JWT_SECRET and connects DATABASE_URL to the database's private connection string. Leave PORT to Render. Keep REACT_APP_API_URL and CORS_ORIGINS unset for this combined deployment.
+1. Create a free project on Neon (region: Singapore / ap-southeast-1) and copy its connection string. It ends in `?sslmode=require`.
+2. In Render, choose **New > Blueprint** and connect **masifmuhammad/rice-inventory-management**. It creates one free web service in Singapore.
+3. Paste the Neon string when Render asks for DATABASE_URL. Render generates JWT_SECRET. Leave PORT to Render. Keep REACT_APP_API_URL and CORS_ORIGINS unset for this combined deployment.
 4. Wait for the initial Docker build and the /api/health check to succeed. Startup applies the schema before accepting requests. Overlapping migrations share a PostgreSQL advisory lock.
 5. Bootstrap your admin as described below, then sign in through the HTTPS service URL.
 
@@ -21,16 +21,17 @@ Blueprint fields follow [Render's specification](https://render.com/docs/bluepri
 
 ## First administrator
 
-Temporarily add these environment variables to the **web service** in the Render dashboard:
+Render's free plan has no Shell, so seed from your own machine against the Neon database once the first deploy has created the schema. In `backend/`, with dependencies installed, set these for one run:
 
+- DATABASE_URL: the Neon connection string
 - SEED_ADMIN_NAME: your name
 - SEED_ADMIN_EMAIL: your actual sign-in email
 - SEED_ADMIN_PASSWORD: a unique temporary password
 - SEED_BUSINESS_NAME: your business name
 
-After saving the environment, open the service's **Shell** and run **npm run seed** from /app. The first account is an active administrator and must change its password on first sign-in. New registrations require admin approval.
+Then run **npm run seed**. The first account is an active administrator and must change its password on first sign-in. New registrations require admin approval.
 
-Remove SEED_ADMIN_PASSWORD after successful setup. Running the seed again leaves existing accounts untouched. SEED_RESET_EXISTING=true is an explicit recovery operation: it resets credentials, activates admin permissions, and requires another password change. Never run npm run reset in production.
+Do not save SEED_ADMIN_PASSWORD anywhere after setup. Running the seed again leaves existing accounts untouched. SEED_RESET_EXISTING=true is an explicit recovery operation: it resets credentials, activates admin permissions, and requires another password change. Never run npm run reset in production.
 
 ## Optional AI assistant
 
