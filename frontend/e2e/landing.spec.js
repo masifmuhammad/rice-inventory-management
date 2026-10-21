@@ -1,6 +1,5 @@
 const { test, expect } = require('@playwright/test');
 
-const wide = page => page.viewportSize().width >= 900;
 const captionOpacity = (page, heading) => page.locator('.k-caption').filter({ has: page.getByRole('heading', { name: heading }) }).evaluate(el => Number(getComputedStyle(el).opacity));
 
 test('public page loads its imagery without overflow or runtime errors', async ({ page }) => {
@@ -42,6 +41,15 @@ test('the chapters tray jumps to a chapter and closes', async ({ page }) => {
   await expect.poll(() => captionOpacity(page, 'Husked, polished, sorted.')).toBe(1);
 });
 
+test('each nine names its rice and shows its pack', async ({ page }) => {
+  await page.goto('/welcome');
+  const sella = page.getByRole('button', { name: /^Sella:/ });
+  await sella.click();
+  await expect(sella).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.k-hero-rice')).toContainText('Sella');
+  await expect(page.locator('.k-hero-object .k-cutout-pack')).toHaveAttribute('src', /sella.webp$/);
+});
+
 test('every rice is shown with its dish and use', async ({ page }) => {
   await page.goto('/welcome#rice');
   for (const [name, best] of [['Basmati', 'Biryani and pulao'], ['Sella', 'Deghs and large gatherings'], ['Steam', 'Daal chawal and daily meals']]) {
@@ -52,8 +60,8 @@ test('every rice is shown with its dish and use', async ({ page }) => {
 });
 
 test('section links move along the page', async ({ page }) => {
-  test.skip(!wide(page), 'Section links live in the menu tray below 900px.');
   await page.goto('/welcome');
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
   await page.getByRole('navigation', { name: 'Page sections' }).getByRole('link', { name: 'Rice', exact: true }).click();
   await expect(page).toHaveURL(/#rice$/);
   await expect(page.getByRole('heading', { name: 'Three rices, each for its dish.' })).toBeInViewport();
@@ -61,15 +69,13 @@ test('section links move along the page', async ({ page }) => {
 
 test('header and bottom inventory buttons reach the existing sign-in screen', async ({ page }) => {
   await page.goto('/welcome');
-  if (wide(page)) {
-    await page.locator('.k-inventory-small').click();
-  } else {
-    await page.getByRole('button', { name: 'Menu', exact: true }).click();
-    await page.getByRole('link', { name: 'Inventory software', exact: true }).first().click();
-  }
+  await page.locator('.k-header').getByRole('link', { name: 'Inventory', exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.classList.contains('rice-public-page'))).toBe(false);
+  await page.goto('/welcome');
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
+  await expect(page.locator('.k-menu > *').first()).toHaveText('Inventory software');
   await page.goto('/welcome');
   await page.getByRole('link', { name: 'Use the inventory software', exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);

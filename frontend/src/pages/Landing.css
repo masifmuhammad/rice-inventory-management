@@ -62,26 +62,13 @@ html.rice-public-page body { background: #f4f1ea; color: #16130f; }
 .k-scrim { position: fixed; inset: 0; z-index: 40; background: rgba(244, 241, 234, 0.3); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .k-header { position: fixed; top: 10px; left: 10px; right: 10px; z-index: 50; border-radius: 22px; background: rgba(251, 249, 244, 0.78); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: background 0.4s var(--ease), box-shadow 0.4s var(--ease); }
 .k-header[data-open] { background: var(--paper); box-shadow: 0 24px 80px -30px rgba(22, 19, 15, 0.35); }
-.k-bar { position: relative; display: flex; align-items: center; gap: 28px; min-height: 64px; padding: 8px 12px 8px 16px; }
-.k-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.k-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 4px; min-height: 64px; padding: 8px 6px 8px 8px; }
+.k-bar-side { display: flex; align-items: center; gap: 4px; }
+.k-bar-end { justify-content: flex-end; }
+.k-inventory-small { min-height: 40px; padding: 8px 14px 8px 16px; font-size: 14px; }
+.k-brand { justify-self: center; display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .k-brand-mark { width: 30px; height: auto; color: var(--ver); }
 .k-brand-name { font-size: 15px; font-weight: 500; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; }
-.k-links { display: flex; gap: 22px; font-size: 15px; }
-.k-links a { text-decoration: none; color: var(--muted); transition: color 0.2s; }
-.k-links a:hover { color: var(--ink); }
-/* Centre dock, after dmcg.co: an airy capsule of evenly boxed thumbnails, with a
-   round close chip that slides in beside it while the tray is open. */
-.k-pill-wrap { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-.k-pill { display: flex; align-items: center; gap: 6px; height: 50px; padding: 0 14px 0 12px; border-radius: 18px; background: var(--paper); box-shadow: 0 0 0 1px rgba(22, 19, 15, 0.05), 0 10px 30px -18px rgba(22, 19, 15, 0.35); transition: box-shadow 0.3s var(--ease); }
-.k-pill:hover, .k-header[data-open] .k-pill { box-shadow: 0 0 0 1px rgba(22, 19, 15, 0.08), 0 14px 34px -18px rgba(22, 19, 15, 0.4); }
-.k-pill-slot { display: grid; place-items: center; width: 40px; height: 34px; border-radius: 10px; transition: background 0.25s; }
-.k-pill-slot:hover { background: rgba(22, 19, 15, 0.05); }
-.k-pill-thumb { width: 34px; height: 26px; object-fit: contain; transition: transform 0.35s var(--ease); }
-.k-pill-slot:hover .k-pill-thumb { transform: translateY(-2px) scale(1.12); }
-.k-pill-rule { width: 1px; height: 22px; margin-left: 8px; background: rgba(22, 19, 15, 0.14); }
-.k-pill-close { position: absolute; right: calc(100% + 12px); top: 50%; margin-top: -17px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(22, 19, 15, 0.06), 0 6px 16px -10px rgba(22, 19, 15, 0.35); color: var(--muted); font-size: 16px; transition: color 0.2s, box-shadow 0.2s; }
-.k-pill-close:hover { color: var(--ink); box-shadow: 0 0 0 1px rgba(22, 19, 15, 0.1), 0 8px 18px -10px rgba(22, 19, 15, 0.45); }
-.k-inventory-small { margin-left: auto; }
 .k-icon-btn { display: grid; place-items: center; width: 44px; height: 44px; }
 .k-burger, .k-chapters-icon { position: relative; display: block; width: 26px; height: 18px; }
 .k-burger i { position: absolute; left: 0; width: 26px; height: 1.5px; background: var(--ink); transition: transform 0.42s var(--ease); }
@@ -109,9 +96,9 @@ html.rice-public-page body { background: #f4f1ea; color: #16130f; }
 .k-rail-title { margin-top: 10px; font-size: 15px; }
 .k-rail-ur { font-size: 15px; color: var(--muted); line-height: 1.8; }
 .k-menu { display: grid; padding: 8px 16px; }
-.k-menu > a:not(.k-inventory) { display: flex; justify-content: space-between; align-items: center; padding: 14px 4px; border-bottom: 1px solid var(--line); font-size: 24px; text-decoration: none; }
-.k-menu > a:not(.k-inventory) [lang='ur'] { font-size: 20px; color: var(--muted); }
-.k-inventory-tray { margin: 18px 0 6px; font-size: 18px; padding: 16px 22px; }
+.k-menu nav a { display: flex; justify-content: space-between; align-items: center; padding: 14px 4px; border-bottom: 1px solid var(--line); font-size: 24px; text-decoration: none; }
+.k-menu nav a [lang='ur'] { font-size: 20px; color: var(--muted); }
+.k-inventory-tray { margin: 10px 0 8px; font-size: 18px; padding: 16px 22px; }
 .k-tray-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 8px 0 0; padding: 14px 20px 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
 .k-tray-foot a { display: inline-flex; align-items: center; gap: 5px; text-decoration: none; color: var(--ink); font-weight: 500; }
 .k-tray-foot a:hover { color: var(--ver); }
@@ -120,14 +107,24 @@ html.rice-public-page body { background: #f4f1ea; color: #16130f; }
 /* ---------- Hero, after dmcg.co/work/archiv ---------- */
 
 .k-hero { display: grid; justify-items: center; align-content: center; min-height: 100svh; padding: 110px var(--gutter) 48px; text-align: center; }
-.k-hero-mark { width: min(940px, 86vw, 82svh); height: auto; color: var(--ink); overflow: visible; }
-.k-hero-mark path { cursor: grab; }
+.k-hero-mark { --w: min(940px, 86vw, 82svh); display: flex; justify-content: center; gap: calc(var(--w) * 0.0065); width: var(--w); }
+.k-nine { position: relative; flex: 0 0 calc(var(--w) * 0.329); aspect-ratio: 102 / 164; border-radius: 12px; }
+.k-nine svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: var(--ink); transition: translate 0.5s var(--ease); }
+.k-nine .k-nine-fill { fill: var(--tone); clip-path: inset(100% 0 0 0); transition: clip-path 0.75s var(--ease), translate 0.5s var(--ease); }
+.k-nine[aria-pressed='true'] svg { translate: 0 -8px; }
+.k-nine[aria-pressed='true'] .k-nine-fill { clip-path: inset(0 0 0 0); }
+.k-nine:focus-visible { outline-offset: 8px; }
+.k-hero-rice { min-height: 1.6em; margin-bottom: 8px !important; font-size: 15px; color: var(--muted); }
+.k-hero-rice b { font-weight: 600; }
+.k-hint-touch { display: none; }
+@media (hover: none) { .k-hint-mouse { display: none; } .k-hint-touch { display: inline; } }
+.k-hero-object .k-cutout-pack { padding: 4% 0; }
 .k-hero-object { position: relative; display: grid; place-items: center; width: min(520px, 80vw); height: clamp(170px, min(27vw, 34svh), 340px); margin-top: calc(-1 * clamp(60px, min(10vw, 16svh), 170px)); }
 .k-hero-object-inner { position: absolute; inset: 0; display: grid; place-items: center; }
 /* Explicit size: a percentage max-height does not resolve in this grid, and a large
    square artwork then overflowed onto the headline. */
 .k-hero-object .k-cutout { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 26px 22px rgba(22, 19, 15, 0.22)); }
-.k-hero-copy { display: grid; gap: 4px; margin-top: 30px; }
+.k-hero-copy { display: grid; justify-items: center; gap: 4px; margin-top: 26px; }
 .k-hero-copy h1 { max-width: 18ch; font-size: clamp(28px, 3.4vw, 50px); font-weight: 500; line-height: 1.08; letter-spacing: -0.035em; text-wrap: balance; }
 .k-hero-copy [lang='ur'] { font-size: clamp(20px, 2vw, 28px); color: var(--muted); }
 .k-hero-cue { display: inline-flex; align-items: center; gap: 8px; margin-top: 28px; padding: 10px 18px; border-radius: 100px; box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; text-decoration: none; }
@@ -171,10 +168,16 @@ html.rice-public-page body { background: #f4f1ea; color: #16130f; }
 .k-end [lang='ur'] { font-weight: 700; font-size: clamp(48px, 7vw, 104px); line-height: 1.35; letter-spacing: -0.01em; color: var(--ver); text-shadow: 0 2px 0 rgba(22, 19, 15, 0.08); }
 .k-end span:last-child { margin-top: -6px; font-size: 15px; color: var(--muted); }
 .k-end-art { position: absolute; inset: 0; margin: 0; overflow: hidden; pointer-events: none; }
-.k-end-art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 70%; }
-.k-end-over { top: max(24svh, 160px); bottom: auto; }
-.k-end-over [lang='ur'] { color: var(--ink); text-shadow: 0 2px 30px rgba(246, 220, 192, 0.8); }
-.k-end-over span:last-child { color: var(--ink); opacity: 0.7; }
+.k-end-art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 72%; }
+/* A soft wash over the painted sky gives the line its contrast without a box. */
+.k-end-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(22, 19, 15, 0.62) 0%, rgba(22, 19, 15, 0.28) 30%, rgba(22, 19, 15, 0) 52%); }
+.k-end-over { top: max(15svh, 100px); bottom: auto; gap: 6px; }
+.k .k-end-over [lang='ur'] { font-size: clamp(56px, 8.4vw, 124px); line-height: 1.3; color: var(--rice); text-shadow: 0 8px 40px rgba(22, 19, 15, 0.35); }
+.k .k-end-over p:nth-child(2) { margin: 0; font-size: clamp(15px, 1.4vw, 19px); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(244, 241, 234, 0.85); }
+.k-end-cta { pointer-events: auto; display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; min-height: 46px; padding: 10px 22px; border-radius: 100px; background: var(--rice); color: var(--ink) !important; font-size: 15px; font-weight: 600; text-decoration: none; box-shadow: 0 14px 30px -14px rgba(22, 19, 15, 0.5); transition: transform 0.25s var(--ease), background 0.25s; }
+.k-end-cta:hover { transform: translateY(-2px); background: #fff; }
+.k-end-cta svg { transition: transform 0.25s var(--ease); }
+.k-end-cta:hover svg { transform: translateY(2px); }
 
 /* ---------- The rice, after takearecess.com ---------- */
 
@@ -254,14 +257,12 @@ html.rice-public-page body { background: #f4f1ea; color: #16130f; }
 
 /* ---------- Breakpoints ---------- */
 
-@media (min-width: 900px) { .k-only-phone { display: none !important; } }
 
 @media (max-width: 899px) {
-  .k-only-wide { display: none !important; }
-  .k-bar { display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; padding: 8px; }
-  .k-brand { justify-self: center; text-align: center; }
   .k-brand-mark { width: 26px; }
   .k-brand-name { font-size: 14px; }
+  .k-inventory-small { padding: 7px 12px; font-size: 13px; }
+  .k-inventory-small svg { display: none; }
   .k-stage { --wh: min(60svh, 104vw); }
   .k-hud { top: 84px; flex-direction: column; gap: 0; }
   .k-captions { height: 168px; }
@@ -279,6 +280,10 @@ html.rice-public-page body { background: #f4f1ea; color: #16130f; }
   .k-jhalar i:nth-child(even) { display: none; }
 }
 
+
+/* Phones keep the mark and drop its name, so the bar stays centred between
+   the menu and the inventory pill. */
+@media (max-width: 599px) { .k-brand-name { display: none; } .k-brand-mark { width: 30px; } }
 
 @media (prefers-reduced-motion: reduce) {
   html.rice-public-page { scroll-behavior: auto; }

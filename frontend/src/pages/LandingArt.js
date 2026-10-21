@@ -9,7 +9,6 @@ export const RICE = '#f4f1ea';
 export const VER = '#e8322a';
 export const MARI = '#f4b400';
 export const COB = '#1f4fd8';
-export const PINK = '#d93a7a';
 const JUTE = '#efe6d2';
 const DARK = '#2a2520';
 
@@ -17,7 +16,6 @@ export const NINE = 'M50 0C84 0 102 22 102 58V94C102 140 82 164 40 164H8V132H38C
 const TAJ = 'M210 46C250 92 350 124 412 150V470H8V150C70 124 170 92 210 46Z';
 const TAJ_INNER = 'M210 92C178 126 104 156 46 178V432H374V178C316 156 242 126 210 92Z';
 const FINIAL = 'M210 0C222 14 222 30 210 40C198 30 198 14 210 0Z';
-const BEAD = [VER, MARI, COB, PINK];
 
 export function Nines({ fill = 'currentColor', gap = 104 }) {
   return <g fill={fill} fillRule="evenodd">{[0, gap, gap * 2].map(x => <path key={x} d={NINE} transform={`translate(${x})`} />)}</g>;
@@ -43,10 +41,6 @@ export function Logo({ className, title = '999' }) {
     <path fillRule="evenodd" d={`${TAJ_INNER}M210 96C180 129 108 158 50 181V428H370V181C312 158 240 129 210 96Z`} />
     <g transform="translate(55 210)"><Nines /></g>
   </svg>;
-}
-
-export function Wordmark({ className }) {
-  return <svg className={className} viewBox="0 0 310 164" fill="currentColor" aria-hidden="true"><Nines /></svg>;
 }
 
 export function Grain({ className, style }) {
@@ -101,13 +95,6 @@ function Wheel({ cx, spin, cy = -46, k = 1 }) {
   </g>;
 }
 
-function Flower({ x, y }) {
-  return <g transform={`translate(${x} ${y})`}>
-    {[0, 60, 120, 180, 240, 300].map(a => <ellipse key={a} rx="9" ry="22" transform={`rotate(${a}) translate(0 -18)`} fill={a % 120 ? PINK : COB} />)}
-    <circle r="11" fill={MARI} stroke={VER} strokeWidth="4" />
-  </g>;
-}
-
 // What a truck carries: a netted heap of sacks or a stack of cartons, drawn so
 // either can appear and disappear as the story loads and unloads it.
 function Load({ sacks, cartons, y = 0 }) {
@@ -139,38 +126,6 @@ export function ArtTruck({ href, spin, sacks = 0, cartons = 0 }) {
     <Load sacks={sacks} cartons={cartons} y={64} />
     <image href={href} x={at(-43)} y={at(-992)} width={at(1254)} height={at(1254)} clipPath="url(#k-truck-body)" />
     {[240, 430, 1015].map(x => <Wheel key={x} cx={at(x - 43)} cy={at(900 - 992)} k={1.08} spin={spin} />)}
-  </g>;
-}
-
-// A Bedford-style Pakistani goods truck in truck-art paint, facing right.
-// `sacks` and `cartons` are opacities (numbers or motion values) for its load.
-export function Truck({ spin, sacks = 0, cartons = 0 }) {
-  const zigzag = Array.from({ length: 21 }, (_, i) => `l10 ${i % 2 ? 12 : -12}`).join('');
-  return <g>
-    <rect x="0" y="-122" width="636" height="22" rx="4" fill={INK} />
-    <Load sacks={sacks} cartons={cartons} />
-    <rect x="12" y="-336" width="430" height="216" rx="6" fill={MARI} />
-    <rect x="12" y="-336" width="430" height="26" rx="6" fill={COB} />
-    {Array.from({ length: 19 }, (_, i) => <circle key={i} cx={28 + i * 22} cy="-323" r="4" fill={RICE} />)}
-    {[[26, 136], [170, 128], [306, 122]].map(([x, w]) => <rect key={x} x={x} y="-298" width={w} height="132" rx="8" fill={RICE} stroke={VER} strokeWidth="6" />)}
-    <Flower x={94} y={-232} />
-    <g transform="translate(184 -262) scale(.33)"><Nines fill={INK} /></g>
-    <Flower x={367} y={-232} />
-    <rect x="12" y="-160" width="430" height="40" fill={PINK} />
-    <path d={`M18-134${zigzag}`} stroke={RICE} strokeWidth="4" fill="none" />
-    <path d="M446-120V-288Q446-306 464-306H546Q560-306 560-292V-120Z" fill={VER} />
-    <rect x="462" y="-290" width="84" height="66" rx="8" fill="#a9c6ee" />
-    <path d="M462-206H548M462-206V-132" stroke="#a5201b" strokeWidth="3" fill="none" />
-    <path d="M556-226H606Q634-226 636-196V-120H556Z" fill={VER} />
-    <circle cx="627" cy="-186" r="9" fill={MARI} stroke={INK} strokeWidth="2" />
-    <rect x="598" y="-130" width="44" height="14" rx="3" fill="#d8d4cc" stroke={INK} strokeWidth="2" />
-    <g transform="translate(440 -447) scale(.3)"><Taj /></g>
-    <rect x="258" y="-112" width="22" height="78" rx="3" fill={INK} />
-    {Array.from({ length: 27 }, (_, i) => <g key={i}>
-      <path d={`M${22 + i * 16}-100V-80`} stroke={INK} strokeWidth="1.5" />
-      <circle cx={22 + i * 16} cy="-76" r="4.5" fill={BEAD[i % 4]} />
-    </g>)}
-    <Wheel cx={112} spin={spin} /><Wheel cx={206} spin={spin} /><Wheel cx={588} spin={spin} />
   </g>;
 }
 
@@ -219,16 +174,6 @@ export function Shop() {
   </g>;
 }
 
-export function MillIcon() {
-  return <g>
-    <rect x="-56" y="-196" width="46" height="196" rx="8" fill={MARI} stroke={INK} strokeWidth="5" />
-    <path d="M0 0V-140L60-172V-140L120-172V-140L180-172V-140L240-172V-140H262V0Z" fill="#ebe5d8" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
-    <rect x="26" y="-108" width="64" height="50" fill={DARK} />
-    <rect x="114" y="-108" width="64" height="50" fill={DARK} />
-    <rect x="204" y="-76" width="40" height="76" fill={DARK} />
-  </g>;
-}
-
 export function Mill() {
   return <g>
     <path d="M0 80V-440L120-500V-440L240-500V-440L360-500V-440L480-500V-440L600-500V-440L720-500V-440L840-500V-440L960-500V-440L1080-500V-440L1200-500V-440L1320-500V-440L1440-500V-440L1560-500V-440H1640V80Z" fill="#ebe5d8" stroke={INK} strokeWidth="4" strokeLinejoin="round" />
@@ -238,8 +183,8 @@ export function Mill() {
 }
 
 // Dusk over the Punjab paddies, for the footer: the 999 sets like the sun behind
-// rows of rice running to the horizon, a khaal catching the sky, a painted
-// truck on the bund road and a tubewell kotha with its lamp lit.
+// rows of rice running to the horizon, a khaal catching the sky, the painted
+// truck (truckHref) driving the bund road and a tubewell kotha with its lamp lit.
 export function PunjabScene({ className, truckHref }) {
   const V = [720, 300];
   const rows = Array.from({ length: 24 }, (_, i) => -2400 + i * 240);
@@ -282,58 +227,7 @@ export function PunjabScene({ className, truckHref }) {
     <path d={`M${V[0]} ${V[1]}L470 560H560Z`} fill="url(#k-khaal)" opacity=".9" />
     <rect y="296" width="1440" height="40" fill={VER} opacity=".18" />
     <rect y="306" width="1440" height="8" fill="#3a2716" />
-    <g className="k-scene-truck">{truckHref
-      ? <image href={truckHref} x="-4" y={314 - 992 * 0.093} width={1254 * 0.093} height={1254 * 0.093} />
-      : <g transform="translate(0 312) scale(.16)"><Truck sacks={1} /></g>}</g>
+    <g className="k-scene-truck"><image href={truckHref} x="-4" y={314 - 992 * 0.093} width={1254 * 0.093} height={1254 * 0.093} /></g>
     <g>{Array.from({ length: 44 }, (_, i) => <g key={i} transform={`translate(${i * 34 - 10} 566) scale(${0.62 + (i % 3) * 0.1})`}><Paddy tone="#1a120e" /></g>)}</g>
-  </svg>;
-}
-
-// Punjab paddies from directly above: a jittered patchwork of plots in harvest
-// golds, a khaal crossing them on its bund, a kotha, trees and harvesters.
-// Class names are hooks for the GSAP build in Landing.js.
-const PLOT_COLORS = ['#d9a531', '#c8973a', '#b9a24c', '#e3bf5c', '#a99441', '#d6b46b', '#c4a85a'];
-const jitter = (a, b) => (Math.sin(a * 12.9898 + b * 78.233) * 43758.5453) % 1;
-const PLOTS = (() => {
-  const points = Array.from({ length: 6 }, (_, r) => Array.from({ length: 7 }, (_, c) => {
-    const edge = r === 0 || r === 5 || c === 0 || c === 6;
-    return [c * 200 + (edge ? 0 : jitter(r, c) * 40), r * 180 + (edge ? 0 : jitter(c + 9, r) * 36)];
-  }));
-  const plots = [];
-  for (let r = 0; r < 5; r++) for (let c = 0; c < 6; c++) {
-    const quad = [points[r][c], points[r][c + 1], points[r + 1][c + 1], points[r + 1][c]];
-    const cx = quad.reduce((sum, p) => sum + p[0], 0) / 4, cy = quad.reduce((sum, p) => sum + p[1], 0) / 4;
-    const d = `M${quad.map(([x, y]) => `${(cx + (x - cx) * 0.93).toFixed(1)} ${(cy + (y - cy) * 0.93).toFixed(1)}`).join('L')}Z`;
-    plots.push({ d, fill: PLOT_COLORS[(r * 7 + c * 3) % PLOT_COLORS.length], texture: (r + c) % 3 });
-  }
-  return plots;
-})();
-const HARVESTERS = [[250, 300, VER], [290, 318, COB], [700, 610, PINK], [742, 596, MARI], [1010, 470, VER], [430, 760, COB], [180, 120, PINK]];
-
-export function FamilyScene({ className }) {
-  return <svg className={className} viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <defs>
-      {[30, -28, 72].map((angle, i) => <pattern key={angle} id={`kf-rows-${i}`} width="12" height="12" patternUnits="userSpaceOnUse" patternTransform={`rotate(${angle})`}>
-        <path d="M0 6H12" stroke="rgba(70,45,10,.22)" strokeWidth="3" />
-      </pattern>)}
-    </defs>
-    <rect width="1200" height="900" fill="#b8a06a" />
-    {PLOTS.map(plot => <g key={plot.d} className="kf-plot">
-      <path d={plot.d} fill={plot.fill} />
-      <path d={plot.d} fill={`url(#kf-rows-${plot.texture})`} />
-    </g>)}
-    <g fill="none" strokeLinecap="round">
-      <path d="M-60 120C200 220 360 300 560 420S900 640 1260 760" stroke="#b39a5c" strokeWidth="66" />
-      <path className="kf-water" d="M-60 120C200 220 360 300 560 420S900 640 1260 760" stroke="#6f8fd0" strokeWidth="34" strokeDasharray="1700" />
-      <path className="kf-water" d="M-60 112C200 212 360 292 560 412S900 632 1260 752" stroke={RICE} strokeWidth="4" strokeDasharray="1700" opacity=".55" />
-    </g>
-    <g className="kf-kotha"><rect x="900" y="230" width="74" height="54" fill={RICE} stroke={INK} strokeWidth="4" /><path d="M900 230L974 284M974 230L900 284" stroke={INK} strokeWidth="2" opacity=".35" /></g>
-    {[[140, 700, 34], [196, 736, 26], [1060, 110, 38], [620, 70, 28], [1120, 840, 30]].map(([x, y, r]) => <g key={x} className="kf-tree">
-      <circle cx={x + 8} cy={y + 8} r={r} fill="rgba(40,25,5,.25)" /><circle cx={x} cy={y} r={r} fill="#7d7a35" /><circle cx={x - r / 3} cy={y - r / 3} r={r / 3} fill="#949045" />
-    </g>)}
-    {HARVESTERS.map(([x, y, color]) => <g key={`${x}${y}`} className="kf-figure" transform={`translate(${x} ${y})`}>
-      <ellipse cx="3" cy="4" rx="13" ry="8" fill="rgba(40,25,5,.25)" /><ellipse rx="12" ry="8" fill={color} /><circle cy="-2" r="6" fill={INK} />
-    </g>)}
-    {[[330, 340], [360, 350], [780, 640], [1040, 500]].map(([x, y]) => <g key={x} className="kf-figure"><ellipse cx={x} cy={y} rx="14" ry="6" fill="#efd27c" stroke="rgba(70,45,10,.4)" strokeWidth="2" transform={`rotate(-20 ${x} ${y})`} /></g>)}
   </svg>;
 }
