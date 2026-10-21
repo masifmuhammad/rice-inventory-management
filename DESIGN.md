@@ -241,3 +241,5 @@ Transitions should explain state, not decorate idle content. Use the shared non-
 - **Don't** apply overlay shadows and blur to every card or header.
 
 <!-- Extraction sources: frontend/src/index.css; frontend/tailwind.config.js; frontend/src/index.js; components/ui/{Field,Button,Card,Badge,Modal,KeyboardToolbar}.js; components/{Layout,AppHeader,MobileTabBar,BrandLogo,BusinessSwitcher}.js; utils/motion.js. Surface-specific composition remains in .impeccable/surfaces/app.md. CSS declarations take precedence over stale source comments. -->
+
+<!-- Public identity scope: the independent 999 landing page (/ for visitors, /welcome always) has its own identity, recorded in PRODUCT.md and implemented in frontend/src/pages/Landing.css. It does not replace this authenticated inventory design or active-business branding. -->

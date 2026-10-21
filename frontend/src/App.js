@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -19,6 +19,7 @@ import AuthShellSkeleton from './components/skeletons/AuthShellSkeleton';
 import { lazyPage } from './utils/lazyPage';
 import { unlockFeedbackAudio } from './utils/feedback';
 
+const Landing = lazyPage(() => import('./pages/Landing'), '999');
 const Dashboard = lazyPage(() => import('./pages/Dashboard'), 'dashboard');
 const Products = lazyPage(() => import('./pages/Products'), 'products page');
 const Transactions = lazyPage(() => import('./pages/Transactions'), 'transactions page');
@@ -74,9 +75,30 @@ function RedirectIfSignedIn({ children }) {
   return children;
 }
 
+// Keep the established dashboard URL for signed-in staff. The public identity
+// is also available at /welcome, including while a staff session is active.
+function HomeEntry() {
+  const { user, initialising } = useAuth();
+  if (initialising) return <AuthShellSkeleton />;
+  return user ? <RequirePasswordChange><Layout /></RequirePasswordChange> : <PublicLanding />;
+}
+
+function PublicLanding() {
+  return <Suspense fallback={<div role="status" aria-label="Loading 999" style={{ minHeight: '100svh', background: '#e8e7e4' }} />}><Landing /></Suspense>;
+}
+
+function InventoryEntry() {
+  const { user, initialising } = useAuth();
+  if (initialising) return <AuthShellSkeleton />;
+  return <Navigate to={user ? '/' : '/login'} replace />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/" element={<HomeEntry />}><Route index element={<Dashboard />} /></Route>
+      <Route path="/welcome" element={<PublicLanding />} />
+      <Route path="/inventory" element={<InventoryEntry />} />
       <Route
         path="/login"
         element={
@@ -104,7 +126,6 @@ function AppRoutes() {
           </RequireAuth>
         }
       >
-        <Route path="/" element={<Dashboard />} />
         <Route path="/products" element={<Products />} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/cash-book" element={<RequireCapability capability="cash.view"><CashBook /></RequireCapability>} />

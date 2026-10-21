@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 470" fill="#16130f">
+  <title>999</title>
+  <!-- The 999 taj: the crown panel of a Pakistani truck, a rice-grain finial, and three nines whose counters are grains. -->
+  <defs>
+    <path id="nine" fill-rule="evenodd" d="M50 0C84 0 102 22 102 58V94C102 140 82 164 40 164H8V132H38C58 132 66 124 68 106C62 110 54 112 46 112C16 112 0 92 0 58C0 22 16 0 50 0ZM48 24C36 38 34 58 40 74C44 84 50 90 58 90C66 76 68 58 64 44C62 36 56 28 48 24Z"/>
+  </defs>
+  <path d="M210 0C222 14 222 30 210 40C198 30 198 14 210 0Z"/>
+  <path fill-rule="evenodd" d="M210 46C250 92 350 124 412 150V470H8V150C70 124 170 92 210 46ZM210 76C174 114 92 146 32 168V446H388V168C328 146 246 114 210 76Z"/>
+  <path fill-rule="evenodd" d="M210 92C178 126 104 156 46 178V432H374V178C316 156 242 126 210 92ZM210 96C180 129 108 158 50 181V428H370V181C312 158 240 129 210 96Z"/>
+  <g transform="translate(55 210)"><use href="#nine"/><use href="#nine" x="104"/><use href="#nine" x="208"/></g>
+</svg>
