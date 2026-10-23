@@ -1,8 +1,6 @@
 .inventory-actions-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:15px; }
 .inventory-actions-heading h2 { font-size:21px; font-weight:600; letter-spacing:-.02em; color:rgb(var(--content)); }
-.inventory-actions-heading h2>span { display:block; font-family:'Noto Naskh Arabic','Segoe UI',sans-serif; font-size:17px; font-weight:400; letter-spacing:0; margin-top:5px; color:rgb(var(--content-muted)); text-align:left; }
 .inventory-actions-heading>a { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; min-height:48px; font-size:13px; font-weight:500; color:rgb(var(--content)); }
-.inventory-actions-heading>a>span { font-family:'Noto Naskh Arabic','Segoe UI',sans-serif; font-size:15px; color:rgb(var(--content-muted)); }
 .inventory-action-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
 .inventory-action { display:flex; flex-direction:column; min-height:176px; padding:23px; border-radius:16px; transition:transform .2s ease-out,box-shadow .2s ease-out; }
 .inventory-action-stock { background:#e0edf3; color:#264c60; }
@@ -10,7 +8,6 @@
 .inventory-action-out { background:#e9e5fa; color:#453678; }
 .inventory-action-top { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:26px; }
 .inventory-action-icon { width:29px; height:29px; stroke-width:1.6; }
-.inventory-action-top>span { font-family:'Noto Naskh Arabic','Segoe UI',sans-serif; font-size:25px; line-height:1.5; }
 .inventory-action strong { font-size:20px; font-weight:600; line-height:1.2; }
 .inventory-action p { font-size:13px; line-height:1.5; margin-top:6px; }
 .inventory-action:focus-visible,.inventory-actions-heading>a:focus-visible { outline:2px solid rgb(var(--color-primary-600)); outline-offset:4px; }
