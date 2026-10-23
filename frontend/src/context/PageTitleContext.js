@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { translate, useAppLanguage } from './LanguageContext';
 
 const PageTitleContext = createContext({
   title: '',
@@ -6,6 +7,7 @@ const PageTitleContext = createContext({
 });
 
 export function PageTitleProvider({ children }) {
+  useAppLanguage();
   const [title, setTitleState] = useState('');
   const [summary, setSummary] = useState('');
   const [collapsed, setCollapsed] = useState(false);
@@ -15,7 +17,7 @@ export function PageTitleProvider({ children }) {
 
   const value = useMemo(() => ({ title, setTitle, summary, setSummary, collapsed, setCollapsed }), [title, setTitle, summary, collapsed]);
 
-  return <PageTitleContext.Provider value={value}>{children}</PageTitleContext.Provider>;
+  return <PageTitleContext.Provider value={value}>{translate(children)}</PageTitleContext.Provider>;
 }
 
 export function usePageTitle() {

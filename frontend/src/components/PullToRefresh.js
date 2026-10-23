@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FiRefreshCw } from 'react-icons/fi';
 import { feedbackTick } from '../utils/feedback';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 /**
  * How far the page must be pulled before releasing counts as a refresh.
@@ -25,6 +26,7 @@ const AXIS_BIAS = 1.4;
  * this themselves, and two competing pull gestures is worse than either.
  */
 export default function PullToRefresh() {
+  useAppLanguage();
   const [pull, setPull] = useState(0);
   const [busy, setBusy] = useState(false);
   const start = useRef(null);
@@ -142,7 +144,7 @@ export default function PullToRefresh() {
           style={busy ? undefined : { transform: `rotate(${progress * 270}deg)` }}
         />
         <span className="text-[13px] font-medium text-content-muted whitespace-nowrap">
-          {busy ? 'Refreshing…' : progress >= 1 ? 'Release to refresh' : 'Pull to refresh'}
+          {translate(busy ? 'Refreshing…' : progress >= 1 ? 'Release to refresh' : 'Pull to refresh')}
         </span>
       </span>
     </div>

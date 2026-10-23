@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 /** The tab bar's own order — swiping should match what the bar shows. */
-const TABS = ['/', '/products', '/transactions', '/cash-book'];
+const TABS = ['/', '/products', '/barcodes', '/transactions', '/cash-book'];
 
 const indexOf = (pathname, tabs) =>
   tabs.findIndex((path) => (path === '/' ? pathname === '/' : pathname.startsWith(path)));
@@ -59,7 +59,7 @@ export default function useTabSwipe({ enabled = true, canViewCash = true } = {})
 
   useEffect(() => {
     if (!enabled) return undefined;
-    const tabs = canViewCash ? TABS : TABS.slice(0, 3);
+    const tabs = canViewCash ? TABS : TABS.filter((path) => path !== '/cash-book');
 
     const onTouchStart = (event) => {
       if (event.touches.length !== 1) {
@@ -130,7 +130,8 @@ export default function useTabSwipe({ enabled = true, canViewCash = true } = {})
       if (current < 0) return; // a drawer route has no neighbours
 
       // Swiping left moves forward, the way pages advance.
-      const next = current + (dx < 0 ? 1 : -1);
+      const direction = document.documentElement.dir === 'rtl' ? -dx : dx;
+      const next = current + (direction < 0 ? 1 : -1);
       if (next < 0 || next >= tabs.length) return;
 
       navigate(tabs[next]);

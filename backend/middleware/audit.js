@@ -27,6 +27,8 @@ const SUMMARIES = {
 
   CREATE_TRANSACTION: 'Recorded a transaction',
   DELETE_TRANSACTION: 'Reversed a transaction',
+  CREATE_BARCODE_LABELS: 'Generated pack labels',
+  SCAN_BARCODE: 'Scanned a rice pack',
 
   CREATE_CASH_IN: 'Recorded money in',
   CREATE_CASH_OUT: 'Recorded money out',

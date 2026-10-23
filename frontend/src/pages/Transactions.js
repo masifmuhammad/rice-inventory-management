@@ -9,6 +9,7 @@ import {
   FiEdit,
   FiEdit2,
   FiPlus,
+  FiRadio,
   FiTrash2,
   FiTrendingDown,
   FiTrendingUp,
@@ -32,6 +33,7 @@ import { SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
 import Modal from '../components/ui/Modal';
 import TransactionFormModal from '../components/transactions/TransactionFormModal';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const TYPE_FILTERS = [
   { value: '', label: 'All types' },
@@ -53,6 +55,7 @@ const LIMIT = 20;
 const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || 'Unknown';
 
 export default function Transactions() {
+  useAppLanguage();
   const { currencySymbol, settings } = useSettings();
   const confirm = useConfirm();
 
@@ -245,32 +248,30 @@ export default function Transactions() {
   return (
     <div className="space-y-6">
       <PageHeader
-        summary={(pagination?.total || 0) + ' movements' + (type ? ' | ' + (TYPE_FILTERS.find((option) => option.value === type)?.label || type) : '')}
-        title="Transactions"
-        description="Every movement in and out of the warehouse."
+        summary={translate("{0} movements{1}", [pagination?.total || 0, type ? ' | ' + (TYPE_FILTERS.find((option) => option.value === type)?.label || type) : ''])}
+        title={translate("Transactions")}
+        description={translate("Every movement in and out of the warehouse.")}
         actions={
-          <Button icon={FiPlus} onClick={() => setModalOpen(true)}>
-            New transaction
-          </Button>
+          <><Button variant="secondary" icon={FiRadio} onClick={() => navigate('/barcodes')}>{translate("Scan a bag")}</Button><Button icon={FiPlus} onClick={() => setModalOpen(true)}>{translate("New transaction")}</Button></>
         }
       />
 
       <Card className="p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="relative sm:col-span-2">
-            <Input label="Search transactions"
+            <Input label={translate("Search transactions")}
               type="search"
               value={search}
               onChange={(event) => changeFilter(setSearch)(event.target.value)}
-              placeholder="Search reference, supplier, customer or notes…"
-              aria-label="Search transactions"
+              placeholder={translate("Search reference, supplier, customer or notes…")}
+              aria-label={translate("Search transactions")}
 
             />
             {search && (
               <button
                 type="button"
                 onClick={() => changeFilter(setSearch)('')}
-                aria-label="Clear search"
+                aria-label={translate("Clear search")}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center min-h-[44px] min-w-[44px] text-content-subtle hover:text-content-muted rounded-lg"
               >
                 <FiX className="w-4 h-4" />
@@ -281,11 +282,11 @@ export default function Transactions() {
           <Select
             value={type}
             onChange={(event) => changeFilter(setType)(event.target.value)}
-            aria-label="Filter by type"
+            aria-label={translate("Filter by type")}
           >
             {TYPE_FILTERS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {translate(option.label)}
               </option>
             ))}
           </Select>
@@ -301,15 +302,15 @@ export default function Transactions() {
         {loading ? (
           <SkeletonTable rows={6} columns={4} />
         ) : transactions.error ? (
-          <ErrorState message={transactions.error} onRetry={transactions.refetch} />
+          <ErrorState message={translate(transactions.error)} onRetry={transactions.refetch} />
         ) : list.length === 0 ? (
           <EmptyState
             icon={FiTrendingUp}
-            title={hasFilters ? 'Nothing matches those filters' : 'No transactions yet'}
+            title={translate(hasFilters ? 'Nothing matches those filters' : 'No transactions yet')}
             description={
-              hasFilters
+              translate(hasFilters
                 ? 'Try a different search or clear the type filter.'
-                : 'Record a delivery or a sale and it will show up here.'
+                : 'Record a delivery or a sale and it will show up here.')
             }
             action={
               hasFilters ? (
@@ -320,13 +321,9 @@ export default function Transactions() {
                     setType('');
                     setPage(1);
                   }}
-                >
-                  Clear filters
-                </Button>
+                >{translate("Clear filters")}</Button>
               ) : (
-                <Button icon={FiPlus} onClick={() => setModalOpen(true)}>
-                  New transaction
-                </Button>
+                <Button icon={FiPlus} onClick={() => setModalOpen(true)}>{translate("New transaction")}</Button>
               )
             }
           />
@@ -377,43 +374,43 @@ export default function Transactions() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-sm font-semibold text-content truncate">
-                            {transaction.product?.name || 'Deleted product'}
+                            {translate(transaction.product?.name || 'Deleted product')}
                           </h3>
-                          <Badge tone={tone.tone}>{tone.label}</Badge>
+                          <Badge tone={tone.tone}>{translate(tone.label)}</Badge>
                         </div>
 
                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-content-muted">
                           <span className="tabular-nums">
-                            <span className="text-content-subtle">Qty</span>{' '}
+                            <span className="text-content-subtle">{translate("Qty")}</span>{' '}
                             <span className="font-medium text-content">
-                              {formatQuantity(transaction.quantity, transaction.unit)}
+                              {translate(formatQuantity(transaction.quantity, transaction.unit))}
                             </span>
                           </span>
 
                           {transaction.totalValue > 0 && (
                             <span className="tabular-nums">
-                              <span className="text-content-subtle">Total</span>{' '}
+                              <span className="text-content-subtle">{translate("Total")}</span>{' '}
                               <span className="font-medium text-content">
-                                {formatMoney(transaction.totalValue, currencySymbol)}
+                                {translate(formatMoney(transaction.totalValue, currencySymbol))}
                               </span>
                             </span>
                           )}
 
                           <span className="tabular-nums text-content-subtle">
-                            {formatQuantity(transaction.stockBefore, transaction.unit)} →{' '}
-                            {formatQuantity(transaction.stockAfter, transaction.unit)}
+                            {translate(formatQuantity(transaction.stockBefore, transaction.unit))} →{' '}
+                            {translate(formatQuantity(transaction.stockAfter, transaction.unit))}
                           </span>
                         </div>
 
                         {(transaction.reference || transaction.supplier || transaction.customer) && (
                           <p className="mt-1.5 text-xs text-content-subtle truncate">
-                            {[
+                            {translate([
                               transaction.reference && `Ref ${transaction.reference}`,
                               transaction.supplier && `From ${transaction.supplier}`,
                               transaction.customer && `To ${transaction.customer}`,
                             ]
                               .filter(Boolean)
-                              .join(' · ')}
+                              .join(' · '))}
                           </p>
                         )}
 
@@ -422,8 +419,8 @@ export default function Transactions() {
                         )}
 
                         <p className="mt-2 text-xs text-content-subtle">
-                          {formatSafe(transaction.createdAt, 'd MMM yyyy, h:mm a')} ·{' '}
-                          {firstName(transaction.createdBy?.name)}
+                          {translate(formatSafe(transaction.createdAt, 'd MMM yyyy, h:mm a'))} ·{' '}
+                          {translate(firstName(transaction.createdBy?.name))}
                         </p>
                       </div>
 
@@ -436,7 +433,7 @@ export default function Transactions() {
                           onClick={() => handleReceipt(transaction)}
                           className="whitespace-nowrap"
                         >
-                          <span className="hidden sm:inline">Receipt</span>
+                          <span className="hidden sm:inline">{translate("Receipt")}</span>
                         </Button>
                         <button
                           type="button"
@@ -444,7 +441,7 @@ export default function Transactions() {
                             setEditing(transaction);
                             setModalOpen(true);
                           }}
-                          aria-label="Correct transaction"
+                          aria-label={translate("Correct transaction")}
                           className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/12 transition-colors"
                         >
                           <FiEdit2 className="w-4 h-4" />
@@ -452,7 +449,7 @@ export default function Transactions() {
                         <button
                           type="button"
                           onClick={() => handleReverse(transaction)}
-                          aria-label="Reverse transaction"
+                          aria-label={translate("Reverse transaction")}
                           className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
                         >
                           <FiTrash2 className="w-4 h-4" />
@@ -481,8 +478,8 @@ export default function Transactions() {
       <Modal
         open={Boolean(detail)}
         onClose={() => setDetail(null)}
-        title={detail?.product?.name || 'Transaction'}
-        description={detail ? (transactionTone[detail.type] || transactionTone.adjustment).label : ''}
+        title={translate(detail?.product?.name || 'Transaction')}
+        description={translate(detail ? (transactionTone[detail.type] || transactionTone.adjustment).label : '')}
         size="sm"
         footer={
           detail && (
@@ -493,9 +490,7 @@ export default function Transactions() {
                 fullWidth
                 loading={downloadingId === detail._id}
                 onClick={() => handleReceipt(detail)}
-              >
-                Receipt
-              </Button>
+              >{translate("Receipt")}</Button>
               <Button
                 variant="secondary"
                 icon={FiEdit2}
@@ -504,7 +499,7 @@ export default function Transactions() {
                   setDetail(null);
                   setModalOpen(true);
                 }}
-                aria-label="Correct transaction"
+                aria-label={translate("Correct transaction")}
               />
               <Button
                 variant="dangerGhost"
@@ -514,7 +509,7 @@ export default function Transactions() {
                   setDetail(null);
                   await handleReverse(target);
                 }}
-                aria-label="Reverse transaction"
+                aria-label={translate("Reverse transaction")}
               />
             </div>
           )
@@ -535,13 +530,13 @@ export default function Transactions() {
               ['When', formatSafe(detail.createdAt, 'd MMM yyyy, h:mm a')],
             ].map(([label, value]) => (
               <div key={label} className="min-w-0">
-                <dt className="text-xs text-content-subtle">{label}</dt>
-                <dd className="font-medium text-content tabular-nums break-words">{value}</dd>
+                <dt className="text-xs text-content-subtle">{translate(label)}</dt>
+                <dd className="font-medium text-content tabular-nums break-words">{translate(value)}</dd>
               </div>
             ))}
             {detail.notes && (
               <div className="col-span-2 min-w-0">
-                <dt className="text-xs text-content-subtle">Notes</dt>
+                <dt className="text-xs text-content-subtle">{translate("Notes")}</dt>
                 <dd className="text-content-muted break-words">{detail.notes}</dd>
               </div>
             )}

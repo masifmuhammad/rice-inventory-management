@@ -35,8 +35,12 @@ export function register(config) {
  * reach the device.
  */
 function watchForUpdates(registration) {
+  let lastCheck = 0;
   const check = () => {
-    if (document.visibilityState === 'visible') registration.update().catch(() => {});
+    if (document.visibilityState === 'visible' && Date.now() - lastCheck >= 60000) {
+      lastCheck = Date.now();
+      registration.update().catch(() => {});
+    }
   };
 
   document.addEventListener('visibilitychange', check);
@@ -53,6 +57,8 @@ function registerValidSW(swUrl, config) {
   navigator.serviceWorker
     .register(swUrl)
     .then((registration) => {
+      // Browsers with worker registration disabled may resolve without a handle.
+      if (!registration?.update) return;
       watchForUpdates(registration);
 
       // A build that finished installing while the app was backgrounded is

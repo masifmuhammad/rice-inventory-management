@@ -1,9 +1,11 @@
 import React from 'react';
 import { Skeleton, SkeletonGate, SkeletonPageHeader } from '../ui/Skeleton';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 export default function BusinessesSkeleton() {
+  useAppLanguage();
   return (
-    <SkeletonGate className="space-y-6" aria-busy="true" aria-label="Loading businesses">
+    <SkeletonGate className="space-y-6" aria-busy="true" aria-label={translate("Loading businesses")}>
       <SkeletonPageHeader />
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {Array.from({ length: 3 }).map((_, i) => (

@@ -7,6 +7,7 @@ import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../../utils/motion';
 import Modal from '../ui/Modal';
 import { Input, Select, Textarea } from '../ui/Field';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const TYPES = [
   { value: 'stock_in', label: 'Delivery · stock in' },
@@ -34,6 +35,7 @@ export default function TransactionFormModal({
   initialValues = null,
   editing = false,
 }) {
+  useAppLanguage();
   const { currencySymbol } = useSettings();
   const [values, setValues] = useState(EMPTY);
   const [errors, setErrors] = useState({});
@@ -146,26 +148,26 @@ export default function TransactionFormModal({
       onClose={saving ? () => {} : onClose}
       disableClose={saving}
       busy={saving}
-      title={editing ? 'Correct transaction' : 'New transaction'}
+      title={translate(editing ? 'Correct transaction' : 'New transaction')}
       description={
-        editing
+        translate(editing
           ? 'Stock and the cash book are corrected to match.'
-          : 'Stock moves and the ledger updates together.'
+          : 'Stock moves and the ledger updates together.')
       }
       size="md"
       submit={{ form: 'transaction-form', label: editing ? 'Save correction' : 'Record transaction', loading: saving }}
     >
       <form id="transaction-form" onSubmit={handleSubmit} className="space-y-2.5" noValidate>
-        <Select label="Type" required value={values.type} onChange={set('type')}>
+        <Select label={translate("Type")} required value={values.type} onChange={set('type')}>
           {TYPES.map((option) => (
             <option key={option.value} value={option.value}>
-              {option.label}
+              {translate(option.label)}
             </option>
           ))}
         </Select>
 
         <Select
-          label="Product"
+          label={translate("Product")}
           required
           value={values.product}
           onChange={set('product')}
@@ -174,25 +176,24 @@ export default function TransactionFormModal({
           // correction — it would leave the original product's stock wrong.
           disabled={productsLoading || editing}
           hint={
-            editing
+            translate(editing
               ? 'To change the product, reverse this and record a new one'
               : productsLoading
                 ? 'Loading products…'
-                : undefined
+                : undefined)
           }
         >
-          <option value="">{productsLoading ? 'Loading products…' : 'Select a product…'}</option>
+          <option value="">{translate(productsLoading ? 'Loading products…' : 'Select a product…')}</option>
           {!productsLoading &&
             products.map((option) => (
               <option key={option._id} value={option._id}>
-                {option.name} — {option.currentStock} {option.unit} in stock
-              </option>
+                {translate(option.name)} — {translate(option.currentStock)} {translate(option.unit)}{translate(" in stock")}</option>
             ))}
         </Select>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <Input
-            label={values.type === 'adjustment' ? 'Corrected stock level' : 'Quantity'}
+            label={translate(values.type === 'adjustment' ? 'Corrected stock level' : 'Quantity')}
             required
             type="number"
             step="any"
@@ -202,10 +203,10 @@ export default function TransactionFormModal({
             onChange={set('quantity')}
             error={errors.quantity}
             placeholder="0"
-            hint={product ? `In ${product.unit}` : undefined}
+            hint={translate(product ? `In ${product.unit}` : undefined)}
           />
           <Input
-            label="Price per unit"
+            label={translate("Price per unit")}
             type="number"
             step="0.01"
             min="0"
@@ -214,7 +215,7 @@ export default function TransactionFormModal({
             value={values.price}
             onChange={set('price')}
             placeholder="0.00"
-            hint="Prefilled from the product"
+            hint={translate("Prefilled from the product")}
           />
         </div>
 
@@ -240,21 +241,19 @@ export default function TransactionFormModal({
               >
                 {preview.insufficient ? (
                   <p className="flex items-center gap-2 text-sm text-red-500">
-                    <FiAlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
-                    Not enough stock — only {formatQuantity(preview.before, preview.unit)} available.
-                  </p>
+                    <FiAlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />{translate("Not enough stock — only ")}{translate(formatQuantity(preview.before, preview.unit))}{translate(" available.")}</p>
                 ) : (
                   <div className="flex items-center justify-between gap-4 text-sm">
                     <span className="flex items-center gap-2 text-content-muted tabular-nums">
-                      {formatQuantity(preview.before, preview.unit)}
+                      {translate(formatQuantity(preview.before, preview.unit))}
                       <FiArrowRight className="w-4 h-4 text-content-subtle" aria-hidden="true" />
                       <span className="font-semibold text-content">
-                        {formatQuantity(preview.after, preview.unit)}
+                        {translate(formatQuantity(preview.after, preview.unit))}
                       </span>
                     </span>
                     {preview.total > 0 && (
                       <span className="font-money font-bold text-content tabular-nums whitespace-nowrap">
-                        {formatMoney(preview.total, currencySymbol)}
+                        {translate(formatMoney(preview.total, currencySymbol))}
                       </span>
                     )}
                   </div>
@@ -265,31 +264,29 @@ export default function TransactionFormModal({
         </AnimatePresence>
 
         {values.type === 'stock_in' && (
-          <Input label="Supplier" value={values.supplier} onChange={set('supplier')} placeholder="Who you bought from" />
+          <Input label={translate("Supplier")} value={values.supplier} onChange={set('supplier')} placeholder={translate("Who you bought from")} />
         )}
 
         {values.type === 'stock_out' && (
-          <Input label="Customer" value={values.customer} onChange={set('customer')} placeholder="Who you sold to" />
+          <Input label={translate("Customer")} value={values.customer} onChange={set('customer')} placeholder={translate("Who you sold to")} />
         )}
 
         <details className="group rounded-xl border border-hairline/[0.08] px-3.5">
-          <summary className="min-h-[44px] flex items-center text-sm font-medium text-content-muted cursor-pointer">Reference &amp; notes <span className="ml-auto text-lg group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
+          <summary className="min-h-[44px] flex items-center text-sm font-medium text-content-muted cursor-pointer">{translate("Reference & notes ")}<span className="ml-auto text-lg group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
           <div className="space-y-2.5 pb-3.5">
         <Input
-          label="Reference"
+          label={translate("Reference")}
           value={values.reference}
           onChange={set('reference')}
-          placeholder="Invoice or delivery note number"
+          placeholder={translate("Invoice or delivery note number")}
         />
 
-        <Textarea label="Notes" value={values.notes} onChange={set('notes')} placeholder="Anything worth remembering…" />
+        <Textarea label={translate("Notes")} value={values.notes} onChange={set('notes')} placeholder={translate("Anything worth remembering…")} />
           </div>
         </details>
 
         {values.type === 'stock_out' && (
-          <p className="text-xs text-content-subtle">
-            Sales with a price are posted to the cash book automatically.
-          </p>
+          <p className="text-xs text-content-subtle">{translate("Sales with a price are posted to the cash book automatically.")}</p>
         )}
       </form>
     </Modal>

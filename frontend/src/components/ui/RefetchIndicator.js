@@ -1,11 +1,13 @@
 import React from 'react';
 import { FiRefreshCw } from 'react-icons/fi';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /**
  * Non-blocking stale-while-revalidate indicator. Sits on the content region
  * so users know data is refreshing without replacing the layout.
  */
 export default function RefetchIndicator({ active, className = '', label = 'Updating' }) {
+  useAppLanguage();
   if (!active) return null;
 
   return (
@@ -16,13 +18,14 @@ export default function RefetchIndicator({ active, className = '', label = 'Upda
       aria-busy="true"
     >
       <FiRefreshCw className="w-3 h-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-      {label}…
+      {translate(label)}…
     </span>
   );
 }
 
 /** Wraps a section and marks it busy while refetching with stale data visible. */
 export function RefetchSection({ active, children, className = '' }) {
+  useAppLanguage();
   return (
     <div className={`relative ${className}`} aria-busy={active || undefined}>
       {active && (
@@ -30,7 +33,7 @@ export function RefetchSection({ active, children, className = '' }) {
           <RefetchIndicator active />
         </div>
       )}
-      {children}
+      {translate(children)}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FiPackage } from 'react-icons/fi';
 import { useSettings } from '../context/SettingsContext';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const DEFAULT_BRAND_LOGO = `${process.env.PUBLIC_URL || ''}/brand/hm-logo.png`;
 
@@ -9,6 +10,7 @@ const DEFAULT_BRAND_LOGO = `${process.env.PUBLIC_URL || ''}/brand/hm-logo.png`;
  * Falls back to the bundled brand asset (not the generic package icon).
  */
 export default function BrandLogo({ size = 40, className = '', rounded = 'rounded-lg' }) {
+  useAppLanguage();
   const { logo, businessName } = useSettings();
   // Prefer uploaded logo only when it looks like a real image data URL / path.
   const src = logo || DEFAULT_BRAND_LOGO;
@@ -37,7 +39,7 @@ export default function BrandLogo({ size = 40, className = '', rounded = 'rounde
   return (
     <img
       src={displaySrc}
-      alt={logo ? `${businessName || "Business"} logo` : "Default mill logo"}
+      alt={translate(logo ? `${businessName || "Business"} logo` : "Default mill logo")}
       width={size}
       height={size}
       style={dimensions}

@@ -27,6 +27,7 @@ import { EmptyState, ErrorState, InlineError } from '../components/ui/States';
 import { SkeletonStatCards, SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
 import Modal from '../components/ui/Modal';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const ROLES = [
   { value: 'worker', label: 'Worker' },
@@ -60,18 +61,20 @@ const normalizeRole = (role) => (ROLES.some((item) => item.value === role) ? rol
 const roleLabel = (role) => ROLES.find((item) => item.value === normalizeRole(role))?.label ?? 'Worker';
 
 function RoleBadge({ role }) {
+  useAppLanguage();
   const value = normalizeRole(role);
-  return <Badge tone={roleTone[value] || 'neutral'}>{roleLabel(value)}</Badge>;
+  return <Badge tone={roleTone[value] || 'neutral'}>{translate(roleLabel(value))}</Badge>;
 }
 
 function RoleSelect({ value, onChange, disabled, 'aria-label': ariaLabel }) {
+  useAppLanguage();
   return (
     <Select
       bare
       value={normalizeRole(value)}
       onChange={onChange}
       disabled={disabled}
-      aria-label={ariaLabel}
+      aria-label={translate(ariaLabel)}
       /* Was `!min-h-[32px] !text-xs`: a real <select> at 12px, which iOS Safari
          responds to by zooming the whole document on focus and never zooming
          back out. 16px on phones keeps the page still, and 44px makes it a
@@ -80,7 +83,7 @@ function RoleSelect({ value, onChange, disabled, 'aria-label': ariaLabel }) {
     >
       {ROLES.map((role) => (
         <option key={role.value} value={role.value}>
-          {role.label}
+          {translate(role.label)}
         </option>
       ))}
     </Select>
@@ -88,6 +91,7 @@ function RoleSelect({ value, onChange, disabled, 'aria-label': ariaLabel }) {
 }
 
 export default function AdminUsers() {
+  useAppLanguage();
   const { user: currentUser } = useAuth();
   const confirm = useConfirm();
 
@@ -215,45 +219,45 @@ export default function AdminUsers() {
   return (
     <div className="space-y-6">
       <PageHeader
-        summary={(counts?.pending || 0) + ' pending approvals'}
-        title="User management"
-        description="Approve sign-ups, assign roles and manage access."
+        summary={translate("{0} pending approvals", [counts?.pending || 0])}
+        title={translate("User management")}
+        description={translate("Approve sign-ups, assign roles and manage access.")}
       />
 
       {overview.loading && !overview.data ? (
         <SkeletonStatCards count={4} />
       ) : overview.error ? (
-        <InlineError message={overview.error} onRetry={overview.refetch} />
+        <InlineError message={translate(overview.error)} onRetry={overview.refetch} />
       ) : (
         <StatGrid>
           <StatCard
-            title="Pending approval"
+            title={translate("Pending approval")}
             rawValue={counts?.pending ?? pendingCount}
             icon={FiClock}
             tone={pendingCount > 0 ? 'warning' : 'neutral'}
           />
-          <StatCard title="Active" rawValue={counts?.active ?? 0} icon={FiUserCheck} />
-          <StatCard title="Suspended" rawValue={counts?.suspended ?? 0} icon={FiShield} />
-          <StatCard title="Declined" rawValue={counts?.rejected ?? 0} icon={FiUserX} />
+          <StatCard title={translate("Active")} rawValue={counts?.active ?? 0} icon={FiUserCheck} />
+          <StatCard title={translate("Suspended")} rawValue={counts?.suspended ?? 0} icon={FiShield} />
+          <StatCard title={translate("Declined")} rawValue={counts?.rejected ?? 0} icon={FiUserX} />
         </StatGrid>
       )}
 
       <Card className="p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="relative lg:col-span-2">
-            <Input label="Search users"
+            <Input label={translate("Search users")}
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by name or email…"
-              aria-label="Search users"
+              placeholder={translate("Search by name or email…")}
+              aria-label={translate("Search users")}
 
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                aria-label="Clear search"
+                aria-label={translate("Clear search")}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center min-h-[44px] min-w-[44px] text-content-subtle hover:text-content-muted rounded-lg"
               >
                 <FiX className="w-4 h-4" />
@@ -264,11 +268,11 @@ export default function AdminUsers() {
           <Select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            aria-label="Filter by status"
+            aria-label={translate("Filter by status")}
           >
             {STATUS_FILTERS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {translate(option.label)}
               </option>
             ))}
           </Select>
@@ -284,16 +288,14 @@ export default function AdminUsers() {
         {loading ? (
           <SkeletonTable rows={6} columns={5} />
         ) : usersQuery.error ? (
-          <ErrorState message={usersQuery.error} onRetry={usersQuery.refetch} />
+          <ErrorState message={translate(usersQuery.error)} onRetry={usersQuery.refetch} />
         ) : users.length === 0 ? (
           <EmptyState
             icon={FiShield}
-            title="No users match"
-            description="Try a different search or filter."
+            title={translate("No users match")}
+            description={translate("Try a different search or filter.")}
             action={
-              <Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter('all'); }}>
-                Clear filters
-              </Button>
+              <Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter('all'); }}>{translate("Clear filters")}</Button>
             }
           />
         ) : (
@@ -305,10 +307,10 @@ export default function AdminUsers() {
                   <div key={target.id} className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-medium text-content">{target.name}</p>
-                        <p className="text-xs text-content-subtle truncate">{target.email}</p>
+                        <p className="font-medium text-content">{translate(target.name)}</p>
+                        <p className="text-xs text-content-subtle truncate">{translate(target.email)}</p>
                       </div>
-                      <Badge tone={statusTone[target.status] || 'primary'}>{target.status}</Badge>
+                      <Badge tone={statusTone[target.status] || 'primary'}>{translate(target.status)}</Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {!isSelf && target.status === 'active' ? (
@@ -316,35 +318,25 @@ export default function AdminUsers() {
                           value={target.role}
                           onChange={(event) => handleRoleChange(target, event.target.value)}
                           disabled={Boolean(acting)}
-                          aria-label={`Role for ${target.name}`}
+                          aria-label={translate("Role for {0}", [target.name])}
                         />
                       ) : (
                         <RoleBadge role={target.role} />
                       )}
                       {target.status === 'pending' && (
                         <>
-                          <Button size="sm" icon={FiCheck} loading={acting === `approve-${target.id}`} onClick={() => handleApprove(target)}>
-                            Approve
-                          </Button>
-                          <Button size="sm" variant="dangerGhost" icon={FiX} loading={acting === `reject-${target.id}`} onClick={() => handleReject(target)}>
-                            Decline
-                          </Button>
+                          <Button size="sm" icon={FiCheck} loading={acting === `approve-${target.id}`} onClick={() => handleApprove(target)}>{translate("Approve")}</Button>
+                          <Button size="sm" variant="dangerGhost" icon={FiX} loading={acting === `reject-${target.id}`} onClick={() => handleReject(target)}>{translate("Decline")}</Button>
                         </>
                       )}
                       {target.status === 'active' && !isSelf && (
-                        <Button size="sm" variant="dangerGhost" loading={acting === `suspend-${target.id}`} onClick={() => handleSuspend(target)}>
-                          Suspend
-                        </Button>
+                        <Button size="sm" variant="dangerGhost" loading={acting === `suspend-${target.id}`} onClick={() => handleSuspend(target)}>{translate("Suspend")}</Button>
                       )}
                       {(target.status === 'suspended' || target.status === 'rejected') && (
-                        <Button size="sm" variant="secondary" icon={FiRefreshCw} loading={acting === `reactivate-${target.id}`} onClick={() => handleReactivate(target)}>
-                          Reactivate
-                        </Button>
+                        <Button size="sm" variant="secondary" icon={FiRefreshCw} loading={acting === `reactivate-${target.id}`} onClick={() => handleReactivate(target)}>{translate("Reactivate")}</Button>
                       )}
                       {target.status === 'active' && (
-                        <Button size="sm" variant="ghost" icon={FiKey} loading={acting === `reset-${target.id}`} onClick={() => handleResetPassword(target)}>
-                          Reset password
-                        </Button>
+                        <Button size="sm" variant="ghost" icon={FiKey} loading={acting === `reset-${target.id}`} onClick={() => handleResetPassword(target)}>{translate("Reset password")}</Button>
                       )}
                     </div>
                   </div>
@@ -363,7 +355,7 @@ export default function AdminUsers() {
                         i === 4 ? 'text-right' : 'text-left'
                       }`}
                     >
-                      {heading}
+                      {translate(heading)}
                     </th>
                   ))}
                 </tr>
@@ -375,9 +367,9 @@ export default function AdminUsers() {
                   return (
                     <tr key={target.id} className="hover:bg-hairline/[0.05] transition-colors">
                       <td className="px-4 sm:px-6 py-3.5">
-                        <div className="font-medium text-content">{target.name}</div>
+                        <div className="font-medium text-content">{translate(target.name)}</div>
                         <div className="text-xs text-content-subtle truncate max-w-[16rem]">
-                          {target.email}
+                          {translate(target.email)}
                         </div>
                       </td>
                       <td className="px-4 sm:px-6 py-3.5">
@@ -388,15 +380,15 @@ export default function AdminUsers() {
                             value={target.role}
                             onChange={(event) => handleRoleChange(target, event.target.value)}
                             disabled={Boolean(acting)}
-                            aria-label={`Role for ${target.name}`}
+                            aria-label={translate("Role for {0}", [target.name])}
                           />
                         )}
                       </td>
                       <td className="px-4 sm:px-6 py-3.5">
-                        <Badge tone={statusTone[target.status] || 'primary'}>{target.status}</Badge>
+                        <Badge tone={statusTone[target.status] || 'primary'}>{translate(target.status)}</Badge>
                       </td>
                       <td className="px-4 sm:px-6 py-3.5 text-content-muted whitespace-nowrap">
-                        {target.createdAt ? new Date(target.createdAt).toLocaleDateString() : '—'}
+                        {translate(target.createdAt ? new Date(target.createdAt).toLocaleDateString() : '—')}
                       </td>
                       <td className="px-4 sm:px-6 py-3.5">
                         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -407,18 +399,14 @@ export default function AdminUsers() {
                                 icon={FiCheck}
                                 loading={acting === `approve-${target.id}`}
                                 onClick={() => handleApprove(target)}
-                              >
-                                Approve
-                              </Button>
+                              >{translate("Approve")}</Button>
                               <Button
                                 size="sm"
                                 variant="dangerGhost"
                                 icon={FiX}
                                 loading={acting === `reject-${target.id}`}
                                 onClick={() => handleReject(target)}
-                              >
-                                Decline
-                              </Button>
+                              >{translate("Decline")}</Button>
                             </>
                           )}
 
@@ -428,9 +416,7 @@ export default function AdminUsers() {
                               variant="dangerGhost"
                               loading={acting === `suspend-${target.id}`}
                               onClick={() => handleSuspend(target)}
-                            >
-                              Suspend
-                            </Button>
+                            >{translate("Suspend")}</Button>
                           )}
 
                           {(target.status === 'suspended' || target.status === 'rejected') && (
@@ -440,9 +426,7 @@ export default function AdminUsers() {
                               icon={FiRefreshCw}
                               loading={acting === `reactivate-${target.id}`}
                               onClick={() => handleReactivate(target)}
-                            >
-                              Reactivate
-                            </Button>
+                            >{translate("Reactivate")}</Button>
                           )}
 
                           {target.status === 'active' && (
@@ -452,9 +436,7 @@ export default function AdminUsers() {
                               icon={FiKey}
                               loading={acting === `reset-${target.id}`}
                               onClick={() => handleResetPassword(target)}
-                            >
-                              Reset password
-                            </Button>
+                            >{translate("Reset password")}</Button>
                           )}
                         </div>
                       </td>
@@ -471,21 +453,16 @@ export default function AdminUsers() {
       <Modal
         open={Boolean(tempPassword)}
         onClose={() => setTempPassword(null)}
-        title="Temporary password"
+        title={translate("Temporary password")}
         size="sm"
       >
         {tempPassword && (
           <div className="space-y-4">
-            <p className="text-sm text-content-muted">
-              Share this with <strong>{tempPassword.name}</strong> securely. It is shown only once and they must
-              change it when signing in.
-            </p>
+            <p className="text-sm text-content-muted">{translate("Share this with ")}<strong>{translate(tempPassword.name)}</strong>{translate(" securely. It is shown only once and they must change it when signing in.")}</p>
             <div className="rounded-lg border border-hairline/[0.07] bg-surface-sunken px-4 py-3 font-mono text-lg text-center tracking-wide">
-              {tempPassword.password}
+              {translate(tempPassword.password)}
             </div>
-            <Button fullWidth onClick={() => setTempPassword(null)}>
-              Done
-            </Button>
+            <Button fullWidth onClick={() => setTempPassword(null)}>{translate("Done")}</Button>
           </div>
         )}
       </Modal>

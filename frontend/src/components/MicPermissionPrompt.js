@@ -13,6 +13,7 @@ import {
 } from '../utils/microphone';
 import { feedbackTick, unlockFeedbackAudio } from '../utils/feedback';
 import { toast } from '../utils/toast';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const DISMISS_KEY = 'rim.mic.permission.dismissed';
 
@@ -21,6 +22,7 @@ const DISMISS_KEY = 'rim.mic.permission.dismissed';
  * assistant is opened. Dismiss = typing-only; never blocks the app.
  */
 export default function MicPermissionPrompt() {
+  useAppLanguage();
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
@@ -79,7 +81,7 @@ export default function MicPermissionPrompt() {
       {visible && (
         <motion.div
           role="dialog"
-          aria-label="Microphone access"
+          aria-label={translate("Microphone access")}
           initial={enterFrom}
           animate={enterTo}
           exit={enterFrom}
@@ -90,29 +92,23 @@ export default function MicPermissionPrompt() {
             <BrandLogo size={36} rounded="rounded-xl" className="shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-content flex items-center gap-1.5">
-                <FiMic className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" aria-hidden="true" />
-                Voice assistant
-              </p>
+                <FiMic className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" aria-hidden="true" />{translate("Voice assistant")}</p>
               <p className="text-xs text-content-subtle mt-1 text-pretty">
-                {isSecureMicContext()
+                {translate(isSecureMicContext()
                   ? 'Allow the microphone so you can speak orders. You can always type instead.'
-                  : 'Voice needs HTTPS on phones. You can keep using the app by typing.'}
+                  : 'Voice needs HTTPS on phones. You can keep using the app by typing.')}
               </p>
               <div className="mt-3 flex gap-2">
                 {isSecureMicContext() ? (
-                  <Button size="sm" loading={busy} onClick={allow}>
-                    Allow microphone
-                  </Button>
+                  <Button size="sm" loading={busy} onClick={allow}>{translate("Allow microphone")}</Button>
                 ) : null}
-                <Button size="sm" variant="ghost" onClick={dismiss} disabled={busy}>
-                  Use typing
-                </Button>
+                <Button size="sm" variant="ghost" onClick={dismiss} disabled={busy}>{translate("Use typing")}</Button>
               </div>
             </div>
             <button
               type="button"
               onClick={dismiss}
-              aria-label="Dismiss microphone prompt"
+              aria-label={translate("Dismiss microphone prompt")}
               className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg hover:bg-hairline/[0.05]"
             >
               <FiX className="w-4 h-4" />

@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { PageTitleProvider } from './context/PageTitleContext';
 import ConfirmProvider from './components/ui/ConfirmProvider';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -18,10 +19,12 @@ import MobileViewport from './components/MobileViewport';
 import AuthShellSkeleton from './components/skeletons/AuthShellSkeleton';
 import { lazyPage } from './utils/lazyPage';
 import { unlockFeedbackAudio } from './utils/feedback';
+import { translate, useAppLanguage } from './context/LanguageContext';
 
 const Landing = lazyPage(() => import('./pages/Landing'), '999');
 const Dashboard = lazyPage(() => import('./pages/Dashboard'), 'dashboard');
 const Products = lazyPage(() => import('./pages/Products'), 'products page');
+const Barcodes = lazyPage(() => import('./pages/Barcodes'), 'scan and labels');
 const Transactions = lazyPage(() => import('./pages/Transactions'), 'transactions page');
 const CashBook = lazyPage(() => import('./pages/CashBook'), 'cash book');
 const Reports = lazyPage(() => import('./pages/Reports'), 'reports page');
@@ -84,7 +87,8 @@ function HomeEntry() {
 }
 
 function PublicLanding() {
-  return <Suspense fallback={<div role="status" aria-label="Loading 999" style={{ minHeight: '100svh', background: '#e8e7e4' }} />}><Landing /></Suspense>;
+  useAppLanguage();
+  return <Suspense fallback={<div role="status" aria-label={translate("Loading 999")} style={{ minHeight: '100svh', background: '#e8e7e4' }} />}><Landing /></Suspense>;
 }
 
 function InventoryEntry() {
@@ -127,6 +131,7 @@ function AppRoutes() {
         }
       >
         <Route path="/products" element={<Products />} />
+        <Route path="/barcodes" element={<RequireCapability capability="products.view"><Barcodes /></RequireCapability>} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/cash-book" element={<RequireCapability capability="cash.view"><CashBook /></RequireCapability>} />
         <Route path="/cash-withdrawals" element={<Navigate to="/cash-book" replace />} />
@@ -181,6 +186,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <LanguageProvider>
         <ThemeProvider>
           <AuthProvider>
             <SettingsProvider>
@@ -197,6 +203,7 @@ export default function App() {
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>
+        </LanguageProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );

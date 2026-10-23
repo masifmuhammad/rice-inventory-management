@@ -1,9 +1,11 @@
 import React from 'react';
 import { SkeletonGate, SkeletonPageHeader, SkeletonStatCards, SkeletonTable } from '../ui/Skeleton';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 export default function ListPageSkeleton({ statCards = true, tableRows = 6 }) {
+  useAppLanguage();
   return (
-    <SkeletonGate className="space-y-6" aria-busy="true" aria-label="Loading page">
+    <SkeletonGate className="space-y-6" aria-busy="true" aria-label={translate("Loading page")}>
       <SkeletonPageHeader />
       {statCards && <SkeletonStatCards count={4} />}
       <div className="surface-card rounded-card overflow-hidden">

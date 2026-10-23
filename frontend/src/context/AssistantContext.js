@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import { fetchAiStatus } from '../services/assistantApi';
+import { translate, useAppLanguage } from './LanguageContext';
 
 const AssistantContext = createContext(null);
 
@@ -15,6 +16,7 @@ const NAV_MAP = {
 };
 
 export function AssistantProvider({ children }) {
+  useAppLanguage();
   const navigate = useNavigate();
   const [enabled, setEnabled] = useState(null);
   const [hubOpen, setHubOpen] = useState(false);
@@ -85,7 +87,7 @@ export function AssistantProvider({ children }) {
     [enabled, hubOpen, panel, openPanel, closePanel, closeAll, menuPinned, handleNavigateIntent]
   );
 
-  return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
+  return <AssistantContext.Provider value={value}>{translate(children)}</AssistantContext.Provider>;
 }
 
 export const useAssistant = () => {

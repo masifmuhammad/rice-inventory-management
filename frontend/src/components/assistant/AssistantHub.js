@@ -12,6 +12,7 @@ import { staggerContainer, staggerItem, springSnappy } from '../../utils/motion'
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { AssistantIconWell } from './AssistantChrome';
 import { BiLine } from './AssistantCopy';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const ACTIONS = [
   {
@@ -41,6 +42,7 @@ const ACTIONS = [
 ];
 
 export default function AssistantHubSheet({ open, onClose }) {
+  useAppLanguage();
   const { openPanel } = useAssistant();
   const reducedMotion = usePrefersReducedMotion();
 
@@ -53,7 +55,7 @@ export default function AssistantHubSheet({ open, onClose }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Assistant"
+      title={translate("Assistant")}
       description={<BiLine en="Speak Urdu or English · replies in English" size="sm" />}
       size="md"
     >
@@ -89,13 +91,13 @@ export default function AssistantHubSheet({ open, onClose }) {
                 className="block assistant-en-sm font-semibold text-content tracking-tight text-balance"
                 lang="en"
               >
-                {title}
+                {translate(title)}
               </span>
               <span
                 className="block assistant-en-sm text-content-muted text-pretty leading-snug"
                 lang="en"
               >
-                {description}
+                {translate(description)}
               </span>
             </span>
           </motion.button>
@@ -106,6 +108,7 @@ export default function AssistantHubSheet({ open, onClose }) {
 }
 
 export function AssistantSpeedDialItem({ icon: Icon, label, onClick, visible }) {
+  useAppLanguage();
   return (
     <button
       type="button"
@@ -120,7 +123,7 @@ export function AssistantSpeedDialItem({ icon: Icon, label, onClick, visible }) 
       <AssistantIconWell icon={Icon} size="sm" tone="muted" />
       <span className="min-w-0 space-y-0.5">
         <span className="block assistant-en-sm font-medium text-content tracking-tight" lang="en">
-          {label}
+          {translate(label)}
         </span>
       </span>
     </button>

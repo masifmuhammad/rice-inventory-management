@@ -1,11 +1,13 @@
-const { getPool } = require('../config/db');
+const { getPool, withTransaction } = require('../config/db');
 const { rowToDoc, rowsToDocs, pgError, resolveUuid, likePattern } = require('../db/helpers');
 
 const PRODUCT_COLUMNS = `
   p.id, p.business_id, p.name, p.sku, p.category, p.description, p.unit, p.current_stock,
   p.min_stock_level, p.max_stock_level, p.cost_price, p.selling_price,
   p.location, p.batch_number, p.expiry_date, p.supplier, p.is_active,
-  p.created_by, p.created_at, p.updated_at
+  p.created_by, p.created_at, p.updated_at,
+  (SELECT COALESCE(SUM(l.quantity),0) FROM barcode_labels l
+   WHERE l.business_id=p.business_id AND l.product_id=p.id AND l.status='in_stock') AS labelled_stock
 `;
 
 const attachCreator = (doc, row) => {
@@ -33,14 +35,23 @@ class Product {
   }
 
   async save() {
-    const pool = getPool();
-    const { rows } = await pool.query(
+    const { rows } = await withTransaction(async (client) => {
+      // Take the same product lock as label allocation before reading labels.
+      // A second statement sees allocations committed while this lock waited.
+      await client.query('SELECT id FROM products WHERE id=$1 AND business_id=$2 FOR UPDATE', [this.id, this.businessId]);
+      if (!this.isActive) {
+        const packs = await client.query("SELECT 1 FROM barcode_labels WHERE product_id=$1 AND business_id=$2 AND status='in_stock' LIMIT 1", [this.id, this.businessId]);
+        if (packs.rows.length) throw Object.assign(new Error('This product still has labelled bags in stock. Scan them out or reverse their receipts before archiving it.'), { status: 409 });
+      }
+      return client.query(
       `UPDATE products SET
         name = $1, sku = $2, category = $3, description = $4, unit = $5,
         current_stock = CASE WHEN $18 THEN $6 ELSE current_stock END, min_stock_level = $7, max_stock_level = $8,
         cost_price = $9, selling_price = $10, location = $11, batch_number = $12,
         expiry_date = $13, supplier = $14, is_active = $15, updated_at = NOW()
       WHERE id = $16 AND business_id = $17 AND (NOT $18 OR current_stock = $19)
+        AND (NOT $18 OR $6 >= (SELECT COALESCE(SUM(quantity),0) FROM barcode_labels WHERE product_id=$16 AND status='in_stock'))
+        AND (unit=$5 OR NOT EXISTS (SELECT 1 FROM barcode_labels WHERE product_id=$16))
       RETURNING *`,
       [
         this.name,
@@ -63,13 +74,14 @@ class Product {
         Number(this.currentStock) !== Number(this._originalStock),
         this._originalStock,
       ]
-    );
+      );
+    });
 
     // The tenant predicate above means a mismatched row simply matches nothing.
     // Without this check the miss would surface as a TypeError deep inside the
     // row mapper rather than as the 404 it actually is.
     if (!rows[0]) {
-      const error = new Error('Stock changed while you were editing. Reload the product and try again.');
+      const error = new Error('Reload this product and check its stock. Counted stock must cover labelled packs, and a product with barcode labels must keep its original unit.');
       error.status = 409;
       throw error;
     }

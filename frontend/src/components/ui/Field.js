@@ -2,6 +2,7 @@ import React, { Children, forwardRef, isValidElement, useId, useMemo } from 'rea
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 import { FiCheck, FiChevronDown } from 'react-icons/fi';
 import useMediaQuery from '../../hooks/useMediaQuery';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /**
  * Everything the return key should be able to reach, in document order.
@@ -57,15 +58,16 @@ const shellClasses = (invalid, extra = '') =>
 
 /** Hint / error sit under the shell so the control height stays predictable. */
 function FieldMessage({ error, hint, id }) {
+  useAppLanguage();
   if (error) {
     return (
       <p id={id} className="mt-1.5 text-sm text-red-500" role="alert">
-        {error}
+        {translate(error)}
       </p>
     );
   }
   if (hint) {
-    return <p id={id} className="mt-1.5 text-xs text-content-subtle">{hint}</p>;
+    return <p id={id} className="mt-1.5 text-xs text-content-subtle">{translate(hint)}</p>;
   }
   return null;
 }
@@ -75,13 +77,14 @@ function FieldMessage({ error, hint, id }) {
  * Saves a full row of vertical space on every input — critical on phone sheets.
  */
 export function Field({ label, htmlFor, required, hint, error, className = '', children }) {
+  useAppLanguage();
   // Legacy external-label layout — kept for any caller that still wraps children
   // manually. Prefer Input / Select / Textarea which own the shell themselves.
   return (
     <div className={className}>
       {label && (
         <label htmlFor={htmlFor} className="block text-sm font-medium text-content-muted mb-1.5">
-          {label}
+          {translate(label)}
           {required && (
             <span className="text-red-500 ml-0.5" aria-hidden="true">
               *
@@ -89,17 +92,18 @@ export function Field({ label, htmlFor, required, hint, error, className = '', c
           )}
         </label>
       )}
-      {children}
-      <FieldMessage error={error} hint={hint} />
+      {translate(children)}
+      <FieldMessage error={error} hint={translate(hint)} />
     </div>
   );
 }
 
 function ShellLabel({ htmlFor, label, required, as: Tag = 'label' }) {
+  useAppLanguage();
   if (!label) return null;
   return (
     <Tag {...(Tag === 'label' ? { htmlFor } : {})} className="field-shell-label">
-      {label}
+      {translate(label)}
       {required && (
         <span className="text-red-500 ml-0.5" aria-hidden="true">
           *
@@ -113,6 +117,7 @@ export const Input = forwardRef(function Input(
   { label, hint, error, required, icon: Icon, prefix, className = '', id,
     enterKeyHint = 'next', onKeyDown, placeholder, type = 'text', ...props }, ref
 ) {
+  useAppLanguage();
   const generatedId = useId();
   const inputId = id || generatedId;
   const caption = label || props['aria-label'] || placeholder;
@@ -124,19 +129,19 @@ export const Input = forwardRef(function Input(
   return (
     <div className={className}>
       <label htmlFor={inputId} className={shellClasses(error, caption ? 'field-shell-floating cursor-text' : 'cursor-text')} data-pinned={pinned || undefined}>
-        <ShellLabel as="span" label={caption} required={required} />
+        <ShellLabel as="span" label={translate(caption)} required={required} />
         <div className="field-input-line relative flex items-center min-h-[1.5rem]">
           {Icon && <Icon className="field-floating-adornment pointer-events-none absolute left-0 w-4 h-4 text-content-subtle" aria-hidden="true" />}
-          {prefix && <span className="field-floating-adornment pointer-events-none absolute left-0 text-sm text-content-subtle tabular-nums">{prefix}</span>}
+          {prefix && <span className="field-floating-adornment pointer-events-none absolute left-0 text-sm text-content-subtle tabular-nums">{translate(prefix)}</span>}
           <input ref={ref} id={inputId} type={type}
             aria-invalid={error ? 'true' : undefined}
             aria-describedby={error || hint ? inputId + '-message' : undefined}
-            required={required} placeholder={placeholder || ' '}
+            required={required} placeholder={translate(placeholder || ' ')}
             className={['field-shell-control', Icon || prefix ? 'pl-7' : ''].join(' ')}
             enterKeyHint={enterKeyHint} onKeyDown={handleKeyDown} {...props} />
         </div>
       </label>
-      <FieldMessage error={error} hint={hint} id={inputId + '-message'} />
+      <FieldMessage error={error} hint={translate(hint)} id={inputId + '-message'} />
     </div>
   );
 });
@@ -185,6 +190,7 @@ export const Select = forwardRef(function Select(
   },
   ref
 ) {
+  useAppLanguage();
   const generatedId = useId();
   const selectId = id || generatedId;
   const options = useMemo(() => flattenOptions(children), [children]);
@@ -221,7 +227,7 @@ export const Select = forwardRef(function Select(
         style={chevronStyle}
         {...props}
       >
-        {children}
+        {translate(children)}
       </select>
     );
   }
@@ -267,13 +273,13 @@ export const Select = forwardRef(function Select(
               active:bg-hairline/[0.04] transition-colors duration-100 ease-out
               disabled:cursor-not-allowed disabled:opacity-65`}
           >
-            <ShellLabel as="span" label={label} required={required} />
+            <ShellLabel as="span" label={translate(label)} required={required} />
             <span
               className={`block pr-7 truncate ${compact ? 'w-full' : 'field-shell-control'} ${
                 placeholderLike ? 'text-content-subtle' : ''
               } ${selectClassName}`.trim()}
             >
-              {display}
+              {translate(display)}
             </span>
             <FiChevronDown
               className={`pointer-events-none absolute right-3.5 w-4 h-4 text-content-subtle ${
@@ -374,7 +380,7 @@ export const Select = forwardRef(function Select(
                   data-[disabled]:opacity-40 data-[disabled]:cursor-not-allowed
                   active:bg-primary-500/[0.14] transition-colors duration-100"
               >
-                <span className="min-w-0 flex-1 truncate group-data-[selected]:font-medium">{option.label}</span>
+                <span className="min-w-0 flex-1 truncate group-data-[selected]:font-medium">{translate(option.label)}</span>
                 <FiCheck
                   className="w-4 h-4 shrink-0 text-primary-600 dark:text-primary-400 opacity-0 group-data-[selected]:opacity-100"
                   aria-hidden="true"
@@ -384,7 +390,7 @@ export const Select = forwardRef(function Select(
           </ListboxOptions>
         </div>
       </Listbox>
-      <FieldMessage error={error} hint={hint} id={selectId + '-message'} />
+      <FieldMessage error={error} hint={translate(hint)} id={selectId + '-message'} />
     </div>
   );
 });
@@ -392,25 +398,27 @@ export const Select = forwardRef(function Select(
 export const Textarea = forwardRef(function Textarea(
   { label, hint, error, required, className = '', id, rows = 3, placeholder, ...props }, ref
 ) {
+  useAppLanguage();
   const generatedId = useId();
   const textareaId = id || generatedId;
   const caption = label || props['aria-label'] || placeholder;
   return (
     <div className={className}>
       <label htmlFor={textareaId} className={shellClasses(error, 'field-shell-floating field-shell-textarea cursor-text')}>
-        <ShellLabel as="span" label={caption} required={required} />
+        <ShellLabel as="span" label={translate(caption)} required={required} />
         <textarea ref={ref} id={textareaId} rows={rows}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={error || hint ? textareaId + '-message' : undefined}
-          required={required} placeholder={placeholder || ' '}
+          required={required} placeholder={translate(placeholder || ' ')}
           className="field-shell-control resize-y min-h-[4.5rem]" {...props} />
       </label>
-      <FieldMessage error={error} hint={hint} id={textareaId + '-message'} />
+      <FieldMessage error={error} hint={translate(hint)} id={textareaId + '-message'} />
     </div>
   );
 });
 
 export function Checkbox({ label, description, className = '', id, ...props }) {
+  useAppLanguage();
   const generatedId = useId();
   const checkboxId = id || generatedId;
 
@@ -429,8 +437,8 @@ export function Checkbox({ label, description, className = '', id, ...props }) {
         {...props}
       />
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-content">{label}</span>
-        {description && <span className="block text-xs text-content-subtle mt-0.5">{description}</span>}
+        <span className="block text-sm font-medium text-content">{translate(label)}</span>
+        {description && <span className="block text-xs text-content-subtle mt-0.5">{translate(description)}</span>}
       </span>
     </label>
   );

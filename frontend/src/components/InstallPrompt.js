@@ -7,10 +7,12 @@ import Button from './ui/Button';
 import BrandLogo from './BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const DISMISS_KEY = 'rim.pwa.install.dismissed';
 
 export default function InstallPrompt() {
+  useAppLanguage();
   const { user } = useAuth();
   const { businessName } = useSettings();
   const [prompt, setPrompt] = useState(null);
@@ -58,7 +60,7 @@ export default function InstallPrompt() {
       {visible && user && (
         <motion.div
           role="region"
-          aria-label="Install app"
+          aria-label={translate("Install app")}
           initial={enterFrom}
           animate={enterTo}
           exit={enterFrom}
@@ -68,18 +70,14 @@ export default function InstallPrompt() {
           <div className="surface-card rounded-card p-4 shadow-lg flex items-start gap-3">
             <BrandLogo size={40} rounded="rounded-xl" className="shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-content">Install on your device</p>
-              <p className="text-xs text-content-subtle mt-1">Add {businessName || 'your inventory app'} to your home screen for quick access.</p>
+              <p className="text-sm font-semibold text-content">{translate("Install on your device")}</p>
+              <p className="text-xs text-content-subtle mt-1">{translate("Add ")}{translate(businessName || 'your inventory app')}{translate(" to your home screen for quick access.")}</p>
               <div className="mt-3 flex gap-2">
-                <Button size="sm" icon={FiDownload} onClick={install}>
-                  Install
-                </Button>
-                <Button size="sm" variant="ghost" onClick={dismiss}>
-                  Not now
-                </Button>
+                <Button size="sm" icon={FiDownload} onClick={install}>{translate("Install")}</Button>
+                <Button size="sm" variant="ghost" onClick={dismiss}>{translate("Not now")}</Button>
               </div>
             </div>
-            <button type="button" onClick={dismiss} aria-label="Dismiss install prompt" className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg hover:bg-hairline/[0.05]">
+            <button type="button" onClick={dismiss} aria-label={translate("Dismiss install prompt")} className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg hover:bg-hairline/[0.05]">
               <FiX className="w-4 h-4" />
             </button>
           </div>

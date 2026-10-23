@@ -48,7 +48,7 @@ const present = (row, product, user) => {
   return transaction;
 };
 
-const createMovement = (data, businessId, user) => withTransaction(async (client) => {
+const createMovementOnClient = async (client, data, businessId, user) => {
   const product = await lockProduct(client, data.product, businessId, true);
   const quantity = round4(data.quantity);
   if (['stock_in', 'stock_out', 'transfer'].includes(data.type) && quantity <= 0) {
@@ -56,20 +56,32 @@ const createMovement = (data, businessId, user) => withTransaction(async (client
   }
   const stockBefore = Number(product.current_stock);
   const stockAfter = data.type === 'adjustment' ? quantity : round4(stockBefore + effect(data.type, quantity));
+  if (stockAfter < 0) throw new ApiError(400, 'Not enough stock. This change would take the stock below zero.');
+  // Manual sales/adjustments can consume loose stock only. A labelled pack must
+  // leave through its own barcode so its physical identity stays truthful.
+  const { rows: labelled } = await client.query(
+    `SELECT COALESCE(SUM(quantity),0) AS quantity FROM barcode_labels
+     WHERE business_id=$1 AND product_id=$2 AND status='in_stock'
+       AND ($3::uuid IS NULL OR id <> $3)`, [businessId, product.id, data.barcodeLabelId || null]
+  );
+  if (stockAfter < Number(labelled[0].quantity)) {
+    throw new ApiError(409, 'This stock includes labelled packs. Scan their barcodes to stock them out, or keep the counted stock at least as high as the labelled quantity.');
+  }
   await writeStock(client, product, stockAfter);
   const price = round4(data.price ?? Number(data.type === 'stock_out' ? product.selling_price : product.cost_price));
   const { rows } = await client.query(
     `INSERT INTO transactions
       (business_id, type, product_id, quantity, unit, price, total_value, reference,
-       batch_number, expiry_date, supplier, customer, notes, created_by, stock_before, stock_after, cost_price_snapshot, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,clock_timestamp()) RETURNING *`,
+       batch_number, expiry_date, supplier, customer, notes, created_by, stock_before, stock_after, cost_price_snapshot, barcode_label_id, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,clock_timestamp()) RETURNING *`,
     [businessId, data.type, product.id, quantity, product.unit, price, round2(price * quantity),
       data.reference ?? null, data.batchNumber ?? null, data.expiryDate || null,
-      data.supplier ?? null, data.customer ?? null, data.notes ?? null, user.id, stockBefore, stockAfter, product.cost_price]
+      data.supplier ?? null, data.customer ?? null, data.notes ?? null, user.id, stockBefore, stockAfter, product.cost_price, data.barcodeLabelId || null]
   );
   await postCash(client, rows[0], product, user.id);
   return present(rows[0], product, user);
-});
+};
+const createMovement = (data, businessId, user) => withTransaction((client) => createMovementOnClient(client, { ...data, barcodeLabelId: null }, businessId, user));
 
 const changeMovement = (id, businessId, user, data) => withTransaction(async (client) => {
   const initial = await client.query('SELECT product_id FROM transactions WHERE id = $1 AND business_id = $2', [id, businessId]);
@@ -78,6 +90,13 @@ const changeMovement = (id, businessId, user, data) => withTransaction(async (cl
   const { rows: locked } = await client.query('SELECT * FROM transactions WHERE id = $1 AND business_id = $2 FOR UPDATE', [id, businessId]);
   const before = locked[0];
   if (!before) throw new ApiError(404, 'Transaction not found');
+  let label;
+  if (before.barcode_label_id) {
+    if (data) throw new ApiError(409, 'Barcode movements cannot be edited. Reverse the latest scan and scan again.');
+    label = (await client.query('SELECT * FROM barcode_labels WHERE id=$1 AND business_id=$2 FOR UPDATE', [before.barcode_label_id, businessId])).rows[0];
+    const latest = await client.query('SELECT id FROM transactions WHERE barcode_label_id=$1 ORDER BY created_at DESC, id DESC LIMIT 1', [label.id]);
+    if (latest.rows[0]?.id !== id) throw new ApiError(409, 'Reverse this pack’s latest barcode movement first.');
+  }
 
   const changesStock = !data || data.type !== before.type || round4(data.quantity) !== Number(before.quantity);
   if (changesStock) {
@@ -121,6 +140,13 @@ const changeMovement = (id, businessId, user, data) => withTransaction(async (cl
     stockAfter = round4(Number(product.current_stock) - delta);
     await writeStock(client, product, stockAfter);
   }
+  const labelled = await client.query(
+    `SELECT COALESCE(SUM(quantity),0) AS quantity FROM barcode_labels
+     WHERE business_id=$1 AND product_id=$2 AND status='in_stock'
+     AND ($3::uuid IS NULL OR id<>$3)`, [businessId, product.id, label?.id || null]);
+  const minimumStock = Number(labelled.rows[0].quantity) + (label && before.type === 'stock_out' ? Number(label.quantity) : 0);
+  if (stockAfter < minimumStock) throw new ApiError(409, 'This reversal would remove stock assigned to labelled packs. Reverse their scans first.');
+  if (label) await client.query('UPDATE barcode_labels SET status=$1, updated_at=NOW() WHERE id=$2', [before.type === 'stock_out' ? 'in_stock' : 'prepared', label.id]);
   await client.query("DELETE FROM cash_entries WHERE transaction_id=$1 AND business_id=$2 AND source='sale'", [id, businessId]);
   if (data) await postCash(client, row, product, before.created_by);
   else await client.query('DELETE FROM transactions WHERE id=$1 AND business_id=$2', [id, businessId]);
@@ -128,4 +154,4 @@ const changeMovement = (id, businessId, user, data) => withTransaction(async (cl
   return { before: new Transaction(before), transaction: row ? present(row, product, creator) : null };
 });
 
-module.exports = { createMovement, changeMovement };
+module.exports = { createMovement, createMovementOnClient, changeMovement, lockProduct };

@@ -48,8 +48,10 @@ import {
   requestMicrophoneAccess,
 } from '../../utils/microphone';
 import { feedbackTick, unlockFeedbackAudio } from '../../utils/feedback';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 function ConfirmTransactionFooter({ intent, onDone, onCancel }) {
+  useAppLanguage();
   const { currencySymbol } = useSettings();
   const [saving, setSaving] = useState(false);
   const tx = intent?.proposedTransaction;
@@ -81,7 +83,7 @@ function ConfirmTransactionFooter({ intent, onDone, onCancel }) {
   return (
     <div className="space-y-3">
       <div className="rounded-[14px] bg-surface-sunken shadow-[inset_0_0_0_1px_rgb(var(--hairline)/0.08)] p-4 text-sm space-y-1">
-        <p className="font-medium text-content text-balance">{tx.productName}</p>
+        <p className="font-medium text-content text-balance">{translate(tx.productName)}</p>
         <p className="text-content-muted tabular-nums">
           {tx.type === 'stock_out' ? (
             <BiPair en="Sale" />
@@ -90,16 +92,15 @@ function ConfirmTransactionFooter({ intent, onDone, onCancel }) {
           )}
           <span>
             {' '}
-            — {tx.quantity} {tx.unit}
+            — {translate(tx.quantity)} {translate(tx.unit)}
           </span>
         </p>
         {tx.price != null && (
-          <p className="text-content-muted tabular-nums">
-            Total: {formatMoney(tx.quantity * tx.price, currencySymbol)}
+          <p className="text-content-muted tabular-nums">{translate("Total: ")}{translate(formatMoney(tx.quantity * tx.price, currencySymbol))}
           </p>
         )}
-        {tx.customer && <p className="text-content-muted">Customer: {tx.customer}</p>}
-        {tx.supplier && <p className="text-content-muted">Supplier: {tx.supplier}</p>}
+        {tx.customer && <p className="text-content-muted">{translate("Customer: ")}{translate(tx.customer)}</p>}
+        {tx.supplier && <p className="text-content-muted">{translate("Supplier: ")}{translate(tx.supplier)}</p>}
       </div>
       <div className="flex gap-2">
         <Button variant="secondary" fullWidth onClick={onCancel} disabled={saving}>
@@ -114,6 +115,7 @@ function ConfirmTransactionFooter({ intent, onDone, onCancel }) {
 }
 
 function ChatPanel({ onClose }) {
+  useAppLanguage();
   const { handleNavigateIntent } = useAssistant();
   const [messages, setMessages] = useState([
     {
@@ -350,7 +352,7 @@ function ChatPanel({ onClose }) {
     <Modal
       open
       onClose={onClose}
-      title="Chat & Voice"
+      title={translate("Chat & Voice")}
       description={<BiLine en="Type or speak · Urdu understood, replies in English" size="sm" />}
       size="lg"
       /* The composer lives in the footer, not in the scrolling body.
@@ -381,7 +383,7 @@ function ChatPanel({ onClose }) {
               className="flex-1 min-w-0"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={recording ? 'Listening…' : 'Ask anything…'}
+              placeholder={translate(recording ? 'Listening…' : 'Ask anything…')}
               disabled={recording}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             />
@@ -390,7 +392,7 @@ function ChatPanel({ onClose }) {
               onClick={send}
               loading={loading && !recording}
               disabled={recording}
-              aria-label="Send message"
+              aria-label={translate("Send message")}
             />
           </div>
         )
@@ -411,23 +413,21 @@ function ChatPanel({ onClose }) {
             </span>
             <div className="flex-1 min-w-0 space-y-2">
               <p className="text-sm text-content text-pretty">
-                {micState === 'insecure'
+                {translate(micState === 'insecure'
                   ? 'Voice needs HTTPS on phones. Typing still works.'
                   : micState === 'unsupported'
                     ? 'This browser cannot record audio. Typing still works.'
                     : micState === 'denied'
                       ? 'Microphone is blocked. Allow it in site settings, or keep typing.'
-                      : 'Allow the microphone once so you can speak orders. Or skip and type.'}
+                      : 'Allow the microphone once so you can speak orders. Or skip and type.')}
               </p>
               <div className="flex flex-wrap gap-2">
                 {(micState === 'prompt' || micState === 'denied') && (
                   <Button size="sm" onClick={enableMicrophone}>
-                    {micState === 'denied' ? 'Try again' : 'Allow microphone'}
+                    {translate(micState === 'denied' ? 'Try again' : 'Allow microphone')}
                   </Button>
                 )}
-                <Button size="sm" variant="ghost" onClick={() => setMicBannerDismissed(true)}>
-                  Use typing
-                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setMicBannerDismissed(true)}>{translate("Use typing")}</Button>
               </div>
             </div>
           </div>
@@ -446,8 +446,7 @@ function ChatPanel({ onClose }) {
                 <div>
                   {msg.viaVoice && (
                     <p className="text-[10px] uppercase tracking-wide opacity-80 mb-1.5 flex items-center gap-1.5 font-medium">
-                      <FiMic className="w-3 h-3" strokeWidth={2} aria-hidden="true" /> Voice
-                    </p>
+                      <FiMic className="w-3 h-3" strokeWidth={2} aria-hidden="true" />{translate(" Voice")}</p>
                   )}
                   <p
                     className={`whitespace-pre-wrap text-pretty ${
@@ -456,7 +455,7 @@ function ChatPanel({ onClose }) {
                     lang={/[\u0600-\u06FF]/.test(msg.text) ? 'ur' : 'en'}
                     dir={/[\u0600-\u06FF]/.test(msg.text) ? 'rtl' : 'ltr'}
                   >
-                    {msg.text}
+                    {translate(msg.text)}
                   </p>
                 </div>
               ) : (
@@ -472,9 +471,7 @@ function ChatPanel({ onClose }) {
           )}
           {loading && !recording && (
             <div className="flex items-center gap-2 text-sm text-content-subtle">
-              <FiLoader className="animate-spin w-4 h-4" strokeWidth={ASSISTANT_STROKE} aria-hidden="true" />{' '}
-              Thinking…
-            </div>
+              <FiLoader className="animate-spin w-4 h-4" strokeWidth={ASSISTANT_STROKE} aria-hidden="true" />{' '}{translate("Thinking…")}</div>
           )}
           <div ref={endRef} />
         </div>
@@ -484,6 +481,7 @@ function ChatPanel({ onClose }) {
 }
 
 function BriefingPanel({ onClose }) {
+  useAppLanguage();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
@@ -505,17 +503,16 @@ function BriefingPanel({ onClose }) {
     <Modal
       open
       onClose={onClose}
-      title="Daily Briefing"
+      title={translate("Daily Briefing")}
       description={<BiLine en="Today's summary" size="sm" />}
       size="lg"
     >
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-12 text-content-subtle">
-          <FiLoader className="animate-spin" /> Building snapshot…
-        </div>
+          <FiLoader className="animate-spin" />{translate(" Building snapshot…")}</div>
       ) : error ? (
         <div className="text-center py-10 space-y-4">
-          <p className="text-sm text-content-muted">{error}</p>
+          <p className="text-sm text-content-muted">{translate(error)}</p>
           <Button onClick={load}>
             <BiLine en="Try again" size="sm" align="center" />
           </Button>
@@ -567,6 +564,7 @@ function fileToBase64(file) {
 }
 
 function ScanPanel({ onClose }) {
+  useAppLanguage();
   const navigate = useNavigate();
   const cameraRef = useRef(null);
   const fileRef = useRef(null);
@@ -673,18 +671,14 @@ function ScanPanel({ onClose }) {
     <Modal
       open
       onClose={onClose}
-      title="Scan Delivery Note"
+      title={translate("Scan Delivery Note")}
       description={<BiLine en="Photo of supplier slip" size="sm" />}
       size="lg"
       footer={
         result ? (
           <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-            <Button variant="secondary" onClick={clearScan} disabled={loading}>
-              Scan another
-            </Button>
-            <Button icon={FiCheck} onClick={goToTransactions} disabled={loading}>
-              Review stock-in
-            </Button>
+            <Button variant="secondary" onClick={clearScan} disabled={loading}>{translate("Scan another")}</Button>
+            <Button icon={FiCheck} onClick={goToTransactions} disabled={loading}>{translate("Review stock-in")}</Button>
           </div>
         ) : null
       }
@@ -706,21 +700,17 @@ function ScanPanel({ onClose }) {
               }`}
             >
               {preview ? (
-                <AssistantMediaFrame src={preview} alt="Slip preview" className="mx-auto mb-4 max-w-sm" />
+                <AssistantMediaFrame src={preview} alt={translate("Slip preview")} className="mx-auto mb-4 max-w-sm" />
               ) : (
                 <div className="flex flex-col items-center gap-2.5 mb-4 text-content-subtle">
                   <AssistantIconWell icon={FiImage} size="lg" tone="muted" />
-                  <p className="assistant-en-sm text-content text-pretty" lang="en">
-                    Drop a photo here, or use the buttons below
-                  </p>
+                  <p className="assistant-en-sm text-content text-pretty" lang="en">{translate("Drop a photo here, or use the buttons below")}</p>
                 </div>
               )}
 
               {loading ? (
                 <div className="flex items-center justify-center gap-2 text-sm text-content-muted py-2">
-                  <FiLoader className="animate-spin w-4 h-4" strokeWidth={ASSISTANT_STROKE} aria-hidden="true" />{' '}
-                  Reading the slip…
-                </div>
+                  <FiLoader className="animate-spin w-4 h-4" strokeWidth={ASSISTANT_STROKE} aria-hidden="true" />{' '}{translate("Reading the slip…")}</div>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <input
@@ -744,51 +734,45 @@ function ScanPanel({ onClose }) {
                       e.target.value = '';
                     }}
                   />
-                  <Button icon={FiCamera} onClick={() => cameraRef.current?.click()}>
-                    Take photo
-                  </Button>
-                  <Button variant="secondary" icon={FiUpload} onClick={() => fileRef.current?.click()}>
-                    Upload file
-                  </Button>
+                  <Button icon={FiCamera} onClick={() => cameraRef.current?.click()}>{translate("Take photo")}</Button>
+                  <Button variant="secondary" icon={FiUpload} onClick={() => fileRef.current?.click()}>{translate("Upload file")}</Button>
                 </div>
               )}
             </div>
-            <p className="text-xs text-content-subtle text-center">
-              Tip: photograph the whole slip in good light. Blurry photos are harder to read.
-            </p>
+            <p className="text-xs text-content-subtle text-center">{translate("Tip: photograph the whole slip in good light. Blurry photos are harder to read.")}</p>
           </>
         )}
 
         {result && (
           <div className="space-y-4">
             {preview && (
-              <AssistantMediaFrame src={preview} alt="Scanned slip" className="max-h-40 [&_img]:max-h-40" />
+              <AssistantMediaFrame src={preview} alt={translate("Scanned slip")} className="max-h-40 [&_img]:max-h-40" />
             )}
 
             <div className="rounded-[14px] px-4 py-3 text-sm text-content text-pretty
               bg-primary-500/5 shadow-[inset_0_0_0_1px_rgb(var(--color-primary-500)/0.2)]">
-              {result.extracted?.productName
+              {translate(result.extracted?.productName
                 ? `AI read: ${result.extracted.productName}${result.extracted.quantity != null ? ` · ${result.extracted.quantity}` : ''}`
-                : 'Could not read a clear product name — pick one below.'}
+                : 'Could not read a clear product name — pick one below.')}
             </div>
 
             <Select
-              label="Product"
+              label={translate("Product")}
               required
               value={form.product}
               onChange={(e) => setForm((f) => ({ ...f, product: e.target.value }))}
             >
-              <option value="">Select the matching product…</option>
+              <option value="">{translate("Select the matching product…")}</option>
               {(result.candidates || []).map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}
+                  {translate(p.name)}
                 </option>
               ))}
             </Select>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Quantity"
+                label={translate("Quantity")}
                 required
                 type="number"
                 min="0"
@@ -799,22 +783,22 @@ function ScanPanel({ onClose }) {
                 className="tabular-nums"
               />
               <Input
-                label="Supplier"
+                label={translate("Supplier")}
                 value={form.supplier}
                 onChange={(e) => setForm((f) => ({ ...f, supplier: e.target.value }))}
-                placeholder="Who delivered this"
+                placeholder={translate("Who delivered this")}
               />
             </div>
 
             <Input
-              label="Reference"
+              label={translate("Reference")}
               value={form.reference}
               onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))}
-              placeholder="Invoice or delivery number"
+              placeholder={translate("Invoice or delivery number")}
             />
 
             <Textarea
-              label="Notes"
+              label={translate("Notes")}
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={2}
@@ -827,6 +811,7 @@ function ScanPanel({ onClose }) {
 }
 
 function CashReceiptPanel({ onClose }) {
+  useAppLanguage();
   const navigate = useNavigate();
   const { currencySymbol } = useSettings();
   const { can } = useAuth();
@@ -954,22 +939,20 @@ function CashReceiptPanel({ onClose }) {
     <Modal
       open
       onClose={onClose}
-      title="Scan Receipt"
+      title={translate("Scan Receipt")}
       description={<BiLine en="Photo → money in / money out" size="sm" />}
       size="lg"
       footer={
         scanned ? (
           <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-            <Button variant="secondary" onClick={clearScan} disabled={saving}>
-              Scan another
-            </Button>
+            <Button variant="secondary" onClick={clearScan} disabled={saving}>{translate("Scan another")}</Button>
             <Button
               icon={FiCheck}
               loading={saving}
               variant={form.direction === 'in' ? 'success' : 'danger'}
               onClick={handleConfirm}
             >
-              {form.direction === 'in' ? 'Confirm money in' : 'Confirm money out'}
+              {translate(form.direction === 'in' ? 'Confirm money in' : 'Confirm money out')}
             </Button>
           </div>
         ) : null
@@ -992,21 +975,17 @@ function CashReceiptPanel({ onClose }) {
               }`}
             >
               {preview ? (
-                <AssistantMediaFrame src={preview} alt="Receipt preview" className="mx-auto mb-4 max-w-sm" />
+                <AssistantMediaFrame src={preview} alt={translate("Receipt preview")} className="mx-auto mb-4 max-w-sm" />
               ) : (
                 <div className="flex flex-col items-center gap-2.5 mb-4 text-content-subtle">
                   <AssistantIconWell icon={FiImage} size="lg" tone="muted" />
-                  <p className="assistant-en-sm text-content text-pretty" lang="en">
-                    Drop a receipt photo, or use the buttons
-                  </p>
+                  <p className="assistant-en-sm text-content text-pretty" lang="en">{translate("Drop a receipt photo, or use the buttons")}</p>
                 </div>
               )}
 
               {loading ? (
                 <div className="flex items-center justify-center gap-2 text-sm text-content-muted py-2">
-                  <FiLoader className="animate-spin w-4 h-4" strokeWidth={ASSISTANT_STROKE} aria-hidden="true" />{' '}
-                  Reading the receipt…
-                </div>
+                  <FiLoader className="animate-spin w-4 h-4" strokeWidth={ASSISTANT_STROKE} aria-hidden="true" />{' '}{translate("Reading the receipt…")}</div>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <input
@@ -1030,25 +1009,19 @@ function CashReceiptPanel({ onClose }) {
                       e.target.value = '';
                     }}
                   />
-                  <Button icon={FiCamera} onClick={() => cameraRef.current?.click()}>
-                    Take photo
-                  </Button>
-                  <Button variant="secondary" icon={FiUpload} onClick={() => fileRef.current?.click()}>
-                    Upload file
-                  </Button>
+                  <Button icon={FiCamera} onClick={() => cameraRef.current?.click()}>{translate("Take photo")}</Button>
+                  <Button variant="secondary" icon={FiUpload} onClick={() => fileRef.current?.click()}>{translate("Upload file")}</Button>
                 </div>
               )}
             </div>
-            <p className="text-xs text-content-subtle text-center">
-              Works for shop bills, expenses, and payment slips. Nothing is saved until you confirm.
-            </p>
+            <p className="text-xs text-content-subtle text-center">{translate("Works for shop bills, expenses, and payment slips. Nothing is saved until you confirm.")}</p>
           </>
         )}
 
         {scanned && (
           <div className="space-y-4">
             {preview && (
-              <AssistantMediaFrame src={preview} alt="Scanned receipt" className="[&_img]:max-h-36" />
+              <AssistantMediaFrame src={preview} alt={translate("Scanned receipt")} className="[&_img]:max-h-36" />
             )}
 
             <div className="grid grid-cols-2 gap-1 p-1 bg-surface-sunken rounded-[14px]
@@ -1088,7 +1061,7 @@ function CashReceiptPanel({ onClose }) {
                       }`}
                   >
                     <Icon className="w-4 h-4" strokeWidth={selected ? 2 : ASSISTANT_STROKE} aria-hidden="true" />
-                    {label}
+                    {translate(label)}
                   </button>
                 );
               })}
@@ -1096,7 +1069,7 @@ function CashReceiptPanel({ onClose }) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Amount"
+                label={translate("Amount")}
                 required
                 type="number"
                 min="0.01"
@@ -1108,7 +1081,7 @@ function CashReceiptPanel({ onClose }) {
                 className="tabular-nums"
               />
               <Input
-                label="Date"
+                label={translate("Date")}
                 type="date"
                 value={form.occurredAt}
                 onChange={(e) => setForm((f) => ({ ...f, occurredAt: e.target.value }))}
@@ -1116,41 +1089,41 @@ function CashReceiptPanel({ onClose }) {
             </div>
 
             <Select
-              label="Category"
+              label={translate("Category")}
               value={form.category}
               onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
             >
               {categoryOptions.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {translate(option)}
                 </option>
               ))}
             </Select>
 
             <Input
-              label="Purpose"
+              label={translate("Purpose")}
               required
               value={form.purpose}
               onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value }))}
-              placeholder="What was this for?"
+              placeholder={translate("What was this for?")}
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label={form.direction === 'in' ? 'Received from' : 'Paid to / taken by'}
+                label={translate(form.direction === 'in' ? 'Received from' : 'Paid to / taken by')}
                 value={form.party}
                 onChange={(e) => setForm((f) => ({ ...f, party: e.target.value }))}
               />
               <Input
-                label="Reference"
+                label={translate("Reference")}
                 value={form.reference}
                 onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))}
-                placeholder="Receipt number"
+                placeholder={translate("Receipt number")}
               />
             </div>
 
             <Textarea
-              label="Notes"
+              label={translate("Notes")}
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={2}
@@ -1183,6 +1156,7 @@ export default function AssistantPanels() {
 }
 
 export function TextCommandBar({ onClose }) {
+  useAppLanguage();
   const { handleNavigateIntent } = useAssistant();
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1208,22 +1182,17 @@ export function TextCommandBar({ onClose }) {
         rows={2}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Type a command…"
+        placeholder={translate("Type a command…")}
       />
       <div className="flex gap-2">
-        <Button variant="ghost" icon={FiX} onClick={onClose}>
-          Close
-        </Button>
-        <Button fullWidth loading={loading} onClick={run}>
-          Run
-        </Button>
+        <Button variant="ghost" icon={FiX} onClick={onClose}>{translate("Close")}</Button>
+        <Button fullWidth loading={loading} onClick={run}>{translate("Run")}</Button>
       </div>
       {result?.intent?.requiresConfirmation && (
         <ConfirmTransactionFooter intent={result.intent} onDone={onClose} onCancel={() => setResult(null)} />
       )}
       {result?.intent?.action === 'navigate' && result.intent.destination && (
-        <Button fullWidth onClick={() => handleNavigateIntent(result.intent.destination)}>
-          Open {result.intent.destination}
+        <Button fullWidth onClick={() => handleNavigateIntent(result.intent.destination)}>{translate("Open ")}{translate(result.intent.destination)}
         </Button>
       )}
     </div>

@@ -55,7 +55,8 @@ export default function useDrawerEdgeSwipe({ open, onOpen, onClose, enabled = tr
         return;
       }
 
-      if (startX <= EDGE_PX) {
+      const edgeDistance = document.documentElement.dir === 'rtl' ? window.innerWidth - startX : startX;
+      if (edgeDistance <= EDGE_PX) {
         mode = 'open';
         return;
       }
@@ -67,7 +68,7 @@ export default function useDrawerEdgeSwipe({ open, onOpen, onClose, enabled = tr
       if (!mode || event.touches.length !== 1) return;
 
       const touch = event.touches[0];
-      const dx = touch.clientX - startX;
+      const dx = (touch.clientX - startX) * (document.documentElement.dir === 'rtl' ? -1 : 1);
       const dy = touch.clientY - startY;
 
       if (Math.abs(dy) > Math.abs(dx) * ANGLE_LOCK) {

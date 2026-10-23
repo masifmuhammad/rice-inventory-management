@@ -8,8 +8,10 @@ import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { springSnappy, reducedTransition } from '../utils/motion';
 import BrandLogo from './BrandLogo';
 import { unlockFeedbackAudio, feedbackTick } from '../utils/feedback';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 export default function BusinessSwitcher({ className = '', centered = false, showLogo = false }) {
+  useAppLanguage();
   const { user, businesses, activeBusiness, businessId, switchBusiness } = useAuth();
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -77,8 +79,8 @@ export default function BusinessSwitcher({ className = '', centered = false, sho
           centered ? 'justify-center' : ''
         } ${className}`}
       >
-        {mark}
-        <span className="truncate">{label}</span>
+        {translate(mark)}
+        <span className="truncate">{translate(label)}</span>
       </span>
     );
   }
@@ -91,14 +93,14 @@ export default function BusinessSwitcher({ className = '', centered = false, sho
         disabled={switching}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Active business: ${label}. Click to switch.`}
+        aria-label={translate("Active business: {0}. Click to switch.", [label])}
         className={`flex items-center gap-2 max-w-full min-h-[44px] px-1.5 -mx-1 rounded-xl hover:bg-hairline/[0.05] transition-colors disabled:opacity-70 ${
           centered ? 'justify-center mx-auto' : ''
         }`}
       >
-        {mark}
+        {translate(mark)}
         <span className="font-display font-semibold text-content text-[15px] leading-tight truncate">
-          {label}
+          {translate(label)}
         </span>
         {switching ? (
           <FiLoader className="w-3.5 h-3.5 flex-shrink-0 animate-spin text-content-subtle" aria-hidden="true" />
@@ -111,7 +113,7 @@ export default function BusinessSwitcher({ className = '', centered = false, sho
         {open && (
           <motion.ul
             role="listbox"
-            aria-label="Select business"
+            aria-label={translate("Select business")}
             initial={popoverFrom}
             animate={popoverTo}
             exit={popoverFrom}

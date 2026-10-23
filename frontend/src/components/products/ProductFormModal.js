@@ -6,6 +6,7 @@ import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../../utils/motion';
 import Modal from '../ui/Modal';
 import { Input, Select, Textarea } from '../ui/Field';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const EMPTY = {
   name: '',
@@ -80,6 +81,7 @@ const validate = (values) => {
 };
 
 export default function ProductFormModal({ open, onClose, onSubmit, product, meta, metaLoading = false }) {
+  useAppLanguage();
   const { currencySymbol } = useSettings();
   const reducedMotion = usePrefersReducedMotion();
   const [values, setValues] = useState(EMPTY);
@@ -153,57 +155,57 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
       onClose={saving ? () => {} : onClose}
       disableClose={saving}
       busy={saving}
-      title={isEditing ? 'Edit product' : 'Add product'}
-      description={isEditing ? product?.name : 'Everything except pricing can be changed later.'}
+      title={translate(isEditing ? 'Edit product' : 'Add product')}
+      description={translate(isEditing ? product?.name : 'Everything except pricing can be changed later.')}
       size="lg"
       submit={{ form: 'product-form', label: isEditing ? 'Save changes' : 'Create product', loading: saving }}
     >
       <form id="product-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
         <section className="space-y-2.5">
-          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">Basics</h3>
+          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">{translate("Basics")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Input
-              label="Product name"
+              label={translate("Product name")}
               required
               value={values.name}
               onChange={set('name')}
               error={errors.name}
-              placeholder="Premium Basmati Rice"
+              placeholder={translate("Premium Basmati Rice")}
               autoFocus
               className="sm:col-span-2"
             />
             <Input
-              label="SKU"
+              label={translate("SKU")}
               value={values.sku}
               onChange={set('sku')}
-              placeholder="Leave blank to generate"
-              hint="A code is created automatically if you leave this empty."
+              placeholder={translate("Leave blank to generate")}
+              hint={translate("A code is created automatically if you leave this empty.")}
             />
             <Select
-              label="Category"
+              label={translate("Category")}
               required
               value={values.category}
               onChange={set('category')}
               disabled={metaLoading}
-              hint={metaLoading ? 'Loading categories…' : undefined}
+              hint={translate(metaLoading ? 'Loading categories…' : undefined)}
             >
               {metaLoading ? (
-                <option value="">Loading…</option>
+                <option value="">{translate("Loading…")}</option>
               ) : (
                 categories.map((category) => (
                   <option key={category} value={category}>
-                    {category}
+                    {translate(category)}
                   </option>
                 ))
               )}
             </Select>
-            <Select label="Unit" required value={values.unit} onChange={set('unit')} disabled={metaLoading}>
+            <Select label={translate("Unit")} required value={values.unit} onChange={set('unit')} disabled={metaLoading}>
               {metaLoading ? (
-                <option value="">Loading…</option>
+                <option value="">{translate("Loading…")}</option>
               ) : (
                 units.map((unit) => (
                   <option key={unit} value={unit}>
-                    {unit}
+                    {translate(unit)}
                   </option>
                 ))
               )}
@@ -221,13 +223,13 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
                 >
                   <div className="rounded-xl border border-primary-500/20 bg-primary-500/12 px-4 py-3">
                     <Input
-                      label="What type is it?"
+                      label={translate("What type is it?")}
                       required
                       value={values.otherCategory}
                       onChange={set('otherCategory')}
                       error={errors.otherCategory}
-                      placeholder="e.g. Super Kernel, Sella, Parboiled…"
-                      hint="This becomes the category shown on reports and filters."
+                      placeholder={translate("e.g. Super Kernel, Sella, Parboiled…")}
+                      hint={translate("This becomes the category shown on reports and filters.")}
                     />
                   </div>
                 </motion.div>
@@ -235,19 +237,19 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
             </AnimatePresence>
 
             <Input
-              label="Supplier"
+              label={translate("Supplier")}
               value={values.supplier}
               onChange={set('supplier')}
-              placeholder="Who you buy this from"
+              placeholder={translate("Who you buy this from")}
             />
           </div>
         </section>
 
         <section className="space-y-2.5 pt-4 border-t border-hairline/[0.07]">
-          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">Stock</h3>
+          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">{translate("Stock")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <Input
-              label="Current stock"
+              label={translate("Current stock")}
               required
               type="number"
               step="any"
@@ -259,7 +261,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
               placeholder="0"
             />
             <Input
-              label="Minimum level"
+              label={translate("Minimum level")}
               required
               type="number"
               step="any"
@@ -268,11 +270,11 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
               value={values.minStockLevel}
               onChange={set('minStockLevel')}
               error={errors.minStockLevel}
-              hint="Alerts below this"
+              hint={translate("Alerts below this")}
               placeholder="0"
             />
             <Input
-              label="Maximum level"
+              label={translate("Maximum level")}
               type="number"
               step="any"
               min="0"
@@ -280,18 +282,17 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
               value={values.maxStockLevel}
               onChange={set('maxStockLevel')}
               error={errors.maxStockLevel}
-              placeholder="Optional"
+              placeholder={translate("Optional")}
             />
           </div>
         </section>
 
         <section className="space-y-2.5 pt-4 border-t border-hairline/[0.07]">
-          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">
-            Pricing (per {values.unit})
+          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">{translate("Pricing (per ")}{translate(values.unit)})
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Input
-              label="Cost price"
+              label={translate("Cost price")}
               required
               type="number"
               step="0.01"
@@ -304,7 +305,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
               placeholder="0.00"
             />
             <Input
-              label="Selling price"
+              label={translate("Selling price")}
               required
               type="number"
               step="0.01"
@@ -327,41 +328,41 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
               }`}
             >
               <span className="font-medium">
-                {margin.perUnit >= 0 ? 'Margin' : 'Loss'}:{' '}
-                {formatMoney(Math.abs(margin.perUnit), currencySymbol)} per {values.unit}
+                {translate(margin.perUnit >= 0 ? 'Margin' : 'Loss')}:{' '}
+                {translate(formatMoney(Math.abs(margin.perUnit), currencySymbol))}{translate(" per ")}{translate(values.unit)}
               </span>
-              <span className="opacity-75"> ({margin.percent.toFixed(1)}%)</span>
+              <span className="opacity-75"> ({translate(margin.percent.toFixed(1))}%)</span>
             </div>
           )}
         </section>
 
         <section className="space-y-2.5 pt-4 border-t border-hairline/[0.07]">
-          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">Details</h3>
+          <h3 className="text-xs font-semibold text-content-subtle tracking-normal">{translate("Details")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Input
-              label="Storage location"
+              label={translate("Storage location")}
               value={values.location}
               onChange={set('location')}
-              placeholder="Warehouse A, Section 3"
+              placeholder={translate("Warehouse A, Section 3")}
             />
             <Input
-              label="Batch number"
+              label={translate("Batch number")}
               value={values.batchNumber}
               onChange={set('batchNumber')}
-              placeholder="BATCH-2024-001"
+              placeholder={translate("BATCH-2024-001")}
             />
             <Input
-              label="Expiry date"
+              label={translate("Expiry date")}
               type="date"
               value={values.expiryDate}
               onChange={set('expiryDate')}
             />
           </div>
           <Textarea
-            label="Description"
+            label={translate("Description")}
             value={values.description}
             onChange={set('description')}
-            placeholder="Quality notes, grade, origin…"
+            placeholder={translate("Quality notes, grade, origin…")}
           />
         </section>
       </form>

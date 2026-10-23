@@ -185,10 +185,10 @@ test('navigation preserves filters without reloading and long pages keep context
       await page.getByRole('navigation', { name: 'Main', exact: true }).getByRole('link', { name, exact: true }).filter({ visible: true }).first().click();
     }
   };
-  await openPage('Products', 'Stock');
+  await openPage('Stock', 'Stock');
   await page.getByLabel('Search products', { exact: true }).filter({ visible: true }).last().fill('Basmati');
   await openPage('Dashboard', 'Home');
-  await openPage('Products', 'Stock');
+  await openPage('Stock', 'Stock');
   await expect(page.getByLabel('Search products', { exact: true }).filter({ visible: true }).last()).toHaveValue('Basmati');
   await openPage('Settings');
   await expect(page.getByRole('heading', { name: 'Settings', exact: true }).first()).toBeVisible();

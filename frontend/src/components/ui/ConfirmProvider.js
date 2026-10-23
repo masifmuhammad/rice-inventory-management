@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { FiAlertTriangle } from 'react-icons/fi';
 import Modal from './Modal';
 import Button from './Button';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const ConfirmContext = createContext(null);
 
@@ -13,6 +14,7 @@ const ConfirmContext = createContext(null);
  *   if (await confirm({ title: 'Delete this?', tone: 'danger' })) { ... }
  */
 export function ConfirmProvider({ children }) {
+  useAppLanguage();
   const [state, setState] = useState(null);
   const [busy, setBusy] = useState(false);
   const resolverRef = useRef(null);
@@ -77,24 +79,24 @@ export function ConfirmProvider({ children }) {
 
   return (
     <ConfirmContext.Provider value={confirm}>
-      {children}
+      {translate(children)}
 
       <Modal
         open={Boolean(state)}
         onClose={() => !busy && settle(false)}
-        title={state?.title || ''}
+        title={translate(state?.title || '')}
         size="sm"
         footer={
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button variant="secondary" onClick={() => settle(false)} disabled={busy}>
-              {state?.cancelLabel}
+              {translate(state?.cancelLabel)}
             </Button>
             <Button
               variant={state?.tone === 'danger' ? 'danger' : 'primary'}
               onClick={handleConfirm}
               loading={busy}
             >
-              {state?.confirmLabel}
+              {translate(state?.confirmLabel)}
             </Button>
           </div>
         }
@@ -105,7 +107,7 @@ export function ConfirmProvider({ children }) {
               <FiAlertTriangle className="w-5 h-5 text-red-500" aria-hidden="true" />
             </span>
           )}
-          <p className="text-sm text-content-muted leading-relaxed pt-2">{state?.message}</p>
+          <p className="text-sm text-content-muted leading-relaxed pt-2">{translate(state?.message)}</p>
         </div>
       </Modal>
     </ConfirmContext.Provider>

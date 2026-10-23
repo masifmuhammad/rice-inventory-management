@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import api from '../services/api';
 import { applyPalette } from '../utils/color';
 import { useAuth } from './AuthContext';
+import { translate, useAppLanguage } from './LanguageContext';
 
 const SettingsContext = createContext(null);
 
@@ -38,6 +39,7 @@ const writeCache = (businessId, settings) => {
 };
 
 export function SettingsProvider({ children }) {
+  useAppLanguage();
   const { user, businessId } = useAuth();
   const [settings, setSettings] = useState(() => readCache(businessId));
   const [loading, setLoading] = useState(false);
@@ -113,7 +115,7 @@ export function SettingsProvider({ children }) {
     };
   }, [settings, loading, updateSettings]);
 
-  return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
+  return <SettingsContext.Provider value={value}>{translate(children)}</SettingsContext.Provider>;
 }
 
 export function useSettings() {

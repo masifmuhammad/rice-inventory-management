@@ -1,18 +1,21 @@
 import React from 'react';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /** The one surface style used across the app, so nothing looks hand-placed. */
 export function Card({ className = '', interactive = false, children, ...props }) {
+  useAppLanguage();
   return (
     <div
       className={`surface-card rounded-card ${interactive ? 'surface-card-hover' : ''} ${className}`}
       {...props}
     >
-      {children}
+      {translate(children)}
     </div>
   );
 }
 
 export function CardHeader({ title, subtitle, icon: Icon, action, className = '' }) {
+  useAppLanguage();
   return (
     /* No rule under the title — in the reference a card header is held by space. */
     <div
@@ -25,17 +28,18 @@ export function CardHeader({ title, subtitle, icon: Icon, action, className = ''
           </span>
         )}
         <div className="min-w-0">
-          <h2 className="font-display text-lg font-semibold text-content truncate">{title}</h2>
-          {subtitle && <p className="text-caption text-content-subtle mt-1">{subtitle}</p>}
+          <h2 className="font-display text-lg font-semibold text-content truncate">{translate(title)}</h2>
+          {subtitle && <p className="text-caption text-content-subtle mt-1">{translate(subtitle)}</p>}
         </div>
       </div>
-      {action && <div className="flex-shrink-0">{action}</div>}
+      {action && <div className="flex-shrink-0">{translate(action)}</div>}
     </div>
   );
 }
 
 export function CardBody({ className = '', children }) {
-  return <div className={`p-4 sm:p-6 ${className}`}>{children}</div>;
+  useAppLanguage();
+  return <div className={`p-4 sm:p-6 ${className}`}>{translate(children)}</div>;
 }
 
 export default Card;

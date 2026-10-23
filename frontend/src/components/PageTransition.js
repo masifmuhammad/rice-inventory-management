@@ -1,13 +1,14 @@
 import React, { Suspense, useEffect, useRef } from 'react';
 import { useLocation, useOutlet } from 'react-router-dom';
 import RouteSkeleton from './RouteSkeleton';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 /**
  * The order the tab bar presents these in. Moving right through the tabs should
  * feel like moving right, which is only meaningful for routes that sit in a row
  * the user can see — anything reached from the drawer has no position in it.
  */
-const TAB_ORDER = ['/', '/products', '/transactions', '/cash-book'];
+const TAB_ORDER = ['/', '/products', '/barcodes', '/transactions', '/cash-book'];
 
 const tabIndex = (pathname) =>
   TAB_ORDER.findIndex((path) => (path === '/' ? pathname === '/' : pathname.startsWith(path)));
@@ -46,6 +47,7 @@ const tabIndex = (pathname) =>
  * page tree to decide how to animate it.
  */
 export default function PageTransition() {
+  useAppLanguage();
   const location = useLocation();
   const outlet = useOutlet();
 
@@ -76,7 +78,7 @@ export default function PageTransition() {
 
   return (
     <div key={location.pathname} className="route-enter" data-direction={direction}>
-      <Suspense fallback={<RouteSkeleton pathname={location.pathname} />}>{outlet}</Suspense>
+      <Suspense fallback={<RouteSkeleton pathname={location.pathname} />}>{translate(outlet)}</Suspense>
     </div>
   );
 }

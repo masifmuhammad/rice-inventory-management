@@ -3,11 +3,13 @@ import ReactDOM from 'react-dom/client';
 import '@fontsource/manrope/latin-600.css';
 import '@fontsource/manrope/latin-700.css';
 import './index.css';
+import './MobileTypography.css';
 import App from './App';
 import { initTheme } from './context/ThemeContext';
 import { FiArrowUpCircle } from 'react-icons/fi';
 import { toast } from './utils/toast';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
+import { translate } from './context/LanguageContext';
 
 initTheme();
 
@@ -53,10 +55,8 @@ if (process.env.NODE_ENV === 'production') {
             </span>
 
             <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-semibold text-content leading-snug">Update available</p>
-              <p className="text-[13px] text-content-muted leading-snug mt-0.5">
-                Reload to get the latest version. Anything you are part-way through will be lost.
-              </p>
+              <p className="text-[15px] font-semibold text-content leading-snug">{translate("Update available")}</p>
+              <p className="text-[13px] text-content-muted leading-snug mt-0.5">{translate("Reload to get the latest version. Anything you are part-way through will be lost.")}</p>
 
               <div className="flex items-center gap-2 mt-2.5">
                 <button
@@ -69,17 +69,13 @@ if (process.env.NODE_ENV === 'production') {
                   }}
                   className="min-h-[36px] px-3.5 rounded-lg bg-primary-600 text-white
                     text-[13px] font-semibold active:scale-[0.97] transition-transform duration-150 ease-out"
-                >
-                  Reload now
-                </button>
+                >{translate("Reload now")}</button>
                 <button
                   type="button"
                   onClick={() => toast.dismiss(id)}
                   className="min-h-[36px] px-3 rounded-lg text-[13px] font-medium text-content-muted
                     active:scale-[0.97] transition-transform duration-150 ease-out"
-                >
-                  Later
-                </button>
+                >{translate("Later")}</button>
               </div>
             </div>
           </div>

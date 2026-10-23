@@ -11,6 +11,7 @@ import {
   FiLogOut,
   FiMoon,
   FiPackage,
+  FiRadio,
   FiSettings,
   FiSun,
   FiTrendingUp,
@@ -35,12 +36,14 @@ import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import useDrawerEdgeSwipe from '../hooks/useDrawerEdgeSwipe';
 import useTabSwipe from '../hooks/useTabSwipe';
 import { iconSwap, springUI, withReducedMotion } from '../utils/motion';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const AssistantShell = lazyPage(() => import('./assistant/AssistantShell'), 'assistant');
 
 export const NAVIGATION = [
   { name: 'Dashboard', href: '/', icon: FiHome, end: true },
-  { name: 'Products', href: '/products', icon: FiPackage },
+  { name: 'Stock', href: '/products', icon: FiPackage },
+  { name: 'Scan & labels', href: '/barcodes', icon: FiRadio },
   { name: 'Transactions', href: '/transactions', icon: FiTrendingUp },
   { name: 'Cash Book', href: '/cash-book', icon: FiDollarSign },
   { name: 'Reports', href: '/reports', icon: FiBarChart2 },
@@ -64,6 +67,7 @@ const linkClasses = ({ isActive }) =>
   ].join(' ');
 
 function NavigationLinks({ onNavigate, sections, navId }) {
+  useAppLanguage();
   const prefetch = usePrefetchRoute();
   const navigate = useNavigate();
   const location = useLocation();
@@ -84,12 +88,12 @@ function NavigationLinks({ onNavigate, sections, navId }) {
   );
 
   return (
-    <nav className="flex-1 px-2.5 py-2 overflow-y-auto" aria-label="Main">
+    <nav className="flex-1 px-2.5 py-2 overflow-y-auto" aria-label={translate("Main")}>
       {sections.map(({ label, items }, sectionIndex) => (
         <div key={label || `section-${sectionIndex}`} className={sectionIndex > 0 ? 'mt-5' : ''}>
           {label && (
             <p className="px-3.5 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-content-subtle/70">
-              {label}
+              {translate(label)}
             </p>
           )}
           <div className="space-y-1">
@@ -129,7 +133,7 @@ function NavigationLinks({ onNavigate, sections, navId }) {
                       strokeWidth={isActive ? 2.3 : 1.9}
                       aria-hidden="true"
                     />
-                    <span className="relative z-10 truncate">{name}</span>
+                    <span className="relative z-10 truncate">{translate(name)}</span>
                   </>
                 )}
               </NavLink>
@@ -142,6 +146,7 @@ function NavigationLinks({ onNavigate, sections, navId }) {
 }
 
 function ThemeToggle({ preference, onCycle, isDark, reducedMotion }) {
+  useAppLanguage();
   const label =
     preference === 'system' ? 'Theme: System' : preference === 'dark' ? 'Theme: Dark' : 'Theme: Light';
 
@@ -149,7 +154,7 @@ function ThemeToggle({ preference, onCycle, isDark, reducedMotion }) {
     <button
       type="button"
       onClick={onCycle}
-      aria-label={`${label}. Click to change.`}
+      aria-label={translate("{0}. Click to change.", [label])}
       className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-2xl text-sm font-medium
         text-content-muted hover:bg-hairline/[0.05] hover:text-content transition-colors"
     >
@@ -169,12 +174,13 @@ function ThemeToggle({ preference, onCycle, isDark, reducedMotion }) {
           )}
         </motion.span>
       </AnimatePresence>
-      <span className="truncate">{label}</span>
+      <span className="truncate">{translate(label)}</span>
     </button>
   );
 }
 
 function SidebarFooter({ onSignOut, preference, onCycleTheme, isDark, reducedMotion }) {
+  useAppLanguage();
   return (
     <div className="sidebar-dock space-y-0.5">
       <ThemeToggle
@@ -190,14 +196,13 @@ function SidebarFooter({ onSignOut, preference, onCycleTheme, isDark, reducedMot
         className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-2xl text-sm font-medium
           text-content-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
       >
-        <FiLogOut className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" />
-        Sign out
-      </button>
+        <FiLogOut className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" />{translate("Sign out")}</button>
     </div>
   );
 }
 
 function SidebarBrandHeader({ onClose }) {
+  useAppLanguage();
   // Mobile drawer: logo only — the business name dropdown lives in the header.
   // Desktop sidebar: logo + name dropdown in one place.
   const mobileDrawer = Boolean(onClose);
@@ -213,7 +218,7 @@ function SidebarBrandHeader({ onClose }) {
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close navigation"
+          aria-label={translate("Close navigation")}
           className="-mr-1 p-2 rounded-2xl text-content-muted hover:bg-hairline/[0.06] hover:text-content min-h-[44px] min-w-[44px] transition-colors flex-shrink-0"
         >
           <FiX className="w-5 h-5" />
@@ -224,6 +229,7 @@ function SidebarBrandHeader({ onClose }) {
 }
 
 export default function Layout() {
+  useAppLanguage();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
@@ -248,7 +254,7 @@ export default function Layout() {
   }, [reducedMotion]);
 
   const navSections = useMemo(() => {
-    const main = NAVIGATION.slice(0, 5);
+    const main = NAVIGATION.filter((item) => item.href !== '/settings' && (item.href !== '/cash-book' || can('cash.view')) && (item.href !== '/reports' || can('reports.view')));
     const admin = ADMIN_NAV.filter((item) => can(item.capability));
     const settings = [NAVIGATION[NAVIGATION.length - 1]];
     const sections = [{ label: 'Main', items: main }];
@@ -305,10 +311,8 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen app-gradient">
-      <a href="#main-content" className="skip-link">
-        Skip to content
-      </a>
+    <div className="min-h-screen app-gradient app-shell">
+      <a href="#main-content" className="skip-link">{translate("Skip to content")}</a>
 
       {/* Left-edge swipe target — helps phones claim the gesture before browser
           back. Deliberately has no `onClick` and no z-index: it only stakes a
@@ -332,7 +336,7 @@ export default function Layout() {
       <aside
         className="hidden lg:flex lg:flex-col lg:fixed z-40
           lg:top-4 lg:bottom-4 lg:left-4 lg:w-[15.5rem]
-          sidebar-surface rounded-card"
+          sidebar-surface rounded-card app-sidebar"
       >
         <SidebarBrandHeader />
         <NavigationLinks sections={navSections} navId="sidebar" />
@@ -377,7 +381,7 @@ export default function Layout() {
         </div>
       </Dialog>
 
-      <div className="lg:pl-[calc(15.5rem+2rem)]">
+      <div className="lg:pl-[calc(15.5rem+2rem)] app-content">
         <AppHeader
           onOpenDrawer={() => setDrawerOpen(true)}
           drawerOpen={drawerOpen}

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FiArrowRight, FiCheck, FiChevronUp, FiLoader } from 'react-icons/fi';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { feedbackTick } from '../../utils/feedback';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const tones = {
   primary: 'bg-content text-surface-1',
@@ -20,6 +21,7 @@ const tones = {
  * `form` submits that form by id; `onClick` runs instead when there is none.
  */
 export default function KeyboardToolbar({ bodyRef, onDone, submit, keyboardOpen = true }) {
+  useAppLanguage();
   const reduce = usePrefersReducedMotion();
   const [active, setActive] = useState(() => document.activeElement);
   useEffect(() => {
@@ -55,12 +57,12 @@ export default function KeyboardToolbar({ bodyRef, onDone, submit, keyboardOpen 
   const spring = reduce ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 42 };
 
   return (
-    <div className="flex items-center gap-2 border-t border-hairline/[0.08] bg-surface-1 px-3 py-1.5" role="toolbar" aria-label={submit ? 'Form controls' : 'Keyboard controls'}>
+    <div className="flex items-center gap-2 border-t border-hairline/[0.08] bg-surface-1 px-3 py-1.5" role="toolbar" aria-label={translate(submit ? 'Form controls' : 'Keyboard controls')}>
       <AnimatePresence mode="popLayout" initial={false}>
-        {!expanded && (
-          <motion.div key="nav" className="flex flex-1 items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduce ? 0 : 0.15 }}>
-            <button type="button" disabled={index <= 0} onPointerDown={(event) => event.preventDefault()} onClick={() => move(-1)} aria-label="Previous field" className="min-h-[44px] min-w-[44px] grid place-items-center text-content-muted disabled:opacity-30"><FiChevronUp className="w-5 h-5" aria-hidden="true" /></button>
-            <span className="flex-1 pl-11 text-center text-xs text-content-muted" aria-live="polite">{index >= 0 ? `${index + 1} of ${list.length}` : ''}</span>
+        {keyboardOpen && (
+          <motion.div key="nav" className={`flex items-center ${expanded ? 'shrink-0' : 'flex-1'}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduce ? 0 : 0.15 }}>
+            <button type="button" disabled={index <= 0} onPointerDown={(event) => event.preventDefault()} onClick={() => move(-1)} aria-label={translate("Previous field")} className="min-h-[44px] min-w-[44px] grid place-items-center text-content-muted disabled:opacity-30"><FiChevronUp className="w-5 h-5" aria-hidden="true" /></button>
+            {!expanded && <span className="flex-1 pl-11 text-center text-xs text-content-muted" aria-live="polite">{translate(index >= 0 ? `${index + 1} of ${list.length}` : '')}</span>}
           </motion.div>
         )}
       </AnimatePresence>
@@ -76,7 +78,7 @@ export default function KeyboardToolbar({ bodyRef, onDone, submit, keyboardOpen 
           if (event.pointerType === 'touch') feedbackTick();
         }}
         onClick={expanded ? submit.onClick : last ? finish : () => move(1)}
-        aria-label={expanded ? undefined : last ? 'Done' : 'Next field'}
+        aria-label={translate(expanded ? undefined : last ? 'Done' : 'Next field')}
         style={{ borderRadius: 999 }}
         className={`min-h-[44px] inline-flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-70 ${
           expanded ? `flex-1 px-5 ${keyboardOpen ? '' : 'min-h-[50px] text-base'} ${tones[submit.variant] || tones.primary}` : `${tones.primary} ${last ? 'px-5' : 'w-11'}`
@@ -84,9 +86,9 @@ export default function KeyboardToolbar({ bodyRef, onDone, submit, keyboardOpen 
       >
         <motion.span layout="position" transition={spring} className="inline-flex items-center gap-2 whitespace-nowrap">
           {expanded ? (
-            <>{submit.loading && <FiLoader className="w-4 h-4 animate-spin" aria-hidden="true" />}{submit.label}</>
+            <>{submit.loading && <FiLoader className="w-4 h-4 animate-spin" aria-hidden="true" />}{translate(submit.label)}</>
           ) : last ? (
-            <>Done <FiCheck className="w-4 h-4" aria-hidden="true" /></>
+            <>{translate("Done ")}<FiCheck className="w-4 h-4" aria-hidden="true" /></>
           ) : (
             <FiArrowRight className="w-5 h-5" aria-hidden="true" />
           )}

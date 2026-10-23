@@ -17,9 +17,11 @@ import {
 import PageHeader from '../components/PageHeader';
 import BrandLogo from '../components/BrandLogo';
 import SettingsSkeleton from '../components/skeletons/SettingsSkeleton';
+import LanguagePicker from '../components/LanguagePicker';
 import Button from '../components/ui/Button';
 import Card, { CardBody, CardHeader } from '../components/ui/Card';
 import { Checkbox, Input, Select } from '../components/ui/Field';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const PRESET_COLORS = [
   { hex: '#0284c7', name: 'Sky' },
@@ -33,6 +35,7 @@ const PRESET_COLORS = [
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
 export default function Settings() {
+  useAppLanguage();
   const { user, updateUser, businessId } = useAuth();
   const { settings, updateSettings } = useSettings();
   const { preference, setTheme } = useTheme();
@@ -269,32 +272,33 @@ export default function Settings() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <PageHeader summary={settings?.businessName || 'Your business'} title="Settings" description="Your business details, branding and account." />
+      <PageHeader summary={translate(settings?.businessName || 'Your business')} title={translate("Settings")} description={translate("Your business details, branding and account.")} />
+      <Card><CardHeader title={translate("Language")} subtitle={translate("Choose the language used throughout the app")} /><CardBody><LanguagePicker fullWidth /></CardBody></Card>
 
       {/* Business */}
       <Card>
-        <CardHeader title="Business details" subtitle="Shown on receipts and reports" icon={FiBriefcase} />
+        <CardHeader title={translate("Business details")} subtitle={translate("Shown on receipts and reports")} icon={FiBriefcase} />
         <CardBody>
           <form onSubmit={handleSaveBusiness} className="space-y-2.5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <Input
-                label="Business name"
+                label={translate("Business name")}
                 required
                 value={business.businessName}
                 onChange={setBusinessField('businessName')}
                 className="sm:col-span-2"
               />
               <Input
-                label="Tagline"
+                label={translate("Tagline")}
                 value={business.tagline}
                 onChange={setBusinessField('tagline')}
-                placeholder="Inventory Management System"
+                placeholder={translate("Inventory Management System")}
                 className="sm:col-span-2"
               />
               {/* Every money and quantity field in the app declares its keyboard;
                   this one was missed and opened the alphabetic one. */}
               <Input
-                label="Phone"
+                label={translate("Phone")}
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
@@ -302,9 +306,9 @@ export default function Settings() {
                 onChange={setBusinessField('phone')}
                 placeholder="+92 300 0000000"
               />
-              <Input label="Email" type="email" value={business.email} onChange={setBusinessField('email')} placeholder="Business email address" />
+              <Input label={translate("Email")} type="email" value={business.email} onChange={setBusinessField('email')} placeholder={translate("Business email address")} />
               <Input
-                label="City"
+                label={translate("City")}
                 value={business.address?.city || ''}
                 onChange={(event) =>
                   setBusiness((current) => ({
@@ -314,7 +318,7 @@ export default function Settings() {
                 }
               />
               <Input
-                label="Country"
+                label={translate("Country")}
                 value={business.address?.country || ''}
                 onChange={(event) =>
                   setBusiness((current) => ({
@@ -324,7 +328,7 @@ export default function Settings() {
                 }
               />
               <Input
-                label="Currency symbol"
+                label={translate("Currency symbol")}
                 value={business.currency?.symbol || ''}
                 onChange={(event) =>
                   setBusiness((current) => ({
@@ -332,10 +336,10 @@ export default function Settings() {
                     currency: { ...current.currency, symbol: event.target.value },
                   }))
                 }
-                hint="Used everywhere money is shown"
+                hint={translate("Used everywhere money is shown")}
               />
               <Select
-                label="Currency code"
+                label={translate("Currency code")}
                 value={business.currency?.code || 'PKR'}
                 onChange={(event) =>
                   setBusiness((current) => ({
@@ -351,7 +355,7 @@ export default function Settings() {
                 ))}
               </Select>
               <Input
-                label="Receipt footer"
+                label={translate("Receipt footer")}
                 value={business.receiptSettings?.footerText || ''}
                 onChange={(event) =>
                   setBusiness((current) => ({
@@ -359,15 +363,13 @@ export default function Settings() {
                     receiptSettings: { ...current.receiptSettings, footerText: event.target.value },
                   }))
                 }
-                placeholder="Thank you for your business!"
+                placeholder={translate("Thank you for your business!")}
                 className="sm:col-span-2"
               />
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button type="submit" loading={savingBusiness}>
-                Save details
-              </Button>
+              <Button type="submit" loading={savingBusiness}>{translate("Save details")}</Button>
             </div>
           </form>
         </CardBody>
@@ -375,7 +377,7 @@ export default function Settings() {
 
       {/* Branding */}
       <Card>
-        <CardHeader title="Branding" subtitle="Logo and colour used across the app" icon={FiImage} />
+        <CardHeader title={translate("Branding")} subtitle={translate("Logo and colour used across the app")} icon={FiImage} />
         <CardBody className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="w-20 h-20 rounded-xl border border-hairline/[0.07] bg-surface-sunken flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -383,7 +385,7 @@ export default function Settings() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {!settings.logo && <span className="w-full text-xs text-content-muted">Default mill logo</span>}
+              {!settings.logo && <span className="w-full text-xs text-content-muted">{translate("Default mill logo")}</span>}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -396,25 +398,23 @@ export default function Settings() {
                 onClick={() => fileInputRef.current?.click()}
                 loading={uploadingLogo}
               >
-                {settings.logo ? 'Replace logo' : 'Upload logo'}
+                {translate(settings.logo ? 'Replace logo' : 'Upload logo')}
               </Button>
               {settings.logo && (
-                <Button variant="dangerGhost" icon={FiTrash2} onClick={handleRemoveLogo} disabled={uploadingLogo}>
-                  Remove
-                </Button>
+                <Button variant="dangerGhost" icon={FiTrash2} onClick={handleRemoveLogo} disabled={uploadingLogo}>{translate("Remove")}</Button>
               )}
             </div>
           </div>
 
           <div>
-            <p className="text-sm font-medium text-content-muted mb-2">Brand colour</p>
+            <p className="text-sm font-medium text-content-muted mb-2">{translate("Brand colour")}</p>
             <div className="flex flex-wrap gap-2">
               {PRESET_COLORS.map((color) => (
                 <button
                   key={color.hex}
                   type="button"
                   onClick={() => previewColor(color.hex)}
-                  aria-label={color.name}
+                  aria-label={translate(color.name)}
                   aria-pressed={business.primaryColor === color.hex}
                   style={{ backgroundColor: color.hex }}
                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-transform
@@ -451,22 +451,20 @@ export default function Settings() {
                 disabled={!brandDirty}
                 onClick={saveBrandColour}
               >
-                {brandDirty ? 'Save colour' : 'Colour saved'}
+                {translate(brandDirty ? 'Save colour' : 'Colour saved')}
               </Button>
               {brandDirty && (
                 <button
                   type="button"
                   onClick={discardBrandColour}
                   className="text-sm font-medium text-content-muted min-h-[36px] px-1"
-                >
-                  Discard
-                </button>
+                >{translate("Discard")}</button>
               )}
             </div>
             <p className="text-xs text-content-subtle mt-2">
-              {brandDirty
+              {translate(brandDirty
                 ? 'Previewing. Save to apply it everywhere.'
-                : 'Used across every screen, and on printed receipts.'}
+                : 'Used across every screen, and on printed receipts.')}
             </p>
           </div>
         </CardBody>
@@ -474,7 +472,7 @@ export default function Settings() {
 
       {/* Appearance */}
       <Card>
-        <CardHeader title="Appearance" subtitle="Light, dark or follow your device" icon={FiMoon} />
+        <CardHeader title={translate("Appearance")} subtitle={translate("Light, dark or follow your device")} icon={FiMoon} />
         <CardBody>
           <div className="flex flex-wrap gap-2">
             {[
@@ -493,7 +491,7 @@ export default function Settings() {
                     : 'bg-surface-1 border-hairline/[0.12] text-content-muted hover:bg-hairline/[0.05]'
                 }`}
               >
-                {option.label}
+                {translate(option.label)}
               </button>
             ))}
           </div>
@@ -503,14 +501,14 @@ export default function Settings() {
       {/* Feedback */}
       <Card>
         <CardHeader
-          title="Sound & haptics"
-          subtitle="Soft cues when you save, download, or hit an error"
+          title={translate("Sound & haptics")}
+          subtitle={translate("Soft cues when you save, download, or hit an error")}
           icon={FiVolume2}
         />
         <CardBody className="space-y-3">
           <Checkbox
-            label="Sound effects"
-            description="Short chimes on success and errors — works on iPhone and Android after your first tap"
+            label={translate("Sound effects")}
+            description={translate("Short chimes on success and errors — works on iPhone and Android after your first tap")}
             checked={feedbackPrefs.sound}
             onChange={(e) => {
               unlockFeedbackAudio();
@@ -520,13 +518,13 @@ export default function Settings() {
             }}
           />
           <Checkbox
-            label="Haptic vibration"
+            label={translate("Haptic vibration")}
             description={
-              getHapticsSupportHint() === 'vibrate'
+              translate(getHapticsSupportHint() === 'vibrate'
                 ? 'Feel a short pulse after an action. Turn on to try it.'
                 : getHapticsSupportHint() === 'ios-switch'
                   ? 'Available for some iPhone interactions. Keep sound on if you prefer audible feedback.'
-                  : 'Not available in this browser. Sound effects still work.'
+                  : 'Not available in this browser. Sound effects still work.')
             }
             checked={feedbackPrefs.haptics}
             onChange={(e) => {
@@ -541,26 +539,24 @@ export default function Settings() {
 
       {/* Account */}
       <Card>
-        <CardHeader title="Your account" icon={FiUser} />
+        <CardHeader title={translate("Your account")} icon={FiUser} />
         <CardBody>
           <form onSubmit={handleSaveProfile} className="space-y-2.5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <Input
-                label="Name"
+                label={translate("Name")}
                 value={profile.name}
                 onChange={(event) => setProfile((p) => ({ ...p, name: event.target.value }))}
               />
               <Input
-                label="Email"
+                label={translate("Email")}
                 type="email"
                 value={profile.email}
                 onChange={(event) => setProfile((p) => ({ ...p, email: event.target.value }))}
               />
             </div>
             <div className="flex justify-end">
-              <Button type="submit" variant="secondary" loading={savingProfile}>
-                Update profile
-              </Button>
+              <Button type="submit" variant="secondary" loading={savingProfile}>{translate("Update profile")}</Button>
             </div>
           </form>
         </CardBody>
@@ -568,11 +564,11 @@ export default function Settings() {
 
       {/* Password */}
       <Card>
-        <CardHeader title="Password" subtitle="Change the password you sign in with" icon={FiLock} />
+        <CardHeader title={translate("Password")} subtitle={translate("Change the password you sign in with")} icon={FiLock} />
         <CardBody>
           <form onSubmit={handleChangePassword} className="space-y-2.5">
             <Input
-              label="Current password"
+              label={translate("Current password")}
               type="password"
               required
               autoComplete="current-password"
@@ -581,7 +577,7 @@ export default function Settings() {
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <Input
-                label="New password"
+                label={translate("New password")}
                 type="password"
                 required
                 minLength={6}
@@ -590,7 +586,7 @@ export default function Settings() {
                 onChange={(event) => setPasswords((p) => ({ ...p, newPassword: event.target.value }))}
               />
               <Input
-                label="Confirm new password"
+                label={translate("Confirm new password")}
                 type="password"
                 required
                 autoComplete="new-password"
@@ -601,14 +597,12 @@ export default function Settings() {
 
             {passwordError && (
               <p className="text-sm text-red-500" role="alert">
-                {passwordError}
+                {translate(passwordError)}
               </p>
             )}
 
             <div className="flex justify-end">
-              <Button type="submit" variant="secondary" loading={savingPassword}>
-                Change password
-              </Button>
+              <Button type="submit" variant="secondary" loading={savingPassword}>{translate("Change password")}</Button>
             </div>
           </form>
         </CardBody>

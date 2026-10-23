@@ -1,4 +1,6 @@
 import { toast as sonnerToast } from 'sonner';
+import React from 'react';
+import { useAppLanguage } from '../context/LanguageContext';
 import {
   feedbackDownload,
   feedbackError,
@@ -7,9 +9,14 @@ import {
   feedbackWarning,
 } from './feedback';
 
+function ToastMessage({ value }) {
+  const { t } = useAppLanguage();
+  return <>{t(value)}</>;
+}
+const localMessage = (value) => typeof value === 'string' ? <ToastMessage value={value} /> : value;
 const withFeedback = (fn, play) => (message, options) => {
   play();
-  return fn(message, options);
+  return fn(localMessage(message), options);
 };
 
 /**
@@ -18,7 +25,7 @@ const withFeedback = (fn, play) => (message, options) => {
  * for report exports.
  */
 export const toast = Object.assign(
-  (...args) => sonnerToast(...args),
+  (message, options) => sonnerToast(localMessage(message), options),
   {
     ...sonnerToast,
     success: (message, options = {}) => {
@@ -27,13 +34,13 @@ export const toast = Object.assign(
       else if (kind === 'tick') feedbackTick();
       else if (kind !== 'none') feedbackSuccess();
       const { feedback: _f, ...rest } = options;
-      return sonnerToast.success(message, rest);
+      return sonnerToast.success(localMessage(message), rest);
     },
     error: withFeedback(sonnerToast.error, feedbackError),
     warning: withFeedback(sonnerToast.warning, feedbackWarning),
-    message: sonnerToast.message,
-    info: sonnerToast.info || sonnerToast.message,
-    loading: sonnerToast.loading,
+    message: (message, options) => sonnerToast.message(localMessage(message), options),
+    info: (message, options) => (sonnerToast.info || sonnerToast.message)(localMessage(message), options),
+    loading: (message, options) => sonnerToast.loading(localMessage(message), options),
     promise: sonnerToast.promise,
     dismiss: sonnerToast.dismiss,
     custom: sonnerToast.custom,

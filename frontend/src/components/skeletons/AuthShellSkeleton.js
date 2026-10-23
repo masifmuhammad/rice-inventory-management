@@ -1,13 +1,15 @@
 import React from 'react';
 import { Skeleton, SkeletonGate, SkeletonText } from '../ui/Skeleton';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /** Centered card skeleton for login / change-password while auth initialises. */
 export default function AuthShellSkeleton() {
+  useAppLanguage();
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 py-12 app-gradient"
       aria-busy="true"
-      aria-label="Loading"
+      aria-label={translate("Loading")}
     >
       <SkeletonGate className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8 space-y-3">

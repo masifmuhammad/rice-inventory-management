@@ -13,6 +13,7 @@ import { Input, Select } from '../components/ui/Field';
 import BrandLogo from '../components/BrandLogo';
 import { EmptyState, ErrorState } from '../components/ui/States';
 import { Skeleton, SkeletonGate } from '../components/ui/Skeleton';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const COLOR_PRESETS = [
   { name: 'Forest', primary: '#059669', accent: '#10b981' },
@@ -22,6 +23,7 @@ const COLOR_PRESETS = [
 ];
 
 export default function Businesses() {
+  useAppLanguage();
   const navigate = useNavigate();
   const { businesses, can, switchBusiness } = useAuth();
   const { settings, updateSettings } = useSettings();
@@ -121,21 +123,20 @@ export default function Businesses() {
   return (
     <div className="space-y-6">
       <PageHeader
-        summary={list.length + ' accessible businesses'}
-        title="Businesses"
-        description="Manage organisations, branding, and logos. Only admins can change logos."
+        summary={translate("{0} accessible businesses", [list.length])}
+        title={translate("Businesses")}
+        description={translate("Manage organisations, branding, and logos. Only admins can change logos.")}
       />
 
-      {error && <ErrorState message={error} onRetry={load} />}
+      {error && <ErrorState message={translate(error)} onRetry={load} />}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <Card>
           <CardBody className="space-y-4">
             <h2 className="text-lg font-display font-semibold text-content flex items-center gap-2">
-              <FiBriefcase aria-hidden="true" /> Your businesses
-            </h2>
+              <FiBriefcase aria-hidden="true" />{translate(" Your businesses")}</h2>
             {loading ? (
-              <SkeletonGate className="space-y-2" aria-busy="true" aria-label="Loading businesses">
+              <SkeletonGate className="space-y-2" aria-busy="true" aria-label={translate("Loading businesses")}>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}
@@ -147,7 +148,7 @@ export default function Businesses() {
                 ))}
               </SkeletonGate>
             ) : list.length === 0 ? (
-              <EmptyState title="No businesses yet" description="Create one below." />
+              <EmptyState title={translate("No businesses yet")} description={translate("Create one below.")} />
             ) : (
               <ul className="space-y-2">
                 {list.map((business) => (
@@ -175,9 +176,7 @@ export default function Businesses() {
                           setSwitching(null);
                         }
                       }}
-                    >
-                      Open
-                    </Button>
+                    >{translate("Open")}</Button>
                   </li>
                 ))}
               </ul>
@@ -187,7 +186,7 @@ export default function Businesses() {
 
         <Card>
           <CardBody className="space-y-4">
-            <h2 className="text-lg font-display font-semibold text-content">Active business branding</h2>
+            <h2 className="text-lg font-display font-semibold text-content">{translate("Active business branding")}</h2>
             <div className="flex items-center gap-4">
               <BrandLogo size={56} rounded="rounded-2xl" />
               <div>
@@ -196,9 +195,7 @@ export default function Businesses() {
                   <input type="file" accept="image/*" className="sr-only" onChange={handleLogo} disabled={logoUploading} />
                   {logoUploading ? (
                     <span className="inline-flex items-center gap-2">
-                      <Skeleton className="w-4 h-4 rounded" />
-                      Uploading…
-                    </span>
+                      <Skeleton className="w-4 h-4 rounded" />{translate("Uploading…")}</span>
                   ) : (
                     'Change logo'
                   )}
@@ -214,7 +211,7 @@ export default function Businesses() {
                   className="px-3 py-2 min-h-[44px] rounded-full text-xs font-medium border border-hairline/[0.07] hover:border-primary-400 transition-colors"
                   style={{ background: preset.primary, color: '#fff' }}
                 >
-                  {preset.name}
+                  {translate(preset.name)}
                 </button>
               ))}
             </div>
@@ -225,18 +222,17 @@ export default function Businesses() {
       <Card>
         <CardBody>
           <h2 className="text-lg font-display font-semibold text-content mb-4 flex items-center gap-2">
-            <FiPlus aria-hidden="true" /> Add a business
-          </h2>
+            <FiPlus aria-hidden="true" />{translate(" Add a business")}</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-2xl">
             <Input
-              label="Business name"
+              label={translate("Business name")}
               required
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="e.g. 999"
+              placeholder={translate("e.g. 999")}
             />
             <Select
-              label="Colour preset"
+              label={translate("Colour preset")}
               value={form.primaryColor}
               onChange={(e) => {
                 const preset = COLOR_PRESETS.find((p) => p.primary === e.target.value) || COLOR_PRESETS[0];
@@ -245,14 +241,12 @@ export default function Businesses() {
             >
               {COLOR_PRESETS.map((preset) => (
                 <option key={preset.name} value={preset.primary}>
-                  {preset.name}
+                  {translate(preset.name)}
                 </option>
               ))}
             </Select>
             <div className="sm:col-span-2">
-              <Button type="submit" loading={creating} icon={FiPlus}>
-                Create business
-              </Button>
+              <Button type="submit" loading={creating} icon={FiPlus}>{translate("Create business")}</Button>
             </div>
           </form>
         </CardBody>

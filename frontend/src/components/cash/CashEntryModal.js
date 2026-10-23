@@ -4,6 +4,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { isValidDate, todayInput } from '../../utils/date';
 import Modal from '../ui/Modal';
 import { Input, Select, Textarea } from '../ui/Field';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 // Local, not `toISOString()`. In PKT (UTC+5) the UTC day is still yesterday
 // until 05:00, so a sale entered at 01:30 pre-filled — and was capped at — the
@@ -40,6 +41,7 @@ const COPY = {
 };
 
 export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoading = false, entry, defaultDirection = 'in' }) {
+  useAppLanguage();
   const { currencySymbol } = useSettings();
   const [values, setValues] = useState(EMPTY);
   const [errors, setErrors] = useState({});
@@ -128,7 +130,7 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
       onClose={saving ? () => {} : onClose}
       disableClose={saving}
       busy={saving}
-      title={isEditing ? 'Edit cash entry' : copy.title}
+      title={translate(isEditing ? 'Edit cash entry' : copy.title)}
       size="md"
       submit={{
         form: 'cash-form',
@@ -160,7 +162,7 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
                   }`}
               >
                 <Icon className="w-4 h-4" aria-hidden="true" />
-                {option.label}
+                {translate(option.label)}
               </button>
             );
           })}
@@ -168,7 +170,7 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <Input
-            label="Amount"
+            label={translate("Amount")}
             className="amount-entry [&_input]:font-money"
             style={{ fontSize: '2rem', lineHeight: 1.2, fontWeight: 600, letterSpacing: '-0.03em' }}
             required
@@ -184,59 +186,59 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
             autoFocus
           />
           <Input
-            label="Date"
+            label={translate("Date")}
             type="date"
             value={values.occurredAt}
             onChange={set('occurredAt')}
             error={errors.occurredAt}
             max={today()}
-            hint="Back-date if it happened earlier"
+            hint={translate("Back-date if it happened earlier")}
           />
         </div>
 
         <Select
-          label="Category"
+          label={translate("Category")}
           value={values.category}
           onChange={set('category')}
           disabled={metaLoading}
-          hint={metaLoading ? 'Loading categories…' : undefined}
+          hint={translate(metaLoading ? 'Loading categories…' : undefined)}
         >
           {metaLoading ? (
-            <option value="">Loading…</option>
+            <option value="">{translate("Loading…")}</option>
           ) : (
             categories.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {translate(option)}
               </option>
             ))
           )}
         </Select>
 
         <Input
-          label="Purpose"
+          label={translate("Purpose")}
           required
           value={values.purpose}
           onChange={set('purpose')}
           error={errors.purpose}
-          placeholder={copy.purposePlaceholder}
+          placeholder={translate(copy.purposePlaceholder)}
         />
 
         <details className="group rounded-xl border border-hairline/[0.08] px-3.5">
-          <summary className="min-h-[44px] flex items-center text-sm font-medium text-content-muted cursor-pointer">Person, reference &amp; notes <span className="ml-auto text-lg group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
+          <summary className="min-h-[44px] flex items-center text-sm font-medium text-content-muted cursor-pointer">{translate("Person, reference & notes ")}<span className="ml-auto text-lg group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
           <div className="space-y-2.5 pb-3.5">
           <Input
-            label={copy.partyLabel}
+            label={translate(copy.partyLabel)}
             value={values.party}
             onChange={set('party')}
-            placeholder={copy.partyPlaceholder}
+            placeholder={translate(copy.partyPlaceholder)}
           />
           <Input
-            label="Reference"
+            label={translate("Reference")}
             value={values.reference}
             onChange={set('reference')}
-            placeholder="Voucher or receipt no."
+            placeholder={translate("Voucher or receipt no.")}
           />
-        <Textarea label="Notes" value={values.notes} onChange={set('notes')} placeholder="Optional details…" />
+        <Textarea label={translate("Notes")} value={values.notes} onChange={set('notes')} placeholder={translate("Optional details…")} />
           </div>
         </details>
       </form>

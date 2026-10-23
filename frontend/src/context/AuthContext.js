@@ -12,6 +12,7 @@ import api, {
   setToken,
   TOKEN_KEY,
 } from '../services/api';
+import { translate, useAppLanguage } from './LanguageContext';
 
 const AuthContext = createContext(null);
 
@@ -85,6 +86,7 @@ export const useAuth = () => {
 };
 
 export function AuthProvider({ children }) {
+  useAppLanguage();
   const [user, setUser] = useState(() => (getToken() ? getCachedUser() : null));
   const [businessId, setBusinessId] = useState(readBusinessId);
   const [businesses, setBusinesses] = useState(readBusinesses);
@@ -333,7 +335,7 @@ export function AuthProvider({ children }) {
     ]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{translate(children)}</AuthContext.Provider>;
 }
 
 export default AuthContext;

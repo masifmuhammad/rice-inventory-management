@@ -1,8 +1,10 @@
 import React from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /** Compact pager: enough to move around a long ledger without a page-number carpet. */
 export default function Pagination({ page, pages, total, limit, onChange, className = '' }) {
+  useAppLanguage();
   if (!pages || pages <= 1) return null;
 
   const from = (page - 1) * limit + 1;
@@ -15,9 +17,8 @@ export default function Pagination({ page, pages, total, limit, onChange, classN
     >
       <p className="text-sm text-content-muted tabular-nums">
         <span className="font-medium text-content">
-          {from}–{to}
-        </span>{' '}
-        of <span className="font-medium text-content">{total}</span>
+          {translate(from)}–{translate(to)}
+        </span>{' '}{translate("of ")}<span className="font-medium text-content">{total}</span>
       </p>
 
       <div className="flex items-center gap-2">
@@ -29,12 +30,10 @@ export default function Pagination({ page, pages, total, limit, onChange, classN
             text-content-muted bg-surface-1 border border-hairline/[0.12] hover:bg-hairline/[0.05]
             disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <FiChevronLeft className="w-4 h-4" aria-hidden="true" />
-          Previous
-        </button>
+          <FiChevronLeft className="w-4 h-4" aria-hidden="true" />{translate("Previous")}</button>
 
         <span className="text-sm text-content-muted px-2 tabular-nums whitespace-nowrap">
-          {page} / {pages}
+          {translate(page)} / {translate(pages)}
         </span>
 
         <button
@@ -44,9 +43,7 @@ export default function Pagination({ page, pages, total, limit, onChange, classN
           className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] rounded-lg text-sm font-medium
             text-content-muted bg-surface-1 border border-hairline/[0.12] hover:bg-hairline/[0.05]
             disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          Next
-          <FiChevronRight className="w-4 h-4" aria-hidden="true" />
+        >{translate("Next")}<FiChevronRight className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
     </div>

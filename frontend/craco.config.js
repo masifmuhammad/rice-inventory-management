@@ -4,6 +4,15 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 module.exports = {
   webpack: {
+    configure: (config) => {
+      // ZXing's published browser package points at unshipped TypeScript sources.
+      // Keep application source maps and every other build warning enabled.
+      config.ignoreWarnings = [...(config.ignoreWarnings || []), {
+        module: /node_modules[\\/]@zxing[\\/]/,
+        message: /Failed to parse source map/,
+      }];
+      return config;
+    },
     plugins: {
       // Service worker + API caching in dev caused stale/broken responses after
       // Docker rebuilds. Only enable for production builds.

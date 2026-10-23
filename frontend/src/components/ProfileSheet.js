@@ -7,11 +7,13 @@ import api, { getErrorMessage } from '../services/api';
 import UserAvatar from './UserAvatar';
 import Modal from './ui/Modal';
 import Button from './ui/Button';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ACCEPT = 'image/png,image/jpeg,image/webp';
 
 export default function ProfileSheet({ open, onClose }) {
+  useAppLanguage();
   const { user, updateUser } = useAuth();
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -69,8 +71,8 @@ export default function ProfileSheet({ open, onClose }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Your profile"
-      description="Update how you appear across the app."
+      title={translate("Your profile")}
+      description={translate("Update how you appear across the app.")}
       size="sm"
       busy={uploading}
       disableClose={uploading}
@@ -82,7 +84,7 @@ export default function ProfileSheet({ open, onClose }) {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             className="group relative rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-1"
-            aria-label="Change profile picture"
+            aria-label={translate("Change profile picture")}
           >
             <UserAvatar name={user.name} avatar={user.avatar} size="xl" />
             <span className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 group-disabled:opacity-50 transition-colors flex items-center justify-center">
@@ -92,7 +94,7 @@ export default function ProfileSheet({ open, onClose }) {
           <div>
             <p className="font-semibold text-content">{user.name}</p>
             <p className="text-sm text-content-subtle break-words">{user.email}</p>
-            <p className="text-xs text-content-subtle capitalize mt-0.5">{user.role}</p>
+            <p className="text-xs text-content-subtle capitalize mt-0.5">{translate(user.role)}</p>
           </div>
         </div>
 
@@ -110,12 +112,10 @@ export default function ProfileSheet({ open, onClose }) {
             loading={uploading}
             onClick={() => fileInputRef.current?.click()}
           >
-            {user.avatar ? 'Replace photo' : 'Upload photo'}
+            {translate(user.avatar ? 'Replace photo' : 'Upload photo')}
           </Button>
           {user.avatar && (
-            <Button variant="dangerGhost" icon={FiTrash2} onClick={handleRemove} disabled={uploading}>
-              Remove
-            </Button>
+            <Button variant="dangerGhost" icon={FiTrash2} onClick={handleRemove} disabled={uploading}>{translate("Remove")}</Button>
           )}
         </div>
 
@@ -125,9 +125,7 @@ export default function ProfileSheet({ open, onClose }) {
             onClick={onClose}
             className="flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-content-muted hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
           >
-            <FiSettings className="w-4 h-4" aria-hidden="true" />
-            Account & business settings
-          </Link>
+            <FiSettings className="w-4 h-4" aria-hidden="true" />{translate("Account & business settings")}</Link>
         </div>
       </div>
     </Modal>

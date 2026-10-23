@@ -100,6 +100,50 @@ CREATE INDEX IF NOT EXISTS idx_transactions_business_created ON transactions (bu
 CREATE INDEX IF NOT EXISTS idx_transactions_product_created ON transactions (product_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_transactions_type_created ON transactions (type, created_at DESC);
 
+-- Labels identify physical packs, not interchangeable copies of a product SKU.
+-- Creating/printing a prepared label does not change stock.
+CREATE TABLE IF NOT EXISTS barcode_batches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+  request_id UUID NOT NULL,
+  request_data JSONB NOT NULL,
+  created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (business_id, request_id)
+);
+
+CREATE TABLE IF NOT EXISTS barcode_labels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  batch_id UUID NOT NULL REFERENCES barcode_batches(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+  code VARCHAR(18) NOT NULL UNIQUE,
+  product_name VARCHAR(120) NOT NULL,
+  sku VARCHAR(40),
+  quantity NUMERIC(14,4) NOT NULL CHECK (quantity > 0),
+  unit VARCHAR(10) NOT NULL CHECK (unit IN ('kg', 'ton', 'bag', 'sack')),
+  batch_number VARCHAR(80),
+  expiry_date DATE,
+  status VARCHAR(12) NOT NULL CHECK (status IN ('prepared', 'in_stock', 'stock_out')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_barcode_labels_product_status ON barcode_labels (business_id, product_id, status);
+CREATE INDEX IF NOT EXISTS idx_barcode_batches_created ON barcode_batches (business_id, created_at DESC);
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS barcode_label_id UUID REFERENCES barcode_labels(id) ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_transactions_barcode_label ON transactions (barcode_label_id, created_at DESC);
+
+-- Persist the acknowledgement so retrying a timed-out scan cannot repeat it.
+CREATE TABLE IF NOT EXISTS barcode_operations (
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  request_id UUID NOT NULL,
+  request_data JSONB NOT NULL,
+  result JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (business_id, request_id)
+);
+
 -- Preserve the cost basis of new movements when a product price changes later.
 -- Old movements remain nullable because their historical cost cannot be recovered.
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cost_price_snapshot NUMERIC(14, 4);

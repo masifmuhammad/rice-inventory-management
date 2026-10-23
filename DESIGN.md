@@ -28,6 +28,19 @@ colors:
   dark-content: "rgb(250 250 250)"
   dark-content-muted: "rgb(138 138 138)"
   dark-content-subtle: "rgb(155 155 155)"
+  inventory-stock-fill: "#e0edf3"
+  inventory-stock-ink: "#264c60"
+  inventory-lookup-ink: "#31586c"
+  inventory-in-fill: "#dceee3"
+  inventory-in-ink: "#215c40"
+  inventory-out-fill: "#e9e5fa"
+  inventory-out-ink: "#453678"
+  dark-inventory-stock-fill: "#223640"
+  dark-inventory-stock-ink: "#c1e0ed"
+  dark-inventory-in-fill: "#203b2c"
+  dark-inventory-in-ink: "#b9e3c8"
+  dark-inventory-out-fill: "#302b43"
+  dark-inventory-out-ink: "#d8cff5"
 typography:
   figure:
     fontFamily: "Manrope, system-ui, -apple-system, sans-serif"
@@ -67,11 +80,27 @@ typography:
     fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
     fontSize: "1rem"
   urdu:
-    fontFamily: "Noto Nastaliq Urdu, Noto Naskh Arabic, Segoe UI, Tahoma, sans-serif"
-    fontSize: "1.125rem"
-    fontWeight: 500
-    lineHeight: 2.15
+    fontFamily: "Noto Sans Arabic, system-ui, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.65
     letterSpacing: "0"
+  mobile-body:
+    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+    fontSize: "16px"
+    lineHeight: 1.5
+  mobile-control:
+    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+    fontSize: "16px"
+    lineHeight: 1.4
+  mobile-support:
+    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+    fontSize: "14px"
+    lineHeight: 1.5
+  mobile-navigation:
+    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+    fontSize: "12px"
+    lineHeight: 1.4
 rounded:
   card: "16px"
   well: "12px"
@@ -125,6 +154,36 @@ components:
     textColor: "{colors.content-muted}"
     rounded: "{rounded.full}"
     padding: "2px 8px"
+  inventory-action-stock:
+    backgroundColor: "{colors.inventory-stock-fill}"
+    textColor: "{colors.inventory-stock-ink}"
+    rounded: "{rounded.card}"
+    padding: "23px"
+  inventory-action-in:
+    backgroundColor: "{colors.inventory-in-fill}"
+    textColor: "{colors.inventory-in-ink}"
+    rounded: "{rounded.card}"
+    padding: "23px"
+  inventory-action-out:
+    backgroundColor: "{colors.inventory-out-fill}"
+    textColor: "{colors.inventory-out-ink}"
+    rounded: "{rounded.card}"
+    padding: "23px"
+  inventory-action-stock-dark:
+    backgroundColor: "{colors.dark-inventory-stock-fill}"
+    textColor: "{colors.dark-inventory-stock-ink}"
+    rounded: "{rounded.card}"
+    padding: "23px"
+  inventory-action-in-dark:
+    backgroundColor: "{colors.dark-inventory-in-fill}"
+    textColor: "{colors.dark-inventory-in-ink}"
+    rounded: "{rounded.card}"
+    padding: "23px"
+  inventory-action-out-dark:
+    backgroundColor: "{colors.dark-inventory-out-fill}"
+    textColor: "{colors.dark-inventory-out-ink}"
+    rounded: "{rounded.card}"
+    padding: "23px"
 ---
 
 # Design System: Rice inventory application
@@ -155,6 +214,10 @@ The `primary-*` tokens are the default emerald ramp. Settings may replace this r
 
 Meaningful positive stock status and the sales line use emerald; warnings use amber; destructive actions and errors use red. The sales line uses the darker emerald step in light mode and a lighter step in dark mode. Status labels remain present beside colour.
 
+### Inventory operation accents
+
+Pastel blue identifies viewing stock or reading a label, green identifies receiving, and lavender identifies selling. These paired fill/ink roles repeat on inventory action cards and selected scanner modes, with distinct dark-theme pairs. Label lookup uses its recorded stronger blue ink in light mode. Keep the operation's name in the selected language and package, inward-arrow, outward-arrow or search icon beside the colour; selected scanner modes also have an inset outline. These are operation identities, while transaction badges retain their existing semantic status colours. They do not replace runtime brand colours or the content-inversion primary button.
+
 ### Neutral
 
 `surface-base` is the canvas; `surface-1` holds cards and dialogs; `surface-2` and `surface-3` distinguish nested panels, tracks and hover states. `surface-sunken` is the recessed role. Their `dark-*` counterparts are the actual `.dark` overrides, not a separate composition. `content`, `content-muted` and `content-subtle` separate records, supporting text and hints.
@@ -163,9 +226,15 @@ Meaningful positive stock status and the sales line use emerald; warnings use am
 
 ## Typography
 
-Interface text and headings use System UI with platform fallbacks. Money uses Manrope, self-hosted through the bundled 600 and 700 font files. Figures use tabular lining numerals; ordinary quantities may retain the interface family. Urdu assistant body copy uses Noto Nastaliq Urdu with Arabic and system fallbacks and generous leading.
+Interface text and headings use System UI with platform fallbacks. Money uses Manrope, self-hosted through the bundled 600 and 700 font files. Figures use tabular lining numerals; ordinary quantities may retain the interface family. Urdu uses self-hosted Noto Sans Arabic (400 and 600), loaded only when selected, with generous leading and normal letter spacing.
 
 The frontmatter records the configured type roles and shared figure treatment. Figure size also has a smaller responsive variant. Cash-entry figures and headline totals use context-specific sizing; do not force every monetary value to headline size. The `body` role is a named text utility, while the base body has normal tracking. Coarse-pointer styles enlarge small text and restore normal body tracking; actual text inputs remain at least (16px) on phones.
+
+Below (640px), the mobile body, control, support and navigation roles override the desktop utilities. Floating labels have a (14px) base and pin at (0.875) scale. The compact language trigger also uses (12px) text within a (44px) target; ordinary language menu options use (16px) text and (48px) rows. These overrides follow generated utilities so support copy remains readable.
+
+English is the default. A persistent English/Urdu picker is available in the header, sign-in page and Settings; the choice is saved locally. Urdu changes operating screens to right-to-left; product names, stored data and barcode identifiers remain unchanged. Barcode, numeric, email, password and date inputs remain left-to-right. Money retains Manrope. Urdu floating fields grow to (64px) minimum height, with normal tracking and generous leading. The independently branded public landing page retains its own language composition.
+
+**The Selected Language Rule.** Show interface copy in the selected language; do not stack English and Urdu translations on the same operating control.
 
 **The Numeric Clarity Rule.** Keep amounts tabular, include their currency or unit, and preserve the distinction between money and ordinary interface copy.
 
@@ -178,6 +247,8 @@ The additional `xs` breakpoint is (400px). Existing Tailwind boundaries are `sm`
 The sticky header is (60px) on phones and (64px) from `sm`, excluding safe-area and desktop top inset. Product search appears from `lg`; tablet header space belongs to identity and controls. Scrolled page summaries preserve key figures, with paired stock/cash text allowed two lines on narrow screens. Keep the active business explicit when its switcher is shown.
 
 Tables scroll inside their own horizontal pane. Sheets, pickers and the document must not acquire horizontal overflow. Reserve safe-area and navigation clearance at the bottom; the optional assistant adds bottom clearance below `lg` and a right gutter from `sm` so it cannot cover form actions.
+
+The barcode extension adds a Scan tab between Stock and Sales. Inventory actions retain three equal columns on phones, with single-language titles and outcome descriptions. Form grids allow children and fieldsets to shrink within their column; long rice names and option descriptions must not widen the document.
 
 ## Elevation & Depth
 
@@ -221,6 +292,16 @@ Dialogs become bottom sheets on phones and centred panels from `sm`. Constrain t
 
 Transitions should explain state, not decorate idle content. Use the shared non-bouncing UI springs and short opacity/transform transitions; gesture release may retain momentum. Honour reduced-motion preferences and preserve immediate navigation.
 
+When the last field exposes the form's submit action, keep Previous available while the keyboard is open so the user can revisit earlier entries.
+
+### Inventory actions and scanner feedback
+
+Large, single-language action cards use the inventory operation pairs, a direction or package icon, a title in the selected language and a short outcome. Cards use the existing card radius; their minimum height is (176px), or (164px) below (640px), where padding becomes (18px 12px). Mobile titles use (17px) and supporting outcomes use the mobile support role; Urdu titles and outcomes have extra leading (1.7 and 1.8). Keyboard focus uses the live brand outline. Fine-pointer hover lifts a card slightly (2px) and adds a restrained interaction shadow; pressing scales it to (0.985). Reduced motion removes this travel.
+
+Scanner modes pair the same operation colours with readable names, icons and an inset selected outline (2px). Stock-changing modes require an explicit start; label lookup does not change stock. Distinguish ready, pending, blocked and server-confirmed states with text. A scanner beep is not a stock confirmation. Confirmed results reveal once over (240ms); reduced motion shows the result immediately. Keep optional counter/customer details secondary to the scan controls.
+
+Printable labels remain white with dark ink in both themes. Their barcode is the actual Code 128 SVG for the pack code; preserve the human-readable number, quantity/unit and active business identity. Preview/test labels are explicitly distinguished from recorded stock labels.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -229,6 +310,7 @@ Transitions should explain state, not decorate idle content. Use the shared non-
 - **Do** use semantic tokens in both themes and retain editable business branding.
 - **Do** retain real labels, visible keyboard focus and comfortable phone controls.
 - **Do** use Manrope for money and System UI for interface text.
+- **Do** show one selected language at a time; use local Noto Sans Arabic and RTL in Urdu.
 - **Do** keep floating controls clear of content and form actions.
 - **Do** derive status and charts from actual records, with clear empty and error states.
 
@@ -240,6 +322,6 @@ Transitions should explain state, not decorate idle content. Use the shared non-
 - **Don't** let the soft keyboard conceal the active field or remove the field's label.
 - **Don't** apply overlay shadows and blur to every card or header.
 
-<!-- Extraction sources: frontend/src/index.css; frontend/tailwind.config.js; frontend/src/index.js; components/ui/{Field,Button,Card,Badge,Modal,KeyboardToolbar}.js; components/{Layout,AppHeader,MobileTabBar,BrandLogo,BusinessSwitcher}.js; utils/motion.js. Surface-specific composition remains in .impeccable/surfaces/app.md. CSS declarations take precedence over stale source comments. -->
+<!-- Extraction sources: frontend/src/index.css; frontend/src/MobileTypography.css; frontend/tailwind.config.js; frontend/src/index.js; components/ui/{Field,Button,Card,Badge,Modal,KeyboardToolbar}.js; components/{Layout,AppHeader,MobileTabBar,BrandLogo,BusinessSwitcher,InventoryActions,LanguagePicker}.js; context/LanguageContext.js; i18n/locale.js; utils/motion.js. Surface-specific composition remains in .impeccable/surfaces/app.md and inventory-scanning.md. CSS declarations take precedence over stale source comments. -->
 
 <!-- Public identity scope: the independent 999 landing page (/ for visitors, /welcome always) has its own identity, recorded in PRODUCT.md and implemented in frontend/src/pages/Landing.css. It does not replace this authenticated inventory design or active-business branding. -->

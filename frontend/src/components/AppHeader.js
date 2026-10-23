@@ -16,9 +16,12 @@ import { springSnappy, reducedTransition } from '../utils/motion';
 import NotificationPanel from './NotificationPanel';
 import UserAvatar from './UserAvatar';
 import BusinessSwitcher from './BusinessSwitcher';
+import LanguagePicker from './LanguagePicker';
 import { Input } from './ui/Field';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 function HeaderSearch() {
+  useAppLanguage();
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
 
@@ -29,12 +32,12 @@ function HeaderSearch() {
 
   return (
     <form onSubmit={submit} className="hidden lg:block relative min-w-[12rem] w-[min(18rem,28vw)]">
-      <Input label="Search products" enterKeyHint="search"
+      <Input label={translate("Search products")} enterKeyHint="search"
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search anything…"
-        aria-label="Search products"
+        placeholder={translate("Search anything…")}
+        aria-label={translate("Search products")}
 
       />
     </form>
@@ -42,6 +45,7 @@ function HeaderSearch() {
 }
 
 function HeaderCreate({ can }) {
+  useAppLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const navigate = useNavigate();
@@ -109,15 +113,13 @@ function HeaderCreate({ can }) {
           transition-[background-color,transform] duration-150
           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
       >
-        <FiPlus className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />
-        Create
-      </button>
+        <FiPlus className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />{translate("Create")}</button>
 
       <AnimatePresence>
         {open && (
           <motion.ul
             role="menu"
-            aria-label="Create"
+            aria-label={translate("Create")}
             initial={popFrom}
             animate={popTo}
             exit={popFrom}
@@ -139,7 +141,7 @@ function HeaderCreate({ can }) {
                       hover:bg-hairline/[0.05] hover:text-content min-h-[44px]"
                   >
                     <Icon className="w-4 h-4" aria-hidden="true" />
-                    {action.label}
+                    {translate(action.label)}
                   </button>
                 </li>
               );
@@ -156,6 +158,7 @@ function HeaderCreate({ can }) {
  * Mobile keeps the brand switcher centered.
  */
 export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
+  useAppLanguage();
   const { user, can } = useAuth();
   const { title: pageTitle, summary, collapsed } = usePageTitle();
 
@@ -169,7 +172,7 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
           <button
             type="button"
             onClick={onOpenDrawer}
-            aria-label="Open navigation menu"
+            aria-label={translate("Open navigation menu")}
             aria-expanded={drawerOpen}
             className="lg:hidden -ml-1 p-2.5 rounded-full text-content-muted hover:bg-hairline/[0.06] hover:text-content transition-colors min-h-[44px] min-w-[44px] grid place-items-center"
           >
@@ -178,8 +181,8 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
 
           {pageTitle ? (
             <div className="hidden lg:block min-w-0">
-              <h1 className="font-display text-title text-content truncate">{pageTitle}</h1>
-              {collapsed && summary && <p className="text-xs text-content-muted truncate mt-0.5" title={summary}>{summary}</p>}
+              <h1 className="font-display text-title text-content truncate">{translate(pageTitle)}</h1>
+              {collapsed && summary && <p className="text-xs text-content-muted truncate mt-0.5" title={translate(summary)}>{translate(summary)}</p>}
             </div>
           ) : null}
         </div>
@@ -198,14 +201,14 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
             Raising this above the two z-10 siblings puts the button back in
             front for hit-testing. The wrapper stays `pointer-events-none`, so it
             never steals taps meant for the hamburger or the bell. */}
-        <div className="lg:hidden absolute left-14 right-[7.25rem] sm:left-[4.5rem] sm:right-[14rem] z-20 flex justify-center pointer-events-none">
+        <div className="mobile-header-brand lg:hidden absolute left-14 right-[10.75rem] sm:left-[4.5rem] sm:right-[18rem] z-20 flex justify-center pointer-events-none">
           {collapsed ? (
             <div className="min-w-0 text-center pointer-events-auto" data-testid="compact-page-header">
               {/* Two lines at most: stacking every summary part overflowed the
                   60px bar onto the page below. The summary is one quiet line
                   that truncates; the page itself repeats the full figures. */}
-              <p className="text-[16px] leading-5 font-semibold tracking-tight text-content truncate">{pageTitle}</p>
-              {summary && <p className="text-[12px] leading-4 text-content-muted truncate tabular-nums" title={summary}>{summary.split(' | ').join(' · ')}</p>}
+              <p className="text-[16px] leading-5 font-semibold tracking-tight text-content truncate">{translate(pageTitle)}</p>
+              {summary && <p className="text-[12px] leading-4 text-content-muted truncate tabular-nums" title={translate(summary)}>{translate(summary.split(' | ').join(' · '))}</p>}
             </div>
           ) : <BusinessSwitcher className="pointer-events-auto min-w-0 max-w-[14rem]" centered showLogo />}
         </div>
@@ -213,6 +216,7 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
         <div className="z-10 flex items-center gap-2 sm:gap-2.5 flex-shrink-0 justify-end">
           <HeaderSearch />
           <HeaderCreate can={can} />
+          <LanguagePicker />
           <NotificationPanel variant="circle" />
           {/* Theme switching lives in the sidebar footer only — the reference
               keeps this corner to search, create, alerts and account. */}
@@ -220,8 +224,8 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
             type="button"
             onClick={onOpenProfile}
             className="grid place-items-center min-h-[44px] min-w-[44px] rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base"
-            title="Your profile"
-            aria-label={`Your profile — ${user?.name || 'Account'}`}
+            title={translate("Your profile")}
+            aria-label={translate("Your profile — {0}", [user?.name || 'Account'])}
           >
             <UserAvatar name={user?.name} avatar={user?.avatar} size="sm" />
           </button>

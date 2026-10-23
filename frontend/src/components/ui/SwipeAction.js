@@ -4,6 +4,7 @@ import { FiTrash2 } from 'react-icons/fi';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../../utils/motion';
 import { feedbackWarning } from '../../utils/feedback';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /** How far the row must travel before the release counts as "delete". */
 const COMMIT = 96;
@@ -17,6 +18,7 @@ const COMMIT = 96;
  * anything; the swipe is a shortcut to the same dialog the button opens.
  */
 export default function SwipeAction({ children, onAction, label = 'Delete', disabled = false }) {
+  useAppLanguage();
   const reducedMotion = usePrefersReducedMotion();
   const x = useMotionValue(0);
   const [armed, setArmed] = useState(false);
@@ -43,7 +45,7 @@ export default function SwipeAction({ children, onAction, label = 'Delete', disa
       >
         <motion.span style={{ scale: iconScale }} className="flex items-center gap-2">
           <FiTrash2 className="w-4 h-4" />
-          <span className="text-sm font-semibold">{label}</span>
+          <span className="text-sm font-semibold">{translate(label)}</span>
         </motion.span>
       </motion.div>
 
@@ -77,7 +79,7 @@ export default function SwipeAction({ children, onAction, label = 'Delete', disa
         transition={transition}
         className="relative bg-surface-1 touch-pan-y"
       >
-        {children}
+        {translate(children)}
       </motion.div>
     </div>
   );

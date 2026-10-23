@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import NumberFlow, { useCanAnimate } from '@number-flow/react';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const parseNumeric = (value) => {
   if (value === null || value === undefined || value === '') return null;
@@ -33,6 +34,7 @@ export default function AnimatedValue({
   animate = true,
   title,
 }) {
+  useAppLanguage();
   const reducedMotion = usePrefersReducedMotion();
   const canAnimate = useCanAnimate({ respectMotionPreference: true });
   const numeric = parseNumeric(value);
@@ -68,9 +70,9 @@ export default function AnimatedValue({
        320px — and StatGrid's `overflow-hidden` sliced the unit clean off. */
     <span
       className="inline-flex flex-wrap items-baseline gap-x-1 max-w-full tabular-nums"
-      title={title}
+      title={translate(title)}
     >
-      {isMoney && symbol && <span className={unitClassName}>{symbol}</span>}
+      {isMoney && symbol && <span className={unitClassName}>{translate(symbol)}</span>}
       {shouldAnimate ? (
         /* Keyed by unit so a scale change snaps instead of spinning through a
            meaningless range: 1.2K dropping to 900 is a fall of 300, but the
@@ -89,9 +91,9 @@ export default function AnimatedValue({
           opacityTiming={fadeTiming}
         />
       ) : (
-        <span className={digitsClass}>{amount.toLocaleString('en-PK', format)}</span>
+        <span className={digitsClass}>{translate(amount.toLocaleString('en-PK', format))}</span>
       )}
-      {unit && <span className={unitClassName}>{unit}</span>}
+      {unit && <span className={unitClassName}>{translate(unit)}</span>}
     </span>
   );
 }

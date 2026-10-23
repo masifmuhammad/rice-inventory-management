@@ -6,6 +6,7 @@ const message = (text) => (req, res) => res.status(429).json({ message: text });
 
 /** Broad guard on the whole API surface. */
 const apiLimiter = rateLimit({
+  skip: (req) => /^\/barcodes(?:\/|$)/.test(req.path),
   windowMs: 15 * 60 * 1000,
   max: isTest ? 100000 : 1000,
   standardHeaders: true,
@@ -49,4 +50,11 @@ const aiLimiter = rateLimit({
   handler: message('Daily AI limit reached. Try again tomorrow or contact your admin.'),
 });
 
-module.exports = { apiLimiter, authLimiter, registerLimiter, aiLimiter };
+// A busy scan station needs a separate budget from ordinary page requests.
+// Still bound unauthenticated attempts before the database-backed auth check.
+const barcodeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: isTest ? 100000 : 12000,
+  standardHeaders: true, legacyHeaders: false,
+  handler: message('Too many barcode requests. Pause scanning and try again shortly.'),
+});
+module.exports = { apiLimiter, authLimiter, registerLimiter, aiLimiter, barcodeLimiter };

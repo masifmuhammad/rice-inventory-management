@@ -34,6 +34,7 @@ import { SkeletonStatCards, SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
 import SwipeAction from '../components/ui/SwipeAction';
 import CashEntryModal from '../components/cash/CashEntryModal';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const TABS = [
   { value: 'all', label: 'All' },
@@ -44,6 +45,7 @@ const TABS = [
 const LIMIT = 25;
 
 export default function CashBook() {
+  useAppLanguage();
   const { currencySymbol } = useSettings();
   const confirm = useConfirm();
   const location = useLocation();
@@ -165,17 +167,13 @@ export default function CashBook() {
   return (
     <div className="space-y-6">
       <PageHeader
-        summary={'Balance ' + formatCompactMoney(balance, currencySymbol)}
-        title="Cash Book"
-        description="Money in and money out, with a running balance. Sales post themselves."
+        summary={translate("Balance {0}", [formatCompactMoney(balance, currencySymbol)])}
+        title={translate("Cash Book")}
+        description={translate("Money in and money out, with a running balance. Sales post themselves.")}
         actions={
           <>
-            <Button variant="secondary" icon={FiArrowUpRight} onClick={() => openCreate('out')}>
-              Money out
-            </Button>
-            <Button variant="success" icon={FiArrowDownLeft} onClick={() => openCreate('in')}>
-              Money in
-            </Button>
+            <Button variant="secondary" icon={FiArrowUpRight} onClick={() => openCreate('out')}>{translate("Money out")}</Button>
+            <Button variant="success" icon={FiArrowDownLeft} onClick={() => openCreate('in')}>{translate("Money in")}</Button>
           </>
         }
       />
@@ -185,43 +183,43 @@ export default function CashBook() {
       ) : (
         <StatGrid className="cash-overview">
           <StatCard
-            title="Cash balance"
+            title={translate("Cash balance")}
             rawValue={balance}
             valueType="money"
             currencySymbol={currencySymbol}
             fullValue={formatMoney(balance, currencySymbol)}
-            hint={balance >= 0 ? 'In hand' : 'More out than in'}
+            hint={translate(balance >= 0 ? 'In hand' : 'More out than in')}
             icon={FiDollarSign}
             tone={balance < 0 ? 'danger' : 'neutral'}
           />
           <StatCard
-            title="Total in"
+            title={translate("Total in")}
             rawValue={summary.data?.totalIn}
             valueType="compactMoney"
             currencySymbol={currencySymbol}
             fullValue={formatMoney(summary.data?.totalIn, currencySymbol)}
-            hint={`${summary.data?.countIn || 0} entries`}
+            hint={translate("{0} entries", [summary.data?.countIn || 0])}
             icon={FiArrowDownLeft}
           />
           <StatCard
-            title="Total out"
+            title={translate("Total out")}
             rawValue={summary.data?.totalOut}
             valueType="compactMoney"
             currencySymbol={currencySymbol}
             fullValue={formatMoney(summary.data?.totalOut, currencySymbol)}
-            hint={`${summary.data?.countOut || 0} entries`}
+            hint={translate("{0} entries", [summary.data?.countOut || 0])}
             icon={FiArrowUpRight}
           />
           <StatCard
-            title="This month"
+            title={translate("This month")}
             rawValue={summary.data?.thisMonth?.net}
             valueType="compactMoney"
             currencySymbol={currencySymbol}
             fullValue={formatMoney(summary.data?.thisMonth?.net, currencySymbol)}
-            hint={`${formatCompactMoney(summary.data?.thisMonth?.in, currencySymbol)} in · ${formatCompactMoney(
+            hint={translate("{0} in · {1} out", [formatCompactMoney(summary.data?.thisMonth?.in, currencySymbol), formatCompactMoney(
               summary.data?.thisMonth?.out,
               currencySymbol
-            )} out`}
+            )])}
             icon={FiTrendingUp}
           />
         </StatGrid>
@@ -242,22 +240,22 @@ export default function CashBook() {
           />
 
           <div className="relative flex-1">
-            <Input label="Search cash entries"
+            <Input label={translate("Search cash entries")}
               type="search"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
                 setPage(1);
               }}
-              placeholder="Search purpose, person or reference…"
-              aria-label="Search cash entries"
+              placeholder={translate("Search purpose, person or reference…")}
+              aria-label={translate("Search cash entries")}
 
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                aria-label="Clear search"
+                aria-label={translate("Clear search")}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center min-h-[44px] min-w-[44px] text-content-subtle hover:text-content-muted rounded-lg"
               >
                 <FiX className="w-4 h-4" />
@@ -277,20 +275,18 @@ export default function CashBook() {
         {loading ? (
           <SkeletonTable rows={8} columns={4} />
         ) : ledger.error ? (
-          <ErrorState message={ledger.error} onRetry={ledger.refetch} />
+          <ErrorState message={translate(ledger.error)} onRetry={ledger.refetch} />
         ) : entries.length === 0 ? (
           <EmptyState
             icon={FiBookOpen}
-            title={search || tab !== 'all' ? 'Nothing matches' : 'The cash book is empty'}
+            title={translate(search || tab !== 'all' ? 'Nothing matches' : 'The cash book is empty')}
             description={
-              search || tab !== 'all'
+              translate(search || tab !== 'all'
                 ? 'Try a different search, or switch back to All.'
-                : 'Record money coming in or going out, and every sale you make will be added here automatically.'
+                : 'Record money coming in or going out, and every sale you make will be added here automatically.')
             }
             action={
-              <Button icon={FiArrowDownLeft} variant="success" onClick={() => openCreate('in')}>
-                Record money in
-              </Button>
+              <Button icon={FiArrowDownLeft} variant="success" onClick={() => openCreate('in')}>{translate("Record money in")}</Button>
             }
           />
         ) : (
@@ -331,22 +327,20 @@ export default function CashBook() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-sm font-semibold text-content truncate">{entry.purpose}</h3>
-                          <Badge tone={isIn ? 'success' : 'danger'}>{entry.category}</Badge>
+                          <Badge tone={isIn ? 'success' : 'danger'}>{translate(entry.category)}</Badge>
                           {auto && (
-                            <Badge tone="neutral" icon={FiZap}>
-                              Auto
-                            </Badge>
+                            <Badge tone="neutral" icon={FiZap}>{translate("Auto")}</Badge>
                           )}
                         </div>
 
                         <p className="mt-1 text-xs text-content-subtle">
-                          {[
+                          {translate([
                             entry.party && (isIn ? `From ${entry.party}` : `Taken by ${entry.party}`),
                             entry.reference && `Ref ${entry.reference}`,
                             formatSafe(entry.occurredAt || entry.createdAt, 'd MMM yyyy', null),
                           ]
                             .filter(Boolean)
-                            .join(' · ')}
+                            .join(' · '))}
                         </p>
 
                         {entry.notes && (
@@ -367,12 +361,11 @@ export default function CashBook() {
                             isIn ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                           }`}
                         >
-                          {isIn ? '+' : '−'}
-                          {formatMoney(entry.amount, currencySymbol)}
+                          {translate(isIn ? '+' : '−')}
+                          {translate(formatMoney(entry.amount, currencySymbol))}
                         </span>
                         {showBalance && entry.balanceAfter != null && (
-                          <span className="text-xs text-content-subtle tabular-nums whitespace-nowrap">
-                            bal {formatMoney(entry.balanceAfter, currencySymbol)}
+                          <span className="text-xs text-content-subtle tabular-nums whitespace-nowrap">{translate("bal ")}{translate(formatMoney(entry.balanceAfter, currencySymbol))}
                           </span>
                         )}
 
@@ -386,7 +379,7 @@ export default function CashBook() {
                                 setEditing(entry);
                                 setModalOpen(true);
                               }}
-                              aria-label="Edit entry"
+                              aria-label={translate("Edit entry")}
                               className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/12 transition-colors"
                             >
                               <FiEdit2 className="w-4 h-4" />
@@ -394,7 +387,7 @@ export default function CashBook() {
                             <button
                               type="button"
                               onClick={() => handleDelete(entry)}
-                              aria-label="Delete entry"
+                              aria-label={translate("Delete entry")}
                               className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-red-700 dark:text-red-400 hover:bg-red-500/10 transition-colors"
                             >
                               <FiTrash2 className="w-4 h-4" />
@@ -424,7 +417,7 @@ export default function CashBook() {
       {/* Where the money goes */}
       {summary.data?.byCategory?.length > 0 && (
         <Card>
-          <CardHeader title="By category" subtitle="Across everything recorded" icon={FiBookOpen} />
+          <CardHeader title={translate("By category")} subtitle={translate("Across everything recorded")} icon={FiBookOpen} />
           <CardBody>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
               {summary.data.byCategory.slice(0, 10).map((row) => (
@@ -438,15 +431,15 @@ export default function CashBook() {
                         row.direction === 'in' ? 'bg-emerald-500' : 'bg-red-500'
                       }`}
                     />
-                    <span className="truncate">{row.category}</span>
-                    <span className="text-xs text-content-subtle flex-shrink-0">({row.count})</span>
+                    <span className="truncate">{translate(row.category)}</span>
+                    <span className="text-xs text-content-subtle flex-shrink-0">({translate(row.count)})</span>
                   </span>
                   <span
                     className={`text-sm font-medium tabular-nums whitespace-nowrap ${
                       row.direction === 'in' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'
                     }`}
                   >
-                    {formatMoney(row.total, currencySymbol)}
+                    {translate(formatMoney(row.total, currencySymbol))}
                   </span>
                 </div>
               ))}

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef } from 'react';
 const importers = {
   '/': () => import('../pages/Dashboard'),
   '/products': () => import('../pages/Products'),
+  '/barcodes': () => import('../pages/Barcodes'),
   '/transactions': () => import('../pages/Transactions'),
   '/cash-book': () => import('../pages/CashBook'),
   '/reports': () => import('../pages/Reports'),
@@ -21,7 +22,7 @@ const importers = {
 };
 
 /** The routes the tab bar and swipe gesture can reach. */
-export const TAB_ROUTES = ['/', '/products', '/transactions', '/cash-book'];
+export const TAB_ROUTES = ['/', '/products', '/barcodes', '/transactions', '/cash-book'];
 
 /**
  * Warms every tab chunk once the app has gone quiet.

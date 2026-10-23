@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiArrowDownRight, FiArrowUpRight, FiMinus } from 'react-icons/fi';
 import AnimatedValue from './AnimatedValue';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /**
  * Wraps headline stats into a single instrument panel. Cells are divided by
@@ -8,9 +9,10 @@ import AnimatedValue from './AnimatedValue';
  * keeps four numbers reading as one group.
  */
 export function StatGrid({ children, className = '' }) {
+  useAppLanguage();
   return (
     <div className={`surface-card rounded-card overflow-hidden ${className}`}>
-      <div className="stat-grid">{children}</div>
+      <div className="stat-grid">{translate(children)}</div>
     </div>
   );
 }
@@ -40,6 +42,7 @@ export default function StatCard({
   tone = 'neutral',
   size = 'md',
 }) {
+  useAppLanguage();
   const hasChange = typeof change === 'number' && Number.isFinite(change);
   const isUp = hasChange && change > 0;
   const isFlat = hasChange && change === 0;
@@ -61,7 +64,7 @@ export default function StatCard({
         {Icon && (
           <Icon className="w-4 h-4 flex-shrink-0 text-content-muted" aria-hidden="true" />
         )}
-        <p className="text-caption font-medium text-content-muted truncate">{title}</p>
+        <p className="text-caption font-medium text-content-muted truncate">{translate(title)}</p>
       </div>
 
       <div className="mt-1.5">
@@ -72,11 +75,11 @@ export default function StatCard({
             symbol={currencySymbol}
             figureClassName={figureClassName}
             unitClassName={unitClassName}
-            title={fullValue}
+            title={translate(fullValue)}
           />
         ) : (
-          <span className={figureClassName} title={fullValue}>
-            {value}
+          <span className={figureClassName} title={translate(fullValue)}>
+            {translate(value)}
           </span>
         )}
       </div>
@@ -94,12 +97,12 @@ export default function StatCard({
             }`}
           >
             <TrendIcon className="w-3 h-3" aria-hidden="true" />
-            {Math.abs(change).toFixed(1)}%
+            {translate(Math.abs(change).toFixed(1))}%
           </span>
-          <span className="text-content-subtle">{changeLabel || 'vs previous'}</span>
+          <span className="text-content-subtle">{translate(changeLabel || 'vs previous')}</span>
         </p>
       ) : hint ? (
-        <p className="mt-2 text-[11px] text-content-subtle text-pretty leading-snug">{hint}</p>
+        <p className="mt-2 text-[11px] text-content-subtle text-pretty leading-snug">{translate(hint)}</p>
       ) : null}
     </div>
   );

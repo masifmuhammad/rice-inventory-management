@@ -7,6 +7,7 @@ import { springUI, withReducedMotion } from '../../utils/motion';
 import AssistantHubSheet, { AssistantSpeedDialItem } from './AssistantHub';
 import { AssistantBrandMark, AssistantFabTrigger } from './AssistantChrome';
 import AssistantPanels from './AssistantPanels';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const DESKTOP_ACTIONS = [
   { id: 'chat', icon: FiMessageCircle, label: 'Chat & Voice' },
@@ -30,6 +31,7 @@ const DESKTOP_ACTIONS = [
  * space on phones, keeping the trigger clear of form actions and final rows.
  */
 export default function AssistantFab() {
+  useAppLanguage();
   const isMobile = useMediaQuery('(max-width: 1023px)');
   const reducedMotion = usePrefersReducedMotion();
   const { enabled, hubOpen, setHubOpen, openPanel, menuPinned, setMenuPinned } = useAssistant();
@@ -66,7 +68,7 @@ export default function AssistantFab() {
         <button
           type="button"
           className="fixed inset-0 z-40 cursor-default bg-transparent"
-          aria-label="Close assistant menu"
+          aria-label={translate("Close assistant menu")}
           onClick={closeMenu}
         />
       )}

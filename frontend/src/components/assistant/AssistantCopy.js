@@ -1,4 +1,5 @@
 import React from 'react';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /**
  * Assistant typography.
@@ -14,6 +15,7 @@ import React from 'react';
 
 /** Body block from an AI reply. */
 export function BilingualBlock({ text, className = '' }) {
+  useAppLanguage();
   if (!text) return null;
 
   // Defensive: a model occasionally still appends an "اردو:" section despite the
@@ -23,13 +25,14 @@ export function BilingualBlock({ text, className = '' }) {
 
   return (
     <div className={`assistant-en text-content whitespace-pre-wrap ${className}`} lang="en">
-      {english}
+      {translate(english)}
     </div>
   );
 }
 
 /** Title / button / short chrome copy. */
 export function BiLine({ en, size = 'md', align = 'start', className = '' }) {
+  useAppLanguage();
   if (!en) return null;
   const enClass =
     size === 'sm' ? 'assistant-en-sm font-semibold leading-snug' : 'assistant-en font-medium';
@@ -41,7 +44,7 @@ export function BiLine({ en, size = 'md', align = 'start', className = '' }) {
       } ${className}`}
     >
       <span className={enClass} lang="en">
-        {en}
+        {translate(en)}
       </span>
     </span>
   );
@@ -49,10 +52,11 @@ export function BiLine({ en, size = 'md', align = 'start', className = '' }) {
 
 /** One-line copy for compact chrome (hub tiles, placeholders). */
 export function BiPair({ en, className = '' }) {
+  useAppLanguage();
   if (!en) return null;
   return (
     <span className={`assistant-en-sm text-content ${className}`} lang="en">
-      {en}
+      {translate(en)}
     </span>
   );
 }

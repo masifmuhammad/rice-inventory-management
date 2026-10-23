@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /**
  * Loading placeholders are sized to match the real content they stand in for.
@@ -48,13 +49,14 @@ export function useSkeletonGate(delay = SKELETON_GRACE_MS) {
  * its container showing up empty while the bars inside are still waiting.
  */
 export function SkeletonGate({ delay = SKELETON_GRACE_MS, className = '', children, ...props }) {
+  useAppLanguage();
   const visible = useSkeletonGate(delay);
   if (!visible) return null;
 
   return (
     <AlreadyWaited.Provider value>
       <div className={`skeleton-appear ${className}`} {...props}>
-        {children}
+        {translate(children)}
       </div>
     </AlreadyWaited.Provider>
   );
@@ -71,6 +73,7 @@ export function Skeleton({ className = '', ...props }) {
 }
 
 export function SkeletonText({ lines = 3, className = '' }) {
+  useAppLanguage();
   const visible = useSkeletonGate();
   if (!visible) return null;
 
@@ -84,6 +87,7 @@ export function SkeletonText({ lines = 3, className = '' }) {
 }
 
 export function SkeletonStatCards({ count = 4 }) {
+  useAppLanguage();
   const visible = useSkeletonGate();
   if (!visible) return null;
 
@@ -103,6 +107,7 @@ export function SkeletonStatCards({ count = 4 }) {
 }
 
 export function SkeletonTable({ rows = 5, columns = 5 }) {
+  useAppLanguage();
   const visible = useSkeletonGate();
   if (!visible) return null;
 
@@ -120,6 +125,7 @@ export function SkeletonTable({ rows = 5, columns = 5 }) {
 }
 
 export function SkeletonChart({ height = 300 }) {
+  useAppLanguage();
   const visible = useSkeletonGate();
   if (!visible) return null;
 
@@ -133,6 +139,7 @@ export function SkeletonChart({ height = 300 }) {
 }
 
 export function SkeletonPageHeader({ withActions = true }) {
+  useAppLanguage();
   const visible = useSkeletonGate();
   if (!visible) return null;
 
@@ -155,6 +162,7 @@ export function SkeletonPageHeader({ withActions = true }) {
 }
 
 export function SkeletonFormCard({ fields = 3 }) {
+  useAppLanguage();
   const visible = useSkeletonGate();
   if (!visible) return null;
 

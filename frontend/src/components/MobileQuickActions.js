@@ -20,6 +20,7 @@ import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { toast } from '../utils/toast';
 import { formatMoney, formatQuantity } from '../utils/currency';
 import Button from './ui/Button';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 /** Strong ease-out — the stock curves do not read as deliberate. */
 const EASE_OUT = [0.23, 1, 0.32, 1];
@@ -34,6 +35,7 @@ const EASE_OUT = [0.23, 1, 0.32, 1];
  * always starts with navigation.
  */
 export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 }) {
+  useAppLanguage();
   const navigate = useNavigate();
   const { can } = useAuth();
   const { currencySymbol, settings } = useSettings();
@@ -166,15 +168,15 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
           />
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-medium text-content">
-              {urgent
+              {translate(urgent
                 ? `${outOfStock} ${outOfStock === 1 ? 'product is' : 'products are'} out of stock`
-                : `${lowStockCount} ${lowStockCount === 1 ? 'product is' : 'products are'} running low`}
+                : `${lowStockCount} ${lowStockCount === 1 ? 'product is' : 'products are'} running low`)}
             </span>
             <span className="block text-[13px] text-content-subtle truncate tabular-nums">
-              {lowStock
+              {translate(lowStock
                 .slice(0, 2)
                 .map((p) => `${p.name} · ${formatQuantity(p.currentStock, p.unit)}`)
-                .join(' · ') || 'Tap to review'}
+                .join(' · ') || 'Tap to review')}
             </span>
           </span>
           <FiChevronRight className="w-4 h-4 flex-shrink-0 text-content-subtle" aria-hidden="true" />
@@ -183,7 +185,7 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
 
   return (
     <div className="lg:hidden space-y-2.5">
-      {urgent && attention}
+      {translate(urgent && attention)}
 
       {/* The most-used action gets its own row. The thing done fifty times a day
           should not be the same size as the thing done weekly. */}
@@ -194,7 +196,7 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
         className="min-h-[54px] text-base justify-center"
         onClick={() => go(primary)}
       >
-        {primary.label}
+        {translate(primary.label)}
       </Button>
 
       {rest.length > 0 && (
@@ -207,13 +209,13 @@ export default function MobileQuickActions({ lowStock = [], lowStockCount = 0 })
               className="min-h-[46px] flex-col gap-1 !text-[13px] px-1"
               onClick={() => go(action)}
             >
-              {action.label}
+              {translate(action.label)}
             </Button>
           ))}
         </div>
       )}
 
-      {!urgent && attention}
+      {translate(!urgent && attention)}
 
       {/* Last recorded, as one line. The full list lives on Transactions; this
           exists so a receipt for what was just entered is one tap away. */}
@@ -243,6 +245,7 @@ const DISMISS = 88;
  * reappear on the next refetch — the whole point of dismissing it.
  */
 function LastRecordedCapsule({ transaction, currencySymbol, downloading, onReceipt, reducedMotion }) {
+  useAppLanguage();
   const [dismissed, setDismissed] = useState(null);
 
   if (!transaction || dismissed === transaction._id) return null;
@@ -274,7 +277,7 @@ function LastRecordedCapsule({ transaction, currencySymbol, downloading, onRecei
           type="button"
           onClick={onReceipt}
           disabled={downloading}
-          aria-label={`Receipt for ${transaction.product?.name || 'the last transaction'}`}
+          aria-label={translate("Receipt for {0}", [transaction.product?.name || 'the last transaction'])}
           className="w-full flex items-center gap-2.5 rounded-full pl-4 pr-2 py-2
             surface-card text-left
             active:scale-[0.96] transition-transform duration-150 ease-out
@@ -286,13 +289,13 @@ function LastRecordedCapsule({ transaction, currencySymbol, downloading, onRecei
           />
           <span className="min-w-0 flex-1 truncate text-[14px] text-content-muted tabular-nums">
             <span className="font-medium text-content">
-              {transaction.product?.name || 'Last entry'}
+              {translate(transaction.product?.name || 'Last entry')}
             </span>
             {' · '}
-            {formatQuantity(transaction.quantity, transaction.unit)}
-            {transaction.totalValue > 0
+            {translate(formatQuantity(transaction.quantity, transaction.unit))}
+            {translate(transaction.totalValue > 0
               ? ` · ${formatMoney(transaction.totalValue, currencySymbol)}`
-              : ''}
+              : '')}
           </span>
           <span className="grid place-items-center w-9 h-9 rounded-full bg-hairline/[0.06] flex-shrink-0">
             <FiDownload

@@ -3,12 +3,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import BrandLogo from './BrandLogo';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../utils/motion';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 /**
  * Full-viewport veil while the active business is changing — soft enough to
  * feel intentional, short enough not to block.
  */
 export default function BusinessSwitchOverlay() {
+  useAppLanguage();
   const [phase, setPhase] = useState(null); // null | { name }
   const reducedMotion = usePrefersReducedMotion();
 
@@ -64,9 +66,9 @@ export default function BusinessSwitchOverlay() {
             className="flex flex-col items-center gap-3 px-6 text-center"
           >
             <BrandLogo size={56} rounded="rounded-2xl" className="shadow-lg" />
-            <p className="text-sm text-content-muted">Switching to</p>
+            <p className="text-sm text-content-muted">{translate("Switching to")}</p>
             <p className="font-display font-bold text-content text-xl tracking-[-0.02em] text-balance">
-              {phase.name}
+              {translate(phase.name)}
             </p>
           </motion.div>
         </motion.div>

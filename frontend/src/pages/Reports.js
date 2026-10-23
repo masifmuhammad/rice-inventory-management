@@ -38,12 +38,14 @@ import AnimatedValue from '../components/ui/AnimatedValue';
 import { EmptyState, ErrorState, InlineError } from '../components/ui/States';
 import { SkeletonChart, SkeletonGate, SkeletonStatCards, SkeletonTable, Skeleton } from '../components/ui/Skeleton';
 import { RefetchSection } from '../components/ui/RefetchIndicator';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 // Local dates, not UTC. `toISOString()` reports yesterday until 05:00 in PKT,
 // so the default range and the presets were both off by a day overnight.
 const isoDaysAgo = daysAgoInput;
 
 export default function Reports() {
+  useAppLanguage();
   const { currencySymbol, settings } = useSettings();
   const { user } = useAuth();
   const { isDark } = useTheme();
@@ -177,13 +179,11 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <PageHeader
-        summary={range.startDate + ' to ' + range.endDate}
-        title="Reports"
-        description="What you are holding, what moved and what it earned."
+        summary={translate("{0} to {1}", [range.startDate, range.endDate])}
+        title={translate("Reports")}
+        description={translate("What you are holding, what moved and what it earned.")}
         actions={
-          <Button icon={FiDownload} onClick={handleExport} loading={exporting}>
-            Export PDF
-          </Button>
+          <Button icon={FiDownload} onClick={handleExport} loading={exporting}>{translate("Export PDF")}</Button>
         }
       />
 
@@ -191,7 +191,7 @@ export default function Reports() {
       <Card className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <div className="flex-1">
-            <Input label="From"
+            <Input label={translate("From")}
               id="start"
               type="date"
               value={range.startDate}
@@ -201,7 +201,7 @@ export default function Reports() {
             />
           </div>
           <div className="flex-1">
-            <Input label="To"
+            <Input label={translate("To")}
               id="end"
               type="date"
               value={range.endDate}
@@ -225,14 +225,14 @@ export default function Reports() {
                 className="px-3 py-2.5 min-h-[44px] rounded-lg border border-hairline/[0.12] bg-surface-1 text-sm
                   font-medium text-content-muted hover:bg-hairline/[0.05] hover:text-content transition-colors"
               >
-                {preset.label}
+                {translate(preset.label)}
               </button>
             ))}
           </div>
         </div>
 
         {invalidRange && (
-          <p className="mt-3 text-sm text-red-500">The start date must be on or before the end date.</p>
+          <p className="mt-3 text-sm text-red-500">{translate("The start date must be on or before the end date.")}</p>
         )}
       </Card>
 
@@ -240,11 +240,11 @@ export default function Reports() {
       {loadingValue ? (
         <SkeletonStatCards count={4} />
       ) : stockValue.error ? (
-        <InlineError message={stockValue.error} onRetry={stockValue.refetch} />
+        <InlineError message={translate(stockValue.error)} onRetry={stockValue.refetch} />
       ) : (
         <StatGrid>
           <StatCard
-            title="Stock at cost"
+            title={translate("Stock at cost")}
             rawValue={summary?.totalValue}
             valueType="compactMoney"
             currencySymbol={currencySymbol}
@@ -252,7 +252,7 @@ export default function Reports() {
             icon={FiDollarSign}
           />
           <StatCard
-            title="Stock at retail"
+            title={translate("Stock at retail")}
             rawValue={summary?.totalPotentialValue}
             valueType="compactMoney"
             currencySymbol={currencySymbol}
@@ -260,22 +260,22 @@ export default function Reports() {
             icon={FiTrendingUp}
           />
           <StatCard
-            title="Potential profit"
+            title={translate("Potential profit")}
             rawValue={summary?.totalPotentialProfit}
             valueType="compactMoney"
             currencySymbol={currencySymbol}
             fullValue={formatMoney(summary?.totalPotentialProfit, currencySymbol)}
-            hint="If everything sold at list price"
+            hint={translate("If everything sold at list price")}
             icon={FiPieChart}
           />
-          <StatCard title="Products" rawValue={summary?.productCount} icon={FiPackage} />
+          <StatCard title={translate("Products")} rawValue={summary?.productCount} icon={FiPackage} />
         </StatGrid>
       )}
 
       {/* Realised profit for the period */}
       {loadingProfit ? (
         <Card>
-          <CardHeader title="Sales in this period" subtitle="Actual revenue and margin" icon={FiTrendingUp} />
+          <CardHeader title={translate("Sales in this period")} subtitle={translate("Actual revenue and margin")} icon={FiTrendingUp} />
           <CardBody>
             <SkeletonGate className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -285,11 +285,11 @@ export default function Reports() {
           </CardBody>
         </Card>
       ) : profit.error ? (
-        <InlineError message={`Sales summary: ${profit.error}`} onRetry={profit.refetch} />
+        <InlineError message={translate("Sales summary: {0}", [profit.error])} onRetry={profit.refetch} />
       ) : profit.data?.summary ? (
         <RefetchSection active={refetchingProfit}>
         <Card>
-          <CardHeader title="Sales in this period" subtitle="Actual revenue and margin" icon={FiTrendingUp} />
+          <CardHeader title={translate("Sales in this period")} subtitle={translate("Actual revenue and margin")} icon={FiTrendingUp} />
           <CardBody>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
@@ -304,7 +304,7 @@ export default function Reports() {
                 { label: 'Sales', value: profit.data.summary.transactionCount },
               ].map((item) => (
                 <div key={item.label} className="rounded-well bg-surface-sunken px-4 py-3">
-                  <p className="text-xs font-medium text-content-subtle tracking-normal">{item.label}</p>
+                  <p className="text-xs font-medium text-content-subtle tracking-normal">{translate(item.label)}</p>
                   <p className="text-lg font-semibold text-content mt-1 tabular-nums">
                     <AnimatedValue
                       value={item.value}
@@ -313,7 +313,7 @@ export default function Reports() {
                       figureClassName="font-semibold"
                       unitClassName="text-content-subtle text-sm font-medium"
                     />
-                    {item.suffix && <span className="text-content-subtle font-medium">{item.suffix}</span>}
+                    {item.suffix && <span className="text-content-subtle font-medium">{translate(item.suffix)}</span>}
                   </p>
                 </div>
               ))}
@@ -326,17 +326,17 @@ export default function Reports() {
       {/* Movement chart */}
       <RefetchSection active={refetchingMovement}>
       <Card>
-        <CardHeader title="Movement by product" subtitle="Quantities in each product&apos;s own unit" icon={FiBarChart2} />
+        <CardHeader title={translate("Movement by product")} subtitle={translate("Quantities in each product&apos;s own unit")} icon={FiBarChart2} />
         <CardBody className="pt-2">
           {movement.loading && !movement.data ? (
             <SkeletonChart height={340} />
           ) : movement.error ? (
-            <InlineError message={movement.error} onRetry={movement.refetch} />
+            <InlineError message={translate(movement.error)} onRetry={movement.refetch} />
           ) : chartData.length === 0 ? (
             <EmptyState
               icon={FiBarChart2}
-              title="No stock moved in this period"
-              description="Try a wider date range or record a transaction."
+              title={translate("No stock moved in this period")}
+              description={translate("Try a wider date range or record a transaction.")}
             />
           ) : (
             <div className="h-[340px]">
@@ -355,7 +355,7 @@ export default function Reports() {
                   />
                   <YAxis tick={{ fontSize: 11, fill: chartTheme.axis }} tickLine={false} axisLine={false} width={48} />
                   <Tooltip cursor={{ fill: 'rgba(148,163,184,0.08)' }} formatter={(value, name, item) => [formatQuantity(value, item.payload.unit), name]} {...chartTheme.tooltip} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} formatter={(value) => <span style={{ color: chartTheme.legend }}>{value}</span>} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} formatter={(value) => <span style={{ color: chartTheme.legend }}>{translate(value)}</span>} />
                   <Bar dataKey="Stock in" fill={isDark ? "#34d399" : "#047857"} radius={[4, 4, 0, 0]} maxBarSize={36} />
                   <Bar dataKey="Stock out" fill={isDark ? "#a1a1aa" : "#62626b"} radius={[4, 4, 0, 0]} maxBarSize={36} />
                 </BarChart>
@@ -369,17 +369,17 @@ export default function Reports() {
       {/* Stock value table */}
       <Card className="overflow-hidden">
         <CardHeader
-          title="Stock value by product"
-          subtitle={summary ? `${formatMoney(summary.totalValue, currencySymbol)} at cost` : undefined}
+          title={translate("Stock value by product")}
+          subtitle={translate(summary ? `${formatMoney(summary.totalValue, currencySymbol)} at cost` : undefined)}
           icon={FiPackage}
         />
 
         {loadingValue ? (
           <SkeletonTable rows={6} columns={5} />
         ) : stockValue.error ? (
-          <ErrorState message={stockValue.error} onRetry={stockValue.refetch} />
+          <ErrorState message={translate(stockValue.error)} onRetry={stockValue.refetch} />
         ) : !stockValue.data?.products?.length ? (
-          <EmptyState icon={FiPackage} title="No products to value" description="Add products to see this report." />
+          <EmptyState icon={FiPackage} title={translate("No products to value")} description={translate("Add products to see this report.")} />
         ) : (
           <>
             <ul className="lg:hidden divide-y divide-hairline">
@@ -391,13 +391,12 @@ export default function Reports() {
                       <p className="text-xs text-content-subtle truncate">{product.sku}</p>
                     </div>
                     <span className="text-sm font-semibold text-content tabular-nums whitespace-nowrap">
-                      {formatMoney(product.stockValue, currencySymbol)}
+                      {translate(formatMoney(product.stockValue, currencySymbol))}
                     </span>
                   </div>
                   <p className="mt-1.5 text-xs text-content-subtle tabular-nums">
-                    {formatQuantity(product.currentStock, product.unit)} ·{' '}
-                    {formatMoney(product.costPrice, currencySymbol)} cost
-                  </p>
+                    {translate(formatQuantity(product.currentStock, product.unit))} ·{' '}
+                    {translate(formatMoney(product.costPrice, currencySymbol))}{translate(" cost")}</p>
                 </li>
               ))}
             </ul>
@@ -415,7 +414,7 @@ export default function Reports() {
                             index >= 2 ? 'text-right' : 'text-left'
                           }`}
                         >
-                          {heading}
+                          {translate(heading)}
                         </th>
                       )
                     )}
@@ -429,39 +428,37 @@ export default function Reports() {
                         <div className="text-xs text-content-subtle">{product.sku}</div>
                       </td>
                       <td className="px-6 py-3.5">
-                        <Badge tone="primary">{product.category}</Badge>
+                        <Badge tone="primary">{translate(product.category)}</Badge>
                       </td>
                       <td className="px-6 py-3.5 text-right text-content-muted tabular-nums">
-                        {formatQuantity(product.currentStock, product.unit)}
+                        {translate(formatQuantity(product.currentStock, product.unit))}
                       </td>
                       <td className="px-6 py-3.5 text-right text-content-muted tabular-nums">
-                        {formatMoney(product.costPrice, currencySymbol)}
+                        {translate(formatMoney(product.costPrice, currencySymbol))}
                       </td>
                       <td className="px-6 py-3.5 text-right font-semibold text-content tabular-nums">
-                        {formatMoney(product.stockValue, currencySymbol)}
+                        {translate(formatMoney(product.stockValue, currencySymbol))}
                       </td>
                       <td className="px-6 py-3.5 text-right text-content-muted tabular-nums">
-                        {formatMoney(product.potentialValue, currencySymbol)}
+                        {translate(formatMoney(product.potentialValue, currencySymbol))}
                       </td>
                       <td className="px-6 py-3.5 text-right text-emerald-700 dark:text-emerald-400 font-medium tabular-nums">
-                        {formatMoney(product.potentialProfit, currencySymbol)}
+                        {translate(formatMoney(product.potentialProfit, currencySymbol))}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-hairline/[0.14] bg-surface-sunken font-semibold text-content">
-                    <td className="px-6 py-3.5" colSpan={4}>
-                      Total
+                    <td className="px-6 py-3.5" colSpan={4}>{translate("Total")}</td>
+                    <td className="px-6 py-3.5 text-right tabular-nums">
+                      {translate(formatMoney(summary?.totalValue, currencySymbol))}
                     </td>
                     <td className="px-6 py-3.5 text-right tabular-nums">
-                      {formatMoney(summary?.totalValue, currencySymbol)}
-                    </td>
-                    <td className="px-6 py-3.5 text-right tabular-nums">
-                      {formatMoney(summary?.totalPotentialValue, currencySymbol)}
+                      {translate(formatMoney(summary?.totalPotentialValue, currencySymbol))}
                     </td>
                     <td className="px-6 py-3.5 text-right text-emerald-700 dark:text-emerald-400 tabular-nums">
-                      {formatMoney(summary?.totalPotentialProfit, currencySymbol)}
+                      {translate(formatMoney(summary?.totalPotentialProfit, currencySymbol))}
                     </td>
                   </tr>
                 </tfoot>

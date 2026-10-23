@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FiMic, FiX } from 'react-icons/fi';
 import { iconSwap, springSnappy } from '../../utils/motion';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /** Shared stroke for assistant icons beside medium/semibold labels. */
 export const ASSISTANT_STROKE = 1.75;
@@ -71,13 +72,14 @@ export function AssistantIconWell({
 
 /** Soft outline on receipt/slip previews — pure black/white only. */
 export function AssistantMediaFrame({ src, alt, className = '' }) {
+  useAppLanguage();
   if (!src) return null;
   return (
     <div
       className={`overflow-hidden rounded-xl bg-surface-sunken
         outline outline-1 outline-black/10 dark:outline-white/10 ${className}`}
     >
-      <img src={src} alt={alt} className="w-full max-h-48 object-contain" />
+      <img src={src} alt={translate(alt)} className="w-full max-h-48 object-contain" />
     </div>
   );
 }
@@ -86,13 +88,14 @@ export function AssistantMediaFrame({ src, alt, className = '' }) {
  * Floating assistant trigger — icon swap on open, tactile press, no transition:all.
  */
 export function AssistantFabTrigger({ onClick, expanded }) {
+  useAppLanguage();
   const reducedMotion = usePrefersReducedMotion();
 
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={expanded ? 'Close assistant' : 'Open AI assistant'}
+      aria-label={translate(expanded ? 'Close assistant' : 'Open AI assistant')}
       aria-expanded={expanded}
       className="relative z-50 grid place-items-center w-14 h-14 rounded-full
         bg-gray-800 text-white
@@ -128,6 +131,7 @@ export function AssistantFabTrigger({ onClick, expanded }) {
 
 /** Compact brand mark for speed-dial header. */
 export function AssistantBrandMark() {
+  useAppLanguage();
   return (
     <span className="inline-flex items-center gap-2 min-w-0">
       <span
@@ -136,20 +140,21 @@ export function AssistantBrandMark() {
       >
         <AssistantSparkIcon className="w-3.5 h-3.5" strokeWidth={2} />
       </span>
-      <span className="text-xs font-semibold text-content tracking-tight text-balance">Assistant</span>
+      <span className="text-xs font-semibold text-content tracking-tight text-balance">{translate("Assistant")}</span>
     </span>
   );
 }
 
 export function AssistantMicButton({ recording, onClick, disabled }) {
+  useAppLanguage();
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label={recording ? 'Stop recording' : 'Start voice input'}
+      aria-label={translate(recording ? 'Stop recording' : 'Start voice input')}
       aria-pressed={recording}
-      title={recording ? 'Stop' : 'Speak'}
+      title={translate(recording ? 'Stop' : 'Speak')}
       className={`relative grid place-items-center min-h-[44px] min-w-[44px] rounded-xl
         transition-[background-color,color,box-shadow,transform] duration-150 ease-[cubic-bezier(0.2,0,0,1)]
         active:scale-[0.96] motion-reduce:active:scale-100

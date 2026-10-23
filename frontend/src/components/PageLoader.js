@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 /**
  * Fallback while a route chunk loads.
@@ -8,6 +9,7 @@ import React, { useEffect, useState } from 'react';
  * rather than as loading.
  */
 export default function PageLoader({ label = 'Loading', delay = 250 }) {
+  useAppLanguage();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export default function PageLoader({ label = 'Loading', delay = 250 }) {
         }`}
       >
         <span className="w-8 h-8 rounded-full border-2 border-hairline/[0.12] border-t-primary-500 animate-spin motion-reduce:animate-none" />
-        <span className="text-sm text-content-subtle">{label}…</span>
+        <span className="text-sm text-content-subtle">{translate(label)}…</span>
       </div>
     </div>
   );

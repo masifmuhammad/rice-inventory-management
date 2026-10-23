@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiAlertOctagon, FiHome, FiLogOut, FiRefreshCw } from 'react-icons/fi';
 import { setCachedCapabilities, setCachedUser, setToken } from '../services/api';
+import { translate } from '../context/LanguageContext';
 
 /**
  * Without a boundary, one thrown render turns the whole app into a blank white
@@ -48,13 +49,11 @@ export default class ErrorBoundary extends React.Component {
             <FiAlertOctagon className="w-7 h-7 text-red-500" aria-hidden="true" />
           </div>
 
-          <h1 className="text-xl font-semibold text-content">This page hit a problem</h1>
-          <p className="text-sm text-content-subtle mt-2">
-            The rest of the app is fine. Try again, or head back to the dashboard.
-          </p>
+          <h1 className="text-xl font-semibold text-content">{translate("This page hit a problem")}</h1>
+          <p className="text-sm text-content-subtle mt-2">{translate("The rest of the app is fine. Try again, or head back to the dashboard.")}</p>
 
           <pre className="mt-4 text-left text-xs bg-surface-sunken text-red-400 rounded-lg p-3 overflow-auto max-h-48">
-            {error.message}
+            {translate(error.message)}
           </pre>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-2 justify-center">
@@ -72,17 +71,13 @@ export default class ErrorBoundary extends React.Component {
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg
                 bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
             >
-              <FiRefreshCw className="w-4 h-4" aria-hidden="true" />
-              Try again
-            </button>
+              <FiRefreshCw className="w-4 h-4" aria-hidden="true" />{translate("Try again")}</button>
             <a
               href="/"
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg
                 border border-hairline/[0.12] bg-surface-1 text-content-muted text-sm font-medium hover:bg-hairline/[0.05] transition-colors"
             >
-              <FiHome className="w-4 h-4" aria-hidden="true" />
-              Back to dashboard
-            </a>
+              <FiHome className="w-4 h-4" aria-hidden="true" />{translate("Back to dashboard")}</a>
             <button
               type="button"
               onClick={() => {
@@ -104,9 +99,7 @@ export default class ErrorBoundary extends React.Component {
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg
                 border border-hairline/[0.12] bg-surface-1 text-content-muted text-sm font-medium hover:bg-hairline/[0.05] transition-colors"
             >
-              <FiLogOut className="w-4 h-4" aria-hidden="true" />
-              Sign out
-            </button>
+              <FiLogOut className="w-4 h-4" aria-hidden="true" />{translate("Sign out")}</button>
           </div>
         </div>
       </div>

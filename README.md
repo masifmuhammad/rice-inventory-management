@@ -53,6 +53,12 @@ so there is no CORS to configure and only one service to pay for.
 
 ## Features
 
+### Barcode labels and scan stations
+
+Generate a unique Code 128 label for each rice bag, receive by scanning, and scan bags out at the selling shop. Includes camera/photo reading, printer previews, batch reprints, duplicate-scan protection, retry recovery, and administrator reversals. The home screen has large, easy-to-read stock actions. See **[setup and workflow](docs/BARCODES.md)** for scanner/printer configuration and shared-shop inventory behavior.
+
+The operating app starts in English. Use the globe in the header, sign-in page, or Settings to choose Urdu. The choice persists on that device and switches navigation, forms, messages and layout direction without clearing entered values. Product names and saved business data stay unchanged. Urdu uses a bundled font; barcode numbers remain left-to-right.
+
 ### Dashboard
 Equal stock valuation and cash balance, quick sale/delivery and money-in/out entry, recent movements, stock health and sales history. Every figure comes from the active business.
 

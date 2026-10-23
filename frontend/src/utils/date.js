@@ -1,4 +1,5 @@
 import { format as formatDate } from 'date-fns';
+import { getLanguage, translate } from '../i18n/locale';
 
 /**
  * Date helpers that stay in the user's own timezone.
@@ -40,7 +41,9 @@ export const daysAgoInput = (days) => {
 export const formatSafe = (value, pattern, fallback = 'Unknown date') => {
   if (!value) return fallback;
   const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? fallback : formatDate(date, pattern);
+  if (Number.isNaN(date.getTime())) return translate(fallback);
+  if (getLanguage() === 'ur') return new Intl.DateTimeFormat('ur-PK', { day: 'numeric', month: 'short', ...(pattern.includes('y') ? { year: 'numeric' } : {}), ...(pattern.includes('h') ? { hour: 'numeric', minute: '2-digit' } : {}) }).format(date);
+  return formatDate(date, pattern);
 };
 
 /** True when a value parses to a real date. */

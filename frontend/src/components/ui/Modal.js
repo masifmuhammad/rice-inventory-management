@@ -7,6 +7,7 @@ import useVisualViewport from '../../hooks/useVisualViewport';
 import { springSheet, reducedTransition } from '../../utils/motion';
 import KeyboardToolbar from './KeyboardToolbar';
 import Button from './Button';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const sizes = {
   sm: 'sm:max-w-md',
@@ -39,6 +40,7 @@ export default function Modal({
   disableClose = false,
   busy = false,
 }) {
+  useAppLanguage();
   const handleClose = disableClose ? () => {} : onClose;
 
   const reducedMotion = usePrefersReducedMotion();
@@ -241,20 +243,20 @@ export default function Modal({
                       keyboardOpen ? 'text-base' : 'text-lg'
                     }`}
                   >
-                    {title}
+                    {translate(title)}
                   </DialogTitle>
                   {/* The description explains the form before you start. Once
                       the keyboard is up it is costing two wrapped lines of the
                       only space the fields have. */}
                   {description && !keyboardOpen && (
-                    <div className="mt-1 text-content-subtle">{description}</div>
+                    <div className="mt-1 text-content-subtle">{translate(description)}</div>
                   )}
                 </div>
                 <button
                   type="button"
                   onClick={handleClose}
                   disabled={disableClose}
-                  aria-label="Close dialog"
+                  aria-label={translate("Close dialog")}
                   className="-mr-2 -mt-1 grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-content hover:bg-hairline/[0.05]
                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                 >
@@ -274,7 +276,7 @@ export default function Modal({
                 } ${busy ? 'opacity-60 pointer-events-none' : ''}`}
                 aria-busy={busy || undefined}
               >
-                {children}
+                {translate(children)}
               </div>
 
               {(keyboardOpen || submit) && (
@@ -285,11 +287,9 @@ export default function Modal({
 
               {submit && (
                 <div className="hidden sm:flex justify-end gap-2 flex-shrink-0 px-6 py-4 border-t border-hairline/[0.06]">
-                  <Button variant="secondary" onClick={handleClose} disabled={disableClose || submit.loading}>
-                    Cancel
-                  </Button>
+                  <Button variant="secondary" onClick={handleClose} disabled={disableClose || submit.loading}>{translate("Cancel")}</Button>
                   <Button type="submit" form={submit.form} loading={submit.loading} variant={submit.variant}>
-                    {submit.label}
+                    {translate(submit.label)}
                   </Button>
                 </div>
               )}
@@ -303,7 +303,7 @@ export default function Modal({
                     keyboardOpen ? 'py-2.5 pb-2.5' : 'py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))]'
                   }`}
                 >
-                  {footer}
+                  {translate(footer)}
                 </div>
               )}
             </motion.div>

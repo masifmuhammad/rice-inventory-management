@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { translate, useAppLanguage } from './LanguageContext';
 
 const ThemeContext = createContext(null);
 
@@ -43,6 +44,7 @@ export const initTheme = () => {
 };
 
 export function ThemeProvider({ children }) {
+  useAppLanguage();
   const [preference, setPreference] = useState(() => initTheme());
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export function ThemeProvider({ children }) {
     [preference, resolved, setTheme]
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return <ThemeContext.Provider value={value}>{translate(children)}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

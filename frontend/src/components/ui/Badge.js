@@ -1,4 +1,5 @@
 import React from 'react';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const tones = {
   neutral: 'bg-hairline/[0.08] text-content-muted ring-hairline/[0.08]',
@@ -10,13 +11,14 @@ const tones = {
 };
 
 export default function Badge({ tone = 'neutral', icon: Icon, className = '', children }) {
+  useAppLanguage();
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
         ring-1 ring-inset whitespace-nowrap ${tones[tone] || tones.neutral} ${className}`}
     >
       {Icon && <Icon className="w-3 h-3" aria-hidden="true" />}
-      {children}
+      {translate(children)}
     </span>
   );
 }

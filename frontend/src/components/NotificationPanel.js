@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { springSnappy, reducedTransition } from '../utils/motion';
 import Badge from './ui/Badge';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const LAST_SEEN_KEY = 'rim.notifications.lastSeen';
 
@@ -21,6 +22,7 @@ const activityLink = (entry) => {
 };
 
 export default function NotificationPanel({ variant = 'default' }) {
+  useAppLanguage();
   const { can } = useAuth();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState({ pendingCount: 0, recentActivity: [], pendingUsers: [] });
@@ -126,7 +128,7 @@ export default function NotificationPanel({ variant = 'default' }) {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={`Notifications${badge ? `, ${badge} unread` : ''}`}
+        aria-label={translate("Notifications{0}", [badge ? `, ${badge} unread` : ''])}
         aria-expanded={open}
         aria-haspopup="dialog"
         className={
@@ -144,7 +146,7 @@ export default function NotificationPanel({ variant = 'default' }) {
                 : 'absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center'
             }
           >
-            {variant === 'circle' ? <span className="sr-only">{badge} unread</span> : badge > 9 ? '9+' : badge}
+            {variant === 'circle' ? <span className="sr-only">{translate(badge)}{translate(" unread")}</span> : badge > 9 ? '9+' : badge}
           </span>
         )}
       </button>
@@ -175,13 +177,11 @@ export default function NotificationPanel({ variant = 'default' }) {
                 lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-2 lg:w-96 lg:max-h-[28rem] lg:origin-top-right"
             >
             <div className="flex items-center justify-between px-4 py-3 border-b border-hairline/[0.07]">
-              <h2 id="notifications-title" className="text-sm font-semibold text-content">
-                Recent activity
-              </h2>
+              <h2 id="notifications-title" className="text-sm font-semibold text-content">{translate("Recent activity")}</h2>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Close notifications"
+                aria-label={translate("Close notifications")}
                 className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg hover:bg-hairline/[0.05]"
               >
                 <FiX className="w-4 h-4" />
@@ -190,7 +190,7 @@ export default function NotificationPanel({ variant = 'default' }) {
 
             <div className="overflow-y-auto flex-1" aria-live="polite">
               {items.length === 0 ? (
-                <p className="px-4 py-8 text-sm text-center text-content-subtle">No recent changes</p>
+                <p className="px-4 py-8 text-sm text-center text-content-subtle">{translate("No recent changes")}</p>
               ) : (
                 <ul className="divide-y divide-hairline">
                   {items.slice(0, 25).map((item) => (
@@ -201,16 +201,16 @@ export default function NotificationPanel({ variant = 'default' }) {
                         className="block px-4 py-3 hover:bg-hairline/[0.05] transition-colors"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm text-content">{item.summary}</p>
-                          {item.tone === 'warning' && <Badge tone="warning">Pending</Badge>}
+                          <p className="text-sm text-content">{translate(item.summary)}</p>
+                          {item.tone === 'warning' && <Badge tone="warning">{translate("Pending")}</Badge>}
                         </div>
                         <p className="text-xs text-content-subtle mt-1">
-                          {item.userName}
+                          {translate(item.userName)}
                           {item.createdAt && (
                             <>
                               {' · '}
-                              <time dateTime={item.createdAt} title={format(new Date(item.createdAt), 'PPpp')}>
-                                {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                              <time dateTime={item.createdAt} title={translate(format(new Date(item.createdAt), 'PPpp'))}>
+                                {translate(formatDistanceToNow(new Date(item.createdAt), { addSuffix: true }))}
                               </time>
                             </>
                           )}
@@ -228,9 +228,7 @@ export default function NotificationPanel({ variant = 'default' }) {
                   to="/admin/activity"
                   onClick={() => setOpen(false)}
                   className="block text-center text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                >
-                  View full activity log
-                </Link>
+                >{translate("View full activity log")}</Link>
               </div>
             )}
             </motion.div>

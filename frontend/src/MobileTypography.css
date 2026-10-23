@@ -1,0 +1,77 @@
+/* Readability rules follow Tailwind utilities and also cover portaled controls. */
+button,input,select,textarea { font-family:inherit; }
+.language-picker { flex-shrink:0; }
+.language-trigger { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-height:44px; min-width:44px; padding:8px; border-radius:12px; font-size:12px; font-weight:600; line-height:1.3; color:rgb(var(--content)); }
+.language-trigger svg { width:17px; height:17px; }
+.language-trigger:hover { background:rgb(var(--surface-3)); }
+.language-trigger:focus-visible { outline:2px solid rgb(var(--color-primary-600)); outline-offset:2px; }
+.language-menu { z-index:110; min-width:180px; padding:6px; margin-top:8px; border-radius:12px; background:rgb(var(--surface-1)); color:rgb(var(--content)); box-shadow:0 8px 28px -8px #0004; border:1px solid rgb(var(--hairline)/.12); }
+.language-menu button { display:flex; justify-content:space-between; align-items:center; gap:16px; width:100%; min-height:48px; padding:10px 12px; font-size:16px; border-radius:8px; }
+.language-menu button[data-focus] { background:rgb(var(--surface-3)); }
+.language-menu button:focus-visible { outline:2px solid rgb(var(--color-primary-600)); outline-offset:-2px; }
+.language-menu svg { width:18px; height:18px; }
+.language-picker-wide .language-trigger { min-width:150px; justify-content:flex-start; gap:12px; font-size:16px; }
+.inventory-action { height:100%; }
+.barcode-paper-select .field-shell-control { direction:ltr; unicode-bidi:isolate; }
+html[data-language="ur"] body,html[data-language="ur"] button,html[data-language="ur"] input,html[data-language="ur"] textarea,html[data-language="ur"] select,html[data-language="ur"] .font-display { font-family:'Noto Sans Arabic',system-ui,sans-serif; letter-spacing:normal; }
+html[data-language="ur"] .font-money { font-family:Manrope,system-ui,sans-serif; }
+html[data-language="ur"] h1,html[data-language="ur"] h2,html[data-language="ur"] h3 { letter-spacing:normal; line-height:1.65; }
+html[data-language="ur"] .app-shell { text-align:start; }
+html[data-language="ur"] .app-shell .text-left { text-align:right; }
+html[data-language="ur"] .app-shell .text-right { text-align:left; }
+html[data-language="ur"] .field-shell-label { text-align:right; transform-origin:right top; }
+html[data-language="ur"] .field-shell-control { text-align:start; }
+html[data-language="ur"] .field-shell:not(.field-shell-floating) { min-height:68px; }
+html[data-language="ur"] .field-shell-floating { min-height:64px; }
+html[data-language="ur"] .field-shell-floating .field-shell-label { line-height:1.6; }
+html[data-language="ur"] .field-shell-floating .field-shell-control { line-height:1.65; }
+html[data-language="ur"] .field-shell-floating:focus-within .field-shell-label,
+html[data-language="ur"] .field-shell-floating[data-pinned] .field-shell-label,
+html[data-language="ur"] .field-shell-floating:has(.field-shell-control:not(:placeholder-shown)) .field-shell-label { transform:translateY(-14px) scale(.85); }
+html[data-language="ur"] input[type="email"],html[data-language="ur"] input[type="password"],html[data-language="ur"] input[type="number"],html[data-language="ur"] input[type="date"],html[data-language="ur"] .barcode-code-input,.pack-label-code,.barcode-code-input { direction:ltr; unicode-bidi:isolate; text-align:left; }
+html[data-language="ur"] .barcode-mode { text-align:right; }
+html[data-language="ur"] .barcode-receive-option { line-height:1.7; }
+html[data-language="ur"] .barcode-label-list>button { text-align:start; }
+html[data-language="ur"] .mobile-header-brand { left:10.75rem; right:3.5rem; }
+html[data-language="ur"] .drawer-surface { left:auto; right:0; }
+html[data-language="ur"] .drawer-surface[data-closed] { --tw-translate-x:100%; }
+html[data-language="ur"] .barcode-studio-form .field-shell>svg { right:auto; left:14px; }
+html[data-language="ur"] .barcode-studio-form .field-shell-control.pr-7 { padding-right:0; padding-left:1.75rem; }
+html[data-language="ur"] .landing { direction:ltr; }
+@media(min-width:1024px) {
+  html[data-language="ur"] .app-sidebar { left:auto; right:16px; }
+  html[data-language="ur"] .app-content { padding-left:0; padding-right:calc(15.5rem + 2rem); }
+}
+@media(max-width:639px) {
+  body { font-size:16px; line-height:1.5; }
+  .app-shell .text-sm { font-size:16px; line-height:1.5; }
+  .app-shell .text-xs,.app-shell .text-caption { font-size:14px; line-height:1.5; }
+  .app-shell button,.app-shell summary { font-size:16px; line-height:1.4; }
+  .app-shell .language-trigger { font-size:12px; }
+  .mobile-tabbar span { font-size:12px; line-height:1.4; }
+  .app-shell .inventory-action { padding:18px 12px; min-height:164px; }
+  .app-shell .inventory-action-top { margin-bottom:18px; min-height:28px; }
+  .app-shell .inventory-action strong { font-size:17px; line-height:1.3; }
+  .app-shell .inventory-action p { font-size:14px; line-height:1.5; }
+  .app-shell .inventory-actions-heading h2 { font-size:20px; line-height:1.3; }
+  .app-shell .inventory-actions-heading>a { font-size:14px; line-height:1.4; }
+  .app-shell .barcode-mode { min-height:80px; }
+  .app-shell .barcode-mode>span { font-size:16px; line-height:1.5; overflow-wrap:anywhere; }
+  .app-shell .barcode-mobile-description,.app-shell .barcode-ready-line,.app-shell .barcode-size-chip,.app-shell .barcode-receive-option span>span,.app-shell .barcode-label-status { font-size:14px; line-height:1.5; }
+  .app-shell .barcode-receive-option strong { font-size:16px; line-height:1.5; }
+  .app-shell .barcode-tabs button { font-size:16px; }
+  .app-shell .barcode-mode-intro h2 { font-size:20px; }
+  .app-shell .barcode-page-heading .text-caption { display:none; }
+  .app-shell .barcode-ready-line { gap:6px; }
+  .app-shell .barcode-help { max-width:70ch; }
+  .app-shell .barcode-alert { font-size:15px; }
+  .field-shell-label { font-size:14px; }
+  .field-shell-floating:focus-within .field-shell-label,
+  .field-shell-floating[data-pinned] .field-shell-label,
+  .field-shell-floating:has(.field-shell-control:not(:placeholder-shown)) .field-shell-label { transform:translateY(-13px) scale(.875); }
+  html[data-language="ur"] .app-shell .inventory-action strong { line-height:1.7; font-size:17px; }
+  html[data-language="ur"] .app-shell .inventory-action p { line-height:1.8; }
+  html[data-language="ur"] .app-shell .barcode-mode>span { font-size:16px; line-height:1.6; }
+  html[data-language="ur"] .app-shell .barcode-mode { min-height:84px; }
+  html[data-language="ur"] .app-shell .barcode-station-body { line-height:1.65; }
+}

@@ -27,6 +27,7 @@ import { SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
 import UserAvatar from '../components/UserAvatar';
 import { userAvatarPalette } from '../utils/color';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const LIMIT = 25;
 
@@ -53,19 +54,21 @@ const isoDaysAgo = daysAgoInput;
 const todayIso = todayInput;
 
 function DetailBlock({ label, value }) {
+  useAppLanguage();
   if (value == null || (typeof value === 'object' && !Object.keys(value).length)) return null;
 
   return (
     <div>
-      <p className="text-xs font-semibold text-content-subtle tracking-normal mb-1">{label}</p>
+      <p className="text-xs font-semibold text-content-subtle tracking-normal mb-1">{translate(label)}</p>
       <pre className="text-xs text-content-muted bg-surface-sunken rounded-well p-3 overflow-x-auto whitespace-pre-wrap break-words">
-        {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
+        {translate(typeof value === 'string' ? value : JSON.stringify(value, null, 2))}
       </pre>
     </div>
   );
 }
 
 function ActivityRow({ entry, expanded, onToggle }) {
+  useAppLanguage();
   const tone = RESOURCE_TONES[entry.resourceType] || 'neutral';
   const userKey = entry.userId || entry.userName;
   const palette = userAvatarPalette(userKey);
@@ -87,20 +90,20 @@ function ActivityRow({ entry, expanded, onToggle }) {
           <UserAvatar name={entry.userName} colorKey={userKey} size="sm" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium text-content">{entry.userName}</p>
+              <p className="text-sm font-medium text-content">{translate(entry.userName)}</p>
               {entry.userRole && (
                 <Badge tone={ROLE_TONES[entry.userRole] || 'neutral'} className="capitalize">
-                  {entry.userRole}
+                  {translate(entry.userRole)}
                 </Badge>
               )}
-              <Badge tone={tone}>{entry.resourceType?.replace(/_/g, ' ') || 'Activity'}</Badge>
+              <Badge tone={tone}>{translate(entry.resourceType?.replace(/_/g, ' ') || 'Activity')}</Badge>
             </div>
-            <p className="text-sm text-content-muted mt-1">{entry.summary || entry.action}</p>
+            <p className="text-sm text-content-muted mt-1">{translate(entry.summary || entry.action)}</p>
             <p className="text-xs text-content-subtle mt-1.5 flex items-center gap-1.5">
               <FiClock className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
-              {when && !Number.isNaN(when.getTime())
+              {translate(when && !Number.isNaN(when.getTime())
                 ? format(when, 'EEE, d MMM yyyy · h:mm a')
-                : 'Unknown time'}
+                : 'Unknown time')}
             </p>
           </div>
           <span className="text-content-subtle flex-shrink-0 mt-1" aria-hidden="true">
@@ -112,15 +115,14 @@ function ActivityRow({ entry, expanded, onToggle }) {
       {expanded && (
         <div className="px-4 sm:px-6 pb-4 pl-[4.25rem] sm:pl-[5rem] space-y-3">
           {entry.action && (
-            <p className="text-xs text-content-subtle">
-              Action code: <span className="font-mono text-content-muted">{entry.action}</span>
+            <p className="text-xs text-content-subtle">{translate("Action code: ")}<span className="font-mono text-content-muted">{translate(entry.action)}</span>
             </p>
           )}
-          <DetailBlock label="Details" value={entry.details} />
-          <DetailBlock label="Before" value={entry.previousState} />
-          <DetailBlock label="After" value={entry.newState} />
+          <DetailBlock label={translate("Details")} value={entry.details} />
+          <DetailBlock label={translate("Before")} value={entry.previousState} />
+          <DetailBlock label={translate("After")} value={entry.newState} />
           {!entry.details && !entry.previousState && !entry.newState && (
-            <p className="text-xs text-content-subtle">No extra detail was recorded for this event.</p>
+            <p className="text-xs text-content-subtle">{translate("No extra detail was recorded for this event.")}</p>
           )}
         </div>
       )}
@@ -129,6 +131,7 @@ function ActivityRow({ entry, expanded, onToggle }) {
 }
 
 export default function AdminActivity() {
+  useAppLanguage();
   const { can } = useAuth();
   const [page, setPage] = usePageState('adminactivity.page', 1);
   const [search, setSearch] = usePageState('adminactivity.search', '');
@@ -210,14 +213,12 @@ export default function AdminActivity() {
   return (
     <div className="space-y-6">
       <PageHeader
-        summary="Business audit history"
-        title="Activity log"
-        description="Permanent record of every change — who did it, what changed, and exactly when."
+        summary={translate("Business audit history")}
+        title={translate("Activity log")}
+        description={translate("Permanent record of every change — who did it, what changed, and exactly when.")}
         actions={
           hasFilters ? (
-            <Button variant="secondary" onClick={clearFilters}>
-              Clear filters
-            </Button>
+            <Button variant="secondary" onClick={clearFilters}>{translate("Clear filters")}</Button>
           ) : null
         }
       />
@@ -239,14 +240,14 @@ export default function AdminActivity() {
                 text-content-muted hover:bg-surface-3 hover:text-content hover:border-hairline/20
                 active:scale-[0.96] transition-[background-color,border-color,color,transform] duration-150"
             >
-              {preset.label}
+              {translate(preset.label)}
             </button>
           ))}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <Input label="From"
+            <Input label={translate("From")}
               id="activity-from"
               type="date"
               value={startDate}
@@ -259,7 +260,7 @@ export default function AdminActivity() {
             />
           </div>
           <div>
-            <Input label="To"
+            <Input label={translate("To")}
               id="activity-to"
               type="date"
               value={endDate}
@@ -272,14 +273,14 @@ export default function AdminActivity() {
             />
           </div>
           <Select
-            label="User"
+            label={translate("User")}
             value={userId}
             onChange={(event) => {
               setUserId(event.target.value);
               setPage(1);
             }}
           >
-            <option value="">All users</option>
+            <option value="">{translate("All users")}</option>
             {(filters.data?.users || []).map((user) => (
               <option key={user.id} value={user.id}>
                 {user.name}
@@ -287,17 +288,17 @@ export default function AdminActivity() {
             ))}
           </Select>
           <Select
-            label="Action"
+            label={translate("Action")}
             value={action}
             onChange={(event) => {
               setAction(event.target.value);
               setPage(1);
             }}
           >
-            <option value="">All actions</option>
+            <option value="">{translate("All actions")}</option>
             {(filters.data?.actions || []).map((item) => (
               <option key={item} value={item}>
-                {item.replace(/_/g, ' ')}
+                {translate(item.replace(/_/g, ' '))}
               </option>
             ))}
           </Select>
@@ -305,22 +306,22 @@ export default function AdminActivity() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Select
-            label="Resource"
+            label={translate("Resource")}
             value={resourceType}
             onChange={(event) => {
               setResourceType(event.target.value);
               setPage(1);
             }}
           >
-            <option value="">All resources</option>
+            <option value="">{translate("All resources")}</option>
             {(filters.data?.resourceTypes || []).map((item) => (
               <option key={item} value={item}>
-                {item.replace(/_/g, ' ')}
+                {translate(item.replace(/_/g, ' '))}
               </option>
             ))}
           </Select>
           <div className="relative">
-            <Input label="Search activity"
+            <Input label={translate("Search activity")}
               id="activity-search"
               type="search"
               value={search}
@@ -328,14 +329,14 @@ export default function AdminActivity() {
                 setSearch(event.target.value);
                 setPage(1);
               }}
-              placeholder="Name, action or summary…"
+              placeholder={translate("Name, action or summary…")}
 
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                aria-label="Clear search"
+                aria-label={translate("Clear search")}
                 className="absolute right-2 top-[2.35rem] p-2 text-content-subtle hover:text-content rounded-well transition-colors"
               >
                 <FiX className="w-4 h-4" />
@@ -349,7 +350,7 @@ export default function AdminActivity() {
         <div className="px-4 sm:px-6 py-4 border-b border-hairline/[0.07] flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-content flex items-center gap-2">
             <FiActivity aria-hidden="true" />
-            {pagination?.total != null ? `${pagination.total} events` : 'Events'}
+            {translate(pagination?.total != null ? `${pagination.total} events` : 'Events')}
           </h2>
           {refetching && <RefetchIndicator active />}
         </div>
@@ -357,21 +358,19 @@ export default function AdminActivity() {
         {loading ? (
           <SkeletonTable rows={8} columns={3} />
         ) : log.error ? (
-          <ErrorState message={log.error} onRetry={log.refetch} />
+          <ErrorState message={translate(log.error)} onRetry={log.refetch} />
         ) : entries.length === 0 ? (
           <EmptyState
             icon={FiFilter}
-            title={hasFilters ? 'No events match those filters' : 'No activity recorded yet'}
+            title={translate(hasFilters ? 'No events match those filters' : 'No activity recorded yet')}
             description={
-              hasFilters
+              translate(hasFilters
                 ? 'Try a wider date range or clear the filters.'
-                : 'Changes to products, transactions, cash and settings will appear here permanently.'
+                : 'Changes to products, transactions, cash and settings will appear here permanently.')
             }
             action={
               hasFilters ? (
-                <Button variant="secondary" onClick={clearFilters}>
-                  Clear filters
-                </Button>
+                <Button variant="secondary" onClick={clearFilters}>{translate("Clear filters")}</Button>
               ) : undefined
             }
           />

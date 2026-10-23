@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react';
 import { FiLoader } from 'react-icons/fi';
 import { feedbackTick } from '../../utils/feedback';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const base =
   'inline-flex items-center justify-center gap-2 font-medium select-none ' +
@@ -48,6 +49,7 @@ const Button = forwardRef(function Button(
   },
   ref
 ) {
+  useAppLanguage();
   /**
    * Haptic on press, not on click.
    *
@@ -88,7 +90,7 @@ const Button = forwardRef(function Button(
       ) : (
         Icon && <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
       )}
-      {children}
+      {translate(children)}
       {!loading && IconRight && <IconRight className="w-4 h-4 shrink-0" aria-hidden="true" />}
     </button>
   );

@@ -8,8 +8,10 @@ import api, { getErrorMessage } from '../services/api';
 import BrandLogo from '../components/BrandLogo';
 import Button from '../components/ui/Button';
 import { Input } from '../components/ui/Field';
+import { translate, useAppLanguage } from '../context/LanguageContext';
 
 export default function ChangePassword() {
+  useAppLanguage();
   const { user, refreshSession, logout } = useAuth();
   const { businessName } = useSettings();
   const navigate = useNavigate();
@@ -68,18 +70,16 @@ export default function ChangePassword() {
           <h1 className="text-xl sm:text-2xl font-semibold text-content tracking-tight">
             {businessName}
           </h1>
-          <p className="text-sm text-content-subtle mt-1">Set a new password to continue</p>
+          <p className="text-sm text-content-subtle mt-1">{translate("Set a new password to continue")}</p>
         </div>
 
         <div className="surface-card rounded-card p-6 sm:p-7">
-          <h2 className="text-lg font-semibold text-content">Change your password</h2>
-          <p className="text-sm text-content-muted mt-1 mb-5">
-            Your account was created with a temporary password. Choose a new one before using the app.
-          </p>
+          <h2 className="text-lg font-semibold text-content">{translate("Change your password")}</h2>
+          <p className="text-sm text-content-muted mt-1 mb-5">{translate("Your account was created with a temporary password. Choose a new one before using the app.")}</p>
 
           <form onSubmit={handleSubmit} className="space-y-2.5" noValidate>
             <Input
-              label="Current password"
+              label={translate("Current password")}
               required
               type={showPassword ? 'text' : 'password'}
               icon={FiLock}
@@ -90,12 +90,12 @@ export default function ChangePassword() {
             />
 
             <Input
-              label="New password"
+              label={translate("New password")}
               required
               type={showPassword ? 'text' : 'password'}
               icon={FiLock}
               autoComplete="new-password"
-              placeholder="At least 6 characters"
+              placeholder={translate("At least 6 characters")}
               minLength={6}
               value={form.newPassword}
               onChange={update('newPassword')}
@@ -104,7 +104,7 @@ export default function ChangePassword() {
 
             <div className="relative">
               <Input
-                label="Confirm new password"
+                label={translate("Confirm new password")}
                 required
                 type={showPassword ? 'text' : 'password'}
                 icon={FiLock}
@@ -117,7 +117,7 @@ export default function ChangePassword() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={translate(showPassword ? 'Hide password' : 'Show password')}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 h-10 w-10 grid place-items-center rounded-well text-content-subtle hover:text-content transition-colors"
                 tabIndex={-1}
               >
@@ -130,17 +130,15 @@ export default function ChangePassword() {
                 className="rounded-lg border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-500"
                 role="alert"
               >
-                {error}
+                {translate(error)}
               </div>
             )}
 
             <Button type="submit" size="lg" fullWidth loading={submitting}>
-              {submitting ? 'Saving…' : 'Save and continue'}
+              {translate(submitting ? 'Saving…' : 'Save and continue')}
             </Button>
 
-            <Button type="button" variant="ghost" fullWidth onClick={logout} disabled={submitting}>
-              Sign out instead
-            </Button>
+            <Button type="button" variant="ghost" fullWidth onClick={logout} disabled={submitting}>{translate("Sign out instead")}</Button>
           </form>
         </div>
       </div>

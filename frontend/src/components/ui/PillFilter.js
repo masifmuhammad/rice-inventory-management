@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { springSnappy } from '../../utils/motion';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 /**
  * A segmented control you can drag through.
@@ -15,6 +16,7 @@ import { springSnappy } from '../../utils/motion';
  *   crosses would fire a request per segment while dragging across the control.
  */
 export default function PillFilter({ options, value, onChange, ariaLabel, className = '' }) {
+  useAppLanguage();
   const reducedMotion = usePrefersReducedMotion();
   const trackRef = useRef(null);
   const [dragIndex, setDragIndex] = useState(null);
@@ -94,7 +96,7 @@ export default function PillFilter({ options, value, onChange, ariaLabel, classN
     <div
       ref={trackRef}
       role="tablist"
-      aria-label={ariaLabel}
+      aria-label={translate(ariaLabel)}
       className={`segmented ${className}`}
       // Let a vertical swipe still scroll the page; horizontal drags are ours.
       style={{ touchAction: 'pan-y' }}
@@ -134,7 +136,7 @@ export default function PillFilter({ options, value, onChange, ariaLabel, classN
                 aria-hidden="true"
               />
             )}
-            <span className="relative z-10 pointer-events-none">{option.label}</span>
+            <span className="relative z-10 pointer-events-none">{translate(option.label)}</span>
           </button>
         );
       })}

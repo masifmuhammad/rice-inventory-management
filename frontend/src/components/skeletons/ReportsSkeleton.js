@@ -7,10 +7,12 @@ import {
   SkeletonStatCards,
   SkeletonTable,
 } from '../ui/Skeleton';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 export default function ReportsSkeleton() {
+  useAppLanguage();
   return (
-    <SkeletonGate className="space-y-6" aria-busy="true" aria-label="Loading reports">
+    <SkeletonGate className="space-y-6" aria-busy="true" aria-label={translate("Loading reports")}>
       <SkeletonPageHeader />
       <SkeletonStatCards count={3} />
       <div className="surface-card rounded-card p-5">

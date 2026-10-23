@@ -1,9 +1,11 @@
 import React from 'react';
 import { Skeleton, SkeletonChart, SkeletonGate, SkeletonPageHeader, SkeletonStatCards } from '../ui/Skeleton';
+import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 export default function DashboardSkeleton() {
+  useAppLanguage();
   return (
-    <SkeletonGate className="space-y-6" aria-busy="true" aria-label="Loading dashboard">
+    <SkeletonGate className="space-y-6" aria-busy="true" aria-label={translate("Loading dashboard")}>
       <SkeletonPageHeader withActions />
       <SkeletonStatCards />
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
