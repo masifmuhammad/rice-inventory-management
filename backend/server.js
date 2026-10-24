@@ -88,6 +88,7 @@ app.get('/api/health', asyncHandler(async (req, res) => {
   res.status(ready ? 200 : 503).json({
     status: ready ? 'OK' : 'DEGRADED',
     database: ready ? 'connected' : 'disconnected',
+    revision: process.env.RENDER_GIT_COMMIT || null,
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
@@ -108,6 +109,7 @@ app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/barcodes', require('./routes/barcodes'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/cash-book', require('./routes/cashBook'));
+app.use('/api/credit', require('./routes/credit'));
 // Superseded by /api/cash-book; kept so older clients keep working.
 app.use('/api/cash-withdrawals', require('./routes/cashWithdrawals'));
 app.use('/api/settings', require('./routes/settings'));

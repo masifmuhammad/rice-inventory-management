@@ -87,6 +87,10 @@ const transactionValidators = [
   body('supplier').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
   body('customer').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
   body('notes').optional({ values: 'falsy' }).trim().isLength({ max: 2000 }),
+  body('paymentType').optional().isIn(['cash', 'credit']),
+  body('customerId').optional({ values: 'falsy' }).isUUID(),
+  body('amountReceived').optional({ values: 'falsy' }).isFloat({ min: 0, max: 9999999999 }).toFloat(),
+  body('dueDate').optional({ values: 'falsy' }).isDate({ format: 'YYYY-MM-DD', strictMode: true }),
 ];
 
 // @access  Private

@@ -14,6 +14,7 @@ const importers = {
   '/barcodes': () => import('../pages/Barcodes'),
   '/transactions': () => import('../pages/Transactions'),
   '/cash-book': () => import('../pages/CashBook'),
+  '/credit': () => import('../pages/Credit'),
   '/reports': () => import('../pages/Reports'),
   '/settings': () => import('../pages/Settings'),
   '/admin/users': () => import('../pages/AdminUsers'),

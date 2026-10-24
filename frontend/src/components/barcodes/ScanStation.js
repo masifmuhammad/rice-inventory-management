@@ -4,7 +4,8 @@ import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useConfirm } from '../ui/ConfirmProvider';
-import { Input } from '../ui/Field';
+import { Input, Select } from '../ui/Field';
+import useApi from '../../hooks/useApi';
 import Button from '../ui/Button';
 import { formatMoney, formatQuantity } from '../../utils/currency';
 import { feedbackError, feedbackSuccess } from '../../utils/feedback';
@@ -38,6 +39,10 @@ export default function ScanStation({ initialMode = 'stock_out', size }) {
   const [focused, setFocused] = useState(false);
   const [station, setStation] = useState(() => readStored(`${key}.station`, ''));
   const [customer, setCustomer] = useState('');
+  const [paymentType,setPaymentType] = useState('cash');
+  const [customerId,setCustomerId] = useState('');
+  const [dueDate,setDueDate] = useState('');
+  const customers = useApi((signal)=>api.get('/credit',{signal}).then(r=>r.data.customers),[],{immediate:can('credit.view')});
   const [pending, setPending] = useState(queue.current.length);
   const [blocked, setBlocked] = useState(paused.current);
   const [entries, setEntries] = useState([]);
@@ -48,6 +53,8 @@ export default function ScanStation({ initialMode = 'stock_out', size }) {
   const [undoBusy, setUndoBusy] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const selected = MODES.find((item) => item.id === mode);
+  const modeDescription = mode==='stock_out' && paymentType==='credit'
+    ? 'Scan a bag to sell it on credit. Stock reduces and the balance is added to the selected customer.' : selected.description;
   const SelectedIcon = selected.icon;
   const ready = (armed || mode === 'lookup') && !blocked && online;
 
@@ -98,11 +105,16 @@ export default function ScanStation({ initialMode = 'stock_out', size }) {
     if (!/^99\d{16}$/.test(clean)) { setError('Use a pack label made in this app: 18 digits starting with 99.'); feedbackError(); return; }
     if (queue.current.length >= 50) { setError('The scanner is ahead of the server. Let the queued scans finish before scanning more.'); return; }
     if (queue.current.some((item) => item.code === clean && item.mode === mode)) { setCode(''); return; }
-    queue.current.push({ requestId: requestId(), code: clean, mode, station, customer: mode === 'stock_out' ? customer : '' });
+    queue.current.push({ requestId: requestId(), code: clean, mode, station, customer: mode === 'stock_out' ? customer : '',
+      ...(mode==='stock_out' && paymentType==='credit' ? {paymentType,customerId,dueDate} : {}),
+    });
     writeStored(key, queue.current); setPending(queue.current.length); setCode(''); setError(''); setResult(null);
     pump();
   };
-  const start = () => { setArmed(true); setError(''); requestAnimationFrame(() => input.current?.focus()); };
+  const start = () => {
+    if (mode==='stock_out' && paymentType==='credit' && (!customerId || !dueDate)) {setError('Choose a credit customer and a payment due date before scanning.');return;}
+    setArmed(true); setError(''); requestAnimationFrame(() => input.current?.focus());
+  };
   const retry = () => { paused.current = false; setBlocked(false); setArmed(true); setError(''); pump(); };
   const undo = async (entry) => {
     if (!entry?.transaction?.id || pending || undoBusy) return;
@@ -142,9 +154,13 @@ export default function ScanStation({ initialMode = 'stock_out', size }) {
         </button>)}
       </div>
       <div className="barcode-station-body">
-        <div className="barcode-mode-intro flex items-start justify-between gap-4 mb-5"><div><h2 className="text-xl font-semibold text-content">{translate(selected.title === 'Read label' ? 'Know your bag' : selected.title === 'Stock in' ? 'Receive your rice' : 'Scan. Sell. Next bag.')}</h2><p className="barcode-mode-description text-sm text-content-muted mt-2 max-w-xl">{translate(selected.description)}</p><p className="barcode-mobile-description">{translate(mode === 'stock_out' ? 'One scan sells one bag and records its sale.' : mode === 'stock_in' ? 'One scan receives one bag into stock.' : 'Check a bag without changing stock.')}</p></div><SelectedIcon className="w-6 h-6 text-content-muted shrink-0" aria-hidden="true" /></div>
+        <div className="barcode-mode-intro flex items-start justify-between gap-4 mb-5"><div><h2 className="text-xl font-semibold text-content">{translate(selected.title === 'Read label' ? 'Know your bag' : selected.title === 'Stock in' ? 'Receive your rice' : 'Scan. Sell. Next bag.')}</h2><p className="barcode-mode-description text-sm text-content-muted mt-2 max-w-xl">{translate(modeDescription)}</p><p className="barcode-mobile-description">{translate(mode === 'stock_out' ? 'One scan sells one bag and records its sale.' : mode === 'stock_in' ? 'One scan receives one bag into stock.' : 'Check a bag without changing stock.')}</p></div><SelectedIcon className="w-6 h-6 text-content-muted shrink-0" aria-hidden="true" /></div>
         {!online && <p role="alert" className="barcode-alert mb-4">{translate("You’re offline. Reconnect before scanning. A bag is only moved after the server confirms it.")}</p>}
         {blocked && <div className="barcode-alert mb-4" role="alert"><strong>{translate("Scans need checking")}</strong><p className="mt-1">{translate(pending)}{translate(" scan")}{translate(pending === 1 ? '' : 's')}{translate(" pending. A connection problem may have interrupted the confirmation. Retry safely with the same request.")}</p><Button className="mt-3" variant="secondary" icon={FiRotateCcw} onClick={retry} disabled={!online}>{translate("Recover pending scans")}</Button></div>}
+        {mode==='stock_out' && can('credit.manage') && <div className="space-y-3 mb-4">
+          <Select label={translate('Sale payment')} value={paymentType} disabled={armed || pending>0} onChange={e=>setPaymentType(e.target.value)}><option value="cash">{translate('Paid in full')}</option><option value="credit">{translate('Pay later · credit')}</option></Select>
+          {paymentType==='credit' && <><div className="grid sm:grid-cols-2 gap-3"><Select label={translate('Credit customer')} value={customerId} disabled={armed || pending>0 || customers.loading} onChange={e=>setCustomerId(e.target.value)}><option value="">{translate('Choose a customer')}</option>{(customers.data || []).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</Select><Input type="date" label={translate('Payment due date')} value={dueDate} disabled={armed || pending>0} onChange={e=>setDueDate(e.target.value)}/></div><p className="text-xs text-content-muted">{translate('Each scanned bag goes on this customer’s account. Record their repayment in Customer credit when the money arrives.')}</p></>}
+        </div>}
         {!armed && mode !== 'lookup' && !blocked ? <div className={`barcode-start barcode-start-${mode}`}>
           <SelectedIcon className="w-9 h-9 mb-3" aria-hidden="true" /><h3 className="text-lg font-semibold">{translate(mode === 'stock_out' ? 'Ready to sell?' : 'Ready to receive?')}</h3>
           <p className="text-sm mt-2 mb-5">{translate(mode === 'stock_out' ? 'Each scan sells one labelled bag. Check the action above before you begin.' : 'Each scan adds the quantity printed on that bag’s label.')}</p>
@@ -166,13 +182,14 @@ export default function ScanStation({ initialMode = 'stock_out', size }) {
         </div>
         <details className="barcode-details mt-4"><summary>{translate("Counter & customer (optional)")}</summary><div className="grid sm:grid-cols-2 gap-3 mt-3">
           <Input label={translate("Shop / counter (optional)")} value={station} maxLength={120} disabled={pending > 0 || armed} onChange={(e) => { setStation(e.target.value); writeStored(`${key}.station`, e.target.value); }} placeholder={translate("e.g. Main shop")} />
-          {mode === 'stock_out' && <Input label={translate("Customer (optional)")} value={customer} maxLength={120} disabled={pending > 0 || armed} onChange={(e) => setCustomer(e.target.value)} />}
+          {mode === 'stock_out' && paymentType==='cash' && <Input label={translate("Customer (optional)")} value={customer} maxLength={120} disabled={pending > 0 || armed} onChange={(e) => setCustomer(e.target.value)} />}
         </div></details>
         {error && <p className="barcode-alert mt-4" role="alert">{translate(error)}</p>}
         {result && <div className="barcode-result mt-5" role="status">
           <div className="flex gap-3 items-start"><FiCheckCircle className="w-6 h-6 shrink-0" aria-hidden="true" /><div><p className="font-semibold">{translate(result.replayed ? 'Previous scan confirmed' : result.mode === 'lookup' ? LABEL_STATUS[result.label.status] : result.mode === 'stock_in' ? 'Bag added to stock' : 'Bag sold · stock updated')}</p>
             <p className="mt-1">{result.label.productName} · {translate(formatQuantity(result.label.quantity))} {translate(result.label.unit)}</p>
             {result.transaction && <p className="text-sm mt-1">{translate("Stock after this scan: ")}<strong>{translate(formatQuantity(result.transaction.stockAfter))} {translate(result.label.unit)}</strong>{translate(result.mode === 'stock_out' ? ` · Sale ${formatMoney(result.transaction.totalValue, currencySymbol)}` : '')}</p>}
+            {result.transaction?.paymentType==='credit' && <p className="text-sm mt-1 font-medium">{translate('Added to {0}’s credit account',[result.transaction.customer])}</p>}
             {result.mode === 'lookup' && <p className="text-sm mt-1">{translate(formatQuantity(result.currentStock))} {translate(result.label.unit)}{translate(" total product stock")}{translate(result.active ? '' : ' · Product archived')}</p>}
             {result.replayed && <p className="text-sm mt-1">{translate("This request was already recorded. No second movement was made. Read the label to check its current status.")}</p>}
           </div></div>

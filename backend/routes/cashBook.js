@@ -255,10 +255,10 @@ router.put(
     const entry = await CashEntry.findById(req.params.id, { businessId: req.businessId });
     if (!entry) throw new ApiError(404, 'Cash entry not found');
 
-    if (entry.source === 'sale') {
+    if (entry.source !== 'manual') {
       throw new ApiError(
         400,
-        'This line was posted automatically from a sale. Edit the transaction instead.'
+        'This line was posted automatically. Correct the sale or reverse its credit repayment in Customer credit.'
       );
     }
 
@@ -299,10 +299,10 @@ router.delete(
     const entry = await CashEntry.findById(req.params.id, { businessId: req.businessId });
     if (!entry) throw new ApiError(404, 'Cash entry not found');
 
-    if (entry.source === 'sale') {
+    if (entry.source !== 'manual') {
       throw new ApiError(
         400,
-        'This line came from a sale. Reverse the transaction to remove it from the cash book.'
+        'This line was posted automatically. Reverse the sale or its credit repayment in Customer credit.'
       );
     }
 

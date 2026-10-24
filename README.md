@@ -77,13 +77,20 @@ must be reversed in order, starting with that adjustment.
 ### Cash Book
 Money in and money out in one ledger with a running balance.
 
-- **Sales post themselves.** Any stock-out with a price creates a matching
+- **Sales post themselves.** A paid stock-out with a price creates a matching
   money-in line, so the cash book reflects real takings without re-typing.
 - **Manual entries** for owner injections, loans, expenses, salaries and the rest.
 - Auto-posted lines are read-only — the transaction stays the single source of
   truth, so the two records can never drift apart.
 - Every entry is attributed and timestamped, and entries can be back-dated to
   the day they actually happened.
+
+### Customer credit
+
+Track each customer's existing debt, new credit sales, deposits, due dates, and
+partial repayments. Only received money enters the cash book. Includes barcode
+credit sales, overdue filters, PDF statements, copied reminders, and recorded
+reversals. See [the credit workflow](docs/CREDIT.md).
 
 ### Reports
 Stock valued at cost and at retail, movement per product, realised profit and

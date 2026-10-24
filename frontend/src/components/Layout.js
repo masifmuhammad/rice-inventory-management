@@ -46,6 +46,7 @@ export const NAVIGATION = [
   { name: 'Scan & labels', href: '/barcodes', icon: FiRadio },
   { name: 'Transactions', href: '/transactions', icon: FiTrendingUp },
   { name: 'Cash Book', href: '/cash-book', icon: FiDollarSign },
+  { name: 'Customer credit', href: '/credit', icon: FiUsers },
   { name: 'Reports', href: '/reports', icon: FiBarChart2 },
   { name: 'Settings', href: '/settings', icon: FiSettings },
 ];
@@ -254,7 +255,7 @@ export default function Layout() {
   }, [reducedMotion]);
 
   const navSections = useMemo(() => {
-    const main = NAVIGATION.filter((item) => item.href !== '/settings' && (item.href !== '/cash-book' || can('cash.view')) && (item.href !== '/reports' || can('reports.view')));
+    const main = NAVIGATION.filter((item) => item.href !== '/settings' && (item.href !== '/credit' || can('credit.view')) && (item.href !== '/cash-book' || can('cash.view')) && (item.href !== '/reports' || can('reports.view')));
     const admin = ADMIN_NAV.filter((item) => can(item.capability));
     const settings = [NAVIGATION[NAVIGATION.length - 1]];
     const sections = [{ label: 'Main', items: main }];

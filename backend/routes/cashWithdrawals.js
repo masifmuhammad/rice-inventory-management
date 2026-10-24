@@ -133,7 +133,7 @@ router.delete(
     const entry = await CashEntry.findOne({ _id: req.params.id, direction: 'out', businessId: req.businessId });
     if (!entry) throw new ApiError(404, 'Cash withdrawal not found');
 
-    if (entry.source === 'sale') {
+    if (entry.source !== 'manual') {
       throw new ApiError(400, 'This line came from a sale and cannot be deleted here.');
     }
 

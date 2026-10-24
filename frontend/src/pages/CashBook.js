@@ -294,7 +294,7 @@ export default function CashBook() {
             <ul className="divide-y divide-hairline">
               {entries.map((entry) => {
                 const isIn = entry.direction === 'in';
-                const auto = entry.source === 'sale';
+                const auto = entry.source !== 'manual';
 
                 return (
                   <li key={entry._id}>

@@ -172,6 +172,64 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_cash_entries_migrated_from
 
 CREATE INDEX IF NOT EXISTS idx_cash_entries_business_occurred ON cash_entries (business_id, occurred_at DESC);
 
+-- Customer credit is separate from cash. Existing sales keep their cash behavior.
+CREATE TABLE IF NOT EXISTS credit_customers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  name VARCHAR(120) NOT NULL,
+  phone VARCHAR(40) NOT NULL DEFAULT '',
+  notes VARCHAR(1000) NOT NULL DEFAULT '',
+  created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_credit_customer_name ON credit_customers (business_id, lower(name));
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_type VARCHAR(10) NOT NULL DEFAULT 'cash' CHECK (payment_type IN ('cash', 'credit'));
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS amount_received NUMERIC(14,2);
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES credit_customers(id) ON DELETE RESTRICT;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS due_date DATE;
+
+CREATE TABLE IF NOT EXISTS credit_charges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  customer_id UUID NOT NULL REFERENCES credit_customers(id) ON DELETE RESTRICT,
+  transaction_id UUID UNIQUE REFERENCES transactions(id) ON DELETE RESTRICT,
+  amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+  description VARCHAR(200) NOT NULL,
+  due_date DATE NOT NULL,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_credit_charges_customer ON credit_charges (business_id, customer_id, due_date);
+ALTER TABLE credit_charges ADD COLUMN IF NOT EXISTS voided_at TIMESTAMPTZ;
+ALTER TABLE credit_charges ADD COLUMN IF NOT EXISTS void_reason VARCHAR(300);
+ALTER TABLE credit_charges ADD COLUMN IF NOT EXISTS charge_type VARCHAR(10) NOT NULL DEFAULT 'opening' CHECK (charge_type IN ('opening','sale'));
+UPDATE credit_charges SET charge_type='sale' WHERE transaction_id IS NOT NULL AND charge_type='opening';
+CREATE TABLE IF NOT EXISTS credit_payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  customer_id UUID NOT NULL REFERENCES credit_customers(id) ON DELETE RESTRICT,
+  request_id UUID NOT NULL,
+  amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+  payment_date DATE NOT NULL,
+  method VARCHAR(20) NOT NULL CHECK (method IN ('cash', 'bank', 'easypaisa', 'jazzcash', 'other')),
+  reference VARCHAR(120) NOT NULL DEFAULT '',
+  notes VARCHAR(500) NOT NULL DEFAULT '',
+  created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  voided_at TIMESTAMPTZ,
+  void_reason VARCHAR(300),
+  UNIQUE (business_id, request_id)
+);
+CREATE TABLE IF NOT EXISTS credit_allocations (
+  payment_id UUID NOT NULL REFERENCES credit_payments(id) ON DELETE CASCADE,
+  charge_id UUID NOT NULL REFERENCES credit_charges(id) ON DELETE RESTRICT,
+  amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+  PRIMARY KEY (payment_id, charge_id)
+);
+CREATE INDEX IF NOT EXISTS idx_credit_allocations_charge ON credit_allocations (charge_id);
+ALTER TABLE cash_entries DROP CONSTRAINT IF EXISTS cash_entries_source_check;
+ALTER TABLE cash_entries ADD CONSTRAINT cash_entries_source_check CHECK (source IN ('manual', 'sale', 'credit'));
+ALTER TABLE cash_entries ADD COLUMN IF NOT EXISTS credit_payment_id UUID UNIQUE REFERENCES credit_payments(id) ON DELETE RESTRICT;
+
 -- Sale references/customer names accept 120 characters on transactions too.
 ALTER TABLE cash_entries ALTER COLUMN party TYPE VARCHAR(120);
 ALTER TABLE cash_entries ALTER COLUMN reference TYPE VARCHAR(120);

@@ -18,6 +18,9 @@ const DEFAULT_URI = 'postgresql://postgres:postgres@127.0.0.1:5432/rice_inventor
  * to ::int in their queries, and a stray bigint really can exceed float64.
  */
 types.setTypeParser(types.builtins.NUMERIC, (value) => (value === null ? null : Number(value)));
+// A calendar DATE has no timezone. Serializing a local-midnight JS Date can
+// otherwise move a customer's due date back a day in Pakistan.
+types.setTypeParser(types.builtins.DATE, (value) => value);
 
 let pool;
 let schemaReady = false;

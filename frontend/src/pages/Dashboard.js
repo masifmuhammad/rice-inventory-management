@@ -43,6 +43,8 @@ export default function Dashboard() {
   const canReport = can('reports.view');
   const stats = useApi((signal) => api.get('/reports/dashboard', { signal }).then((r) => r.data), [], { keepPreviousData: true, cacheKey: 'reports/dashboard' });
   const recent = useApi((signal) => api.get('/transactions', { params: { limit: 5 }, signal }).then((r) => r.data), [], { cacheKey: 'transactions/home', keepPreviousData: true });
+  const credit = useApi((signal) => api.get('/credit', { signal }).then(r=>r.data), [], { immediate:can('credit.view'),keepPreviousData:true });
+  const creditBalance = credit.data?.customers.reduce((sum,c)=>sum+c.balance,0) || 0;
   const actions = [
     can('transactions.create') && { label: 'Record sale', icon: FiTrendingUp, path: '/transactions', state: { openCreate: true, transactionType: 'stock_out' } },
     can('cash.manage') && { label: 'Money in', icon: FiArrowDownLeft, path: '/cash-book', state: { openCreate: 'in' } },
@@ -59,6 +61,10 @@ export default function Dashboard() {
       <PageHeader summary={translate(canReport && stats.data ? 'Stock ' + formatCompactMoney(stats.data.totalStockValue, currencySymbol) + (can('cash.view') ? ' | Cash ' + formatCompactMoney(stats.data.cashBalance, currencySymbol) : '') : totalProducts + ' products')} title={translate("Dashboard")} description={translate("Your business, in balance.")} actions={canReport && <Link to="/reports" className="hidden sm:inline-flex items-center gap-2 text-sm text-content-muted min-h-[44px]">{translate("View reports ")}<FiArrowUpRight aria-hidden="true" /></Link>} />
       {stats.error && <InlineError message={translate(stats.error)} onRetry={stats.refetch} />}
       <InventoryActions />
+      {can('credit.view') && <Link to="/credit" className="flex flex-wrap items-center justify-between gap-3 py-4 border-y border-hairline/10 min-h-[60px] group">
+        <span><span className="text-sm font-semibold text-content">{translate('Customer credit')}</span><span className="block text-xs text-content-muted mt-1">{translate('Balances, due dates and repayments')}</span></span>
+        <span className="flex items-center gap-3 text-sm font-money font-semibold tabular-nums">{credit.error ? translate('View accounts') : credit.loading && !credit.data ? translate('Loading…') : formatMoney(creditBalance,currencySymbol)}<FiArrowRight aria-hidden="true"/></span>
+      </Link>}
       <MobileBusinessSummary stats={stats.data} loading={stats.loading && !stats.data} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5" aria-label={translate("Quick actions")}>
         {actions.map(({ label, icon, path, state }) => <Button key={label} variant="secondary" icon={icon} onClick={() => navigate(path, { state })} className="min-h-[50px] text-[13px] sm:text-sm">{translate(label)}</Button>)}

@@ -41,6 +41,7 @@ const writeCache = (businessId, settings) => {
 export function SettingsProvider({ children }) {
   useAppLanguage();
   const { user, businessId } = useAuth();
+  const userId = user?.id || user?._id;
   const [settings, setSettings] = useState(() => readCache(businessId));
   const [loading, setLoading] = useState(false);
 
@@ -54,7 +55,7 @@ export function SettingsProvider({ children }) {
   }, [settings.businessName]);
 
   useEffect(() => {
-    if (!user || !businessId) {
+    if (!userId || !businessId) {
       // A cleared session must not leave the last tenant's branding behind.
       // `logout` reloads the page, but an *expired* session does not — so the
       // sign-in screen kept the previous business's name in the tab title, its
@@ -89,7 +90,7 @@ export function SettingsProvider({ children }) {
       controller.abort();
       window.removeEventListener('rim:business-changed', onBusinessChanged);
     };
-  }, [user, businessId]);
+  }, [userId, businessId]);
 
   const updateSettings = useCallback(
     async (patch) => {

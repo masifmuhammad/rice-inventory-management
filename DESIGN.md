@@ -302,6 +302,22 @@ Scanner modes pair the same operation colours with readable names, icons and an 
 
 Printable labels remain white with dark ink in both themes. Their barcode is the actual Code 128 SVG for the pack code; preserve the human-readable number, quantity/unit and active business identity. Preview/test labels are explicitly distinguished from recorded stock labels.
 
+## Customer credit
+
+This is an Operate surface: customer selection and collection actions carry the
+hierarchy. Desktop pairs a compact customer directory with the account history.
+On phones, choosing a customer replaces the directory with their account, keeps
+the repayment action above the tab bar, and provides an explicit return control.
+Names and amounts wrap independently; money uses Manrope and tabular numerals.
+
+Use the existing neutral surfaces and controls. Muted violet identifies credit
+entries and the selected account; restrained red and the word Overdue identify
+late balances. Payment status always includes text. History retains reversed
+entries with a reason and struck-through amount. Empty accounts explain the next
+action, forms preserve drafts on failure, and statement/reminder actions stay
+secondary to recording a repayment or sale. Support light, dark, English, Urdu,
+RTL, keyboard navigation, and reduced motion.
+
 ## Do's and Don'ts
 
 ### Do:

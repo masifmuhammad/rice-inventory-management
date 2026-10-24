@@ -7,6 +7,10 @@ import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../../utils/motion';
 import Modal from '../ui/Modal';
 import { Input, Select, Textarea } from '../ui/Field';
+import { Link } from 'react-router-dom';
+import api from '../../services/api';
+import useApi from '../../hooks/useApi';
+import { useAuth } from '../../context/AuthContext';
 import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 const TYPES = [
@@ -24,6 +28,10 @@ const EMPTY = {
   supplier: '',
   customer: '',
   notes: '',
+  paymentType: 'cash',
+  customerId: '',
+  amountReceived: '',
+  dueDate: '',
 };
 
 export default function TransactionFormModal({
@@ -34,9 +42,12 @@ export default function TransactionFormModal({
   productsLoading = false,
   initialValues = null,
   editing = false,
+  serverError = '',
 }) {
   useAppLanguage();
   const { currencySymbol } = useSettings();
+  const { can } = useAuth();
+  const customers = useApi((signal) => api.get('/credit', { signal }).then(r => r.data.customers), [], { immediate: open && can('credit.view') });
   const [values, setValues] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -58,6 +69,10 @@ export default function TransactionFormModal({
               supplier: initialValues.supplier || '',
               customer: initialValues.customer || '',
               notes: initialValues.notes || '',
+              paymentType: initialValues.paymentType || 'cash',
+              customerId: initialValues.customerId || '',
+              amountReceived: initialValues.amountReceived ?? '',
+              dueDate: initialValues.dueDate ? String(initialValues.dueDate).slice(0,10) : '',
             }
           : EMPTY
       );
@@ -126,6 +141,11 @@ export default function TransactionFormModal({
     if (preview?.insufficient) {
       nextErrors.quantity = `Only ${formatQuantity(preview.before, preview.unit)} in stock`;
     }
+    if (values.type === 'stock_out' && values.paymentType === 'credit') {
+      if (!values.customerId) nextErrors.customerId = 'Choose a credit customer';
+      if (!values.dueDate) nextErrors.dueDate = 'Choose a payment due date';
+      if (!(preview?.total > 0) || Number(values.amountReceived || 0) >= preview.total || Number(values.amountReceived || 0) < 0) nextErrors.amountReceived = 'Enter less than the sale total; use cash for full payment';
+    }
 
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
@@ -136,7 +156,11 @@ export default function TransactionFormModal({
         ...values,
         quantity,
         price: values.price === '' ? undefined : price,
+        paymentType: values.type === 'stock_out' ? values.paymentType : 'cash',
+        amountReceived: values.paymentType === 'credit' ? Number(values.amountReceived || 0) : undefined,
       });
+    } catch {
+      // The owning screen shows the API error and keeps the form draft.
     } finally {
       setSaving(false);
     }
@@ -267,7 +291,25 @@ export default function TransactionFormModal({
           <Input label={translate("Supplier")} value={values.supplier} onChange={set('supplier')} placeholder={translate("Who you bought from")} />
         )}
 
-        {values.type === 'stock_out' && (
+        {values.type === 'stock_out' && can('credit.manage') && !editing && <>
+          <fieldset className="flex gap-2 py-2"><legend className="text-sm text-content-muted mb-2">{translate('Payment')}</legend>
+            {[['cash','Paid in full'],['credit','Pay later · credit']].map(([value,label]) => <label key={value} className={`flex-1 flex items-center gap-2 rounded-xl px-3 py-3 text-sm cursor-pointer border ${values.paymentType===value ? 'border-content bg-surface-sunken' : 'border-hairline/10'}`}>
+              <input type="radio" name="sale-payment" value={value} checked={values.paymentType===value} onChange={set('paymentType')} />{translate(label)}
+            </label>)}
+          </fieldset>
+          {values.paymentType === 'credit' && <div className="space-y-3">
+            <Select label={translate('Credit customer')} required value={values.customerId} onChange={set('customerId')} error={errors.customerId} disabled={customers.loading}>
+              <option value="">{translate(customers.loading ? 'Loading customers…' : 'Choose a customer')}</option>
+              {(customers.data || []).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+            {customers.error && <p role="alert" className="text-sm text-red-600">{translate(customers.error)} <button type="button" className="underline" onClick={()=>customers.refetch()}>{translate('Try again')}</button></p>}
+            {!customers.loading && !customers.data?.length && <Link className="inline-block text-sm underline py-2" to="/credit">{translate('Add a customer in Customer credit')}</Link>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Input label={translate('Received now')} type="number" min="0" step="0.01" inputMode="decimal" prefix={currencySymbol} value={values.amountReceived} onChange={set('amountReceived')} error={errors.amountReceived}/>
+              <Input label={translate('Payment due date')} required type="date" value={values.dueDate} onChange={set('dueDate')} error={errors.dueDate}/></div>
+            {preview?.total>0 && <p className="text-sm text-content-muted">{translate('Left to collect: {0}',[formatMoney(Math.max(0,preview.total-Number(values.amountReceived || 0)),currencySymbol)])}</p>}
+          </div>}
+        </>}
+        {values.type === 'stock_out' && values.paymentType !== 'credit' && (
           <Input label={translate("Customer")} value={values.customer} onChange={set('customer')} placeholder={translate("Who you sold to")} />
         )}
 
@@ -285,8 +327,9 @@ export default function TransactionFormModal({
           </div>
         </details>
 
+        {serverError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{translate(serverError)}</p>}
         {values.type === 'stock_out' && (
-          <p className="text-xs text-content-subtle">{translate("Sales with a price are posted to the cash book automatically.")}</p>
+          <p className="text-xs text-content-subtle">{translate(values.paymentType === 'credit' ? 'Only the amount received now enters the cash book. The rest stays on this customer’s account.' : 'Sales with a price are posted to the cash book automatically.')}</p>
         )}
       </form>
     </Modal>

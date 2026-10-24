@@ -2,6 +2,9 @@ const { withTransaction } = require('../config/db');
 const { ApiError } = require('../middleware/errorHandler');
 const { round2, round4 } = require('../db/helpers');
 const Transaction = require('../models/Transaction');
+const { lockCustomer } = require('./creditLedger');
+const { can } = require('../middleware/permissions');
+const { dayStart } = require('../db/dates');
 
 const effect = (type, quantity) =>
   type === 'stock_in' ? quantity : type === 'stock_out' ? -quantity : 0;
@@ -26,13 +29,14 @@ const writeStock = async (client, product, stock) => {
 };
 
 const postCash = async (client, row, product, userId) => {
-  if (row.type !== 'stock_out' || Number(row.total_value) <= 0) return;
+  const received = row.payment_type === 'credit' ? Number(row.amount_received) : Number(row.total_value);
+  if (row.type !== 'stock_out' || received <= 0) return;
   await client.query(
     `INSERT INTO cash_entries
       (business_id, direction, amount, category, purpose, party, reference,
        source, transaction_id, occurred_at, created_by)
      VALUES ($1, 'in', $2, 'Sale', $3, $4, $5, 'sale', $6, $7, $8)`,
-    [row.business_id, row.total_value, `Sale — ${product.name}`, row.customer || '',
+    [row.business_id, received, `Sale — ${product.name}`, row.customer || '',
       row.reference || '', row.id, row.created_at, userId]
   );
 };
@@ -69,15 +73,34 @@ const createMovementOnClient = async (client, data, businessId, user) => {
   }
   await writeStock(client, product, stockAfter);
   const price = round4(data.price ?? Number(data.type === 'stock_out' ? product.selling_price : product.cost_price));
+  const total = round2(price * quantity);
+  const credit = data.paymentType === 'credit';
+  let customer;
+  const received = credit ? Number(data.amountReceived ?? 0) : total;
+  if (credit) {
+    if (!can(user.role, 'credit.manage')) throw new ApiError(403, 'Your account cannot record customer credit.');
+    if (data.type !== 'stock_out') throw new ApiError(400, 'Credit is available for sales only.');
+    if (!Number.isFinite(received) || received < 0 || round2(received) !== received || received >= total) {
+      throw new ApiError(400, 'The amount received must be less than the sale total. Use a cash sale for full payment.');
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.dueDate || '')) throw new ApiError(400, 'Choose a payment due date.');
+    dayStart(data.dueDate);
+    customer = await lockCustomer(client, data.customerId, businessId);
+  }
   const { rows } = await client.query(
     `INSERT INTO transactions
       (business_id, type, product_id, quantity, unit, price, total_value, reference,
-       batch_number, expiry_date, supplier, customer, notes, created_by, stock_before, stock_after, cost_price_snapshot, barcode_label_id, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,clock_timestamp()) RETURNING *`,
-    [businessId, data.type, product.id, quantity, product.unit, price, round2(price * quantity),
+      batch_number, expiry_date, supplier, customer, notes, created_by, stock_before, stock_after, cost_price_snapshot, barcode_label_id, created_at,
+      payment_type, amount_received, customer_id, due_date)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,clock_timestamp(),$19,$20,$21,$22) RETURNING *`,
+    [businessId, data.type, product.id, quantity, product.unit, price, total,
       data.reference ?? null, data.batchNumber ?? null, data.expiryDate || null,
-      data.supplier ?? null, data.customer ?? null, data.notes ?? null, user.id, stockBefore, stockAfter, product.cost_price, data.barcodeLabelId || null]
+      data.supplier ?? null, customer?.name ?? data.customer ?? null, data.notes ?? null, user.id, stockBefore, stockAfter, product.cost_price, data.barcodeLabelId || null,
+      credit ? 'credit' : 'cash', received, customer?.id || null, credit ? data.dueDate : null]
   );
+  if (credit) await client.query(`INSERT INTO credit_charges
+    (business_id,customer_id,transaction_id,amount,description,due_date,occurred_at,charge_type) VALUES ($1,$2,$3,$4,$5,$6,$7,'sale')`,
+    [businessId,customer.id,rows[0].id,round2(total-received),`${quantity} ${product.unit} · ${product.name}`.slice(0,200),data.dueDate,rows[0].created_at]);
   await postCash(client, rows[0], product, user.id);
   return present(rows[0], product, user);
 };
@@ -90,6 +113,15 @@ const changeMovement = (id, businessId, user, data) => withTransaction(async (cl
   const { rows: locked } = await client.query('SELECT * FROM transactions WHERE id = $1 AND business_id = $2 FOR UPDATE', [id, businessId]);
   const before = locked[0];
   if (!before) throw new ApiError(404, 'Transaction not found');
+  if (data && (before.payment_type === 'credit' || data.paymentType === 'credit')) {
+    throw new ApiError(409, 'To correct a credit sale, reverse it and record it again. Reverse its repayments first.');
+  }
+  if (before.payment_type === 'credit') {
+    await lockCustomer(client, before.customer_id, businessId);
+    const paid = await client.query(`SELECT 1 FROM credit_allocations a JOIN credit_charges c ON c.id=a.charge_id
+      JOIN credit_payments p ON p.id=a.payment_id WHERE c.transaction_id=$1 AND p.voided_at IS NULL LIMIT 1`, [id]);
+    if (paid.rows.length) throw new ApiError(409, 'This credit sale has repayments. Reverse those repayments in Customer credit first.');
+  }
   let label;
   if (before.barcode_label_id) {
     if (data) throw new ApiError(409, 'Barcode movements cannot be edited. Reverse the latest scan and scan again.');
@@ -149,7 +181,12 @@ const changeMovement = (id, businessId, user, data) => withTransaction(async (cl
   if (label) await client.query('UPDATE barcode_labels SET status=$1, updated_at=NOW() WHERE id=$2', [before.type === 'stock_out' ? 'in_stock' : 'prepared', label.id]);
   await client.query("DELETE FROM cash_entries WHERE transaction_id=$1 AND business_id=$2 AND source='sale'", [id, businessId]);
   if (data) await postCash(client, row, product, before.created_by);
-  else await client.query('DELETE FROM transactions WHERE id=$1 AND business_id=$2', [id, businessId]);
+  else {
+    // Keep the customer-side sale and any voided allocations as history even
+    // though the stock ledger removes its reversed movement.
+    await client.query("UPDATE credit_charges SET transaction_id=NULL,voided_at=NOW(),void_reason='Credit sale reversed' WHERE transaction_id=$1 AND business_id=$2", [id,businessId]);
+    await client.query('DELETE FROM transactions WHERE id=$1 AND business_id=$2', [id, businessId]);
+  }
   const creator = row ? (await client.query('SELECT id, name, email FROM users WHERE id=$1', [before.created_by])).rows[0] : null;
   return { before: new Transaction(before), transaction: row ? present(row, product, creator) : null };
 });

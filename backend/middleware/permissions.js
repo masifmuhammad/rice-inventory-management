@@ -31,6 +31,10 @@ const CAPABILITIES = {
   'cash.manage': 'accountant',
   'cash.delete': 'admin',
 
+  'credit.view': 'accountant',
+  'credit.manage': 'accountant',
+  'credit.reverse': 'admin',
+
   'reports.view': 'accountant',
 
   'settings.view': 'worker', // needed for branding on every screen

@@ -30,6 +30,8 @@ router.get('/labels/:code', requireCapability('products.view'), [code(param('cod
 router.post('/scan', requireCapability('transactions.create'), [
   body('requestId').isUUID(), code(body('code')), body('mode').isIn(['stock_in', 'stock_out']),
   body('station').optional().trim().isLength({ max: 120 }), body('customer').optional().trim().isLength({ max: 120 }),
+  body('paymentType').optional().isIn(['cash','credit']),body('customerId').optional({values:'falsy'}).isUUID(),
+  body('dueDate').optional({values:'falsy'}).isDate({format:'YYYY-MM-DD',strictMode:true}),
 ], validate, asyncHandler(async (req, res) => {
   const result = await service.scanLabel(req.body, req.businessId, req.user);
   if (!result.replayed) audit(req, 'SCAN_BARCODE', 'TRANSACTION', result.transaction.id, { code: result.label.code, type: result.mode, quantity: result.label.quantity, station: req.body.station || '' });

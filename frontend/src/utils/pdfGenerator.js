@@ -427,7 +427,8 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
   const { doc, geom } = createCanvas('portrait');
 
   const isSale = transaction.type === 'stock_out';
-  const documentType = isSale
+  const isCredit = isSale && transaction.paymentType === 'credit';
+  const documentType = isCredit ? 'Credit Sale' : isSale
     ? 'Sales Receipt'
     : transaction.type === 'stock_in'
       ? 'Goods Received'
@@ -535,7 +536,7 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
   doc.setLineWidth(0.5);
   doc.roundedRect(panelX, y, panelWidth, panelHeight, 4, 4, 'S');
 
-  const totalLabel = isSale ? 'Total received' : 'Total value';
+  const totalLabel = isSale && !isCredit ? 'Total received' : 'Total value';
   label(doc, totalLabel, panelX + panelPad, y + 18, { maxWidth: panelWidth - panelPad * 2 });
 
   // Shrink to fit rather than overflow the panel it sits in.
@@ -563,6 +564,14 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
   );
 
   y += panelHeight + 26;
+  if (isCredit) {
+    y = drawMetaGrid(doc, geom, [
+      { label:'Received at sale', value:money(transaction.amountReceived || 0,business.symbol) },
+      { label:'Credit at sale', value:money(transaction.totalValue-(transaction.amountReceived || 0),business.symbol) },
+      { label:'Payment due', value:formatDate(transaction.dueDate) },
+    ], y);
+    y += 16;
+  }
 
   /* Free-text blocks. Each measures itself first and moves to a new page whole,
      rather than being clipped by the footer. */
@@ -611,6 +620,27 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
 };
 
 /* ------------------------------------------------------------------ report */
+
+export const generateCreditStatementPDF = async (account, settings = {}) => {
+  const business = businessFrom(settings);
+  const {doc,geom} = createCanvas();
+  const logo = settings.logo ? await loadImage(settings.logo) : null;
+  let y = drawLetterhead(doc,geom,business,logo,{documentType:'Customer Statement',documentNumber:isoDate()});
+  y = drawMetaGrid(doc,geom,[{label:'Customer',value:account.customer.name},{label:'Phone',value:account.customer.phone || '-'},
+    {label:'Outstanding',value:money(account.balance,business.symbol)}],y);
+  const rows = [
+    ...account.charges.map(c=>({date:c.occurredAt,description:`${c.voidedAt ? 'REVERSED: ' : ''}${c.description}`,due:c.dueDate,charge:c.voidedAt ? 0 : c.amount,payment:0,status:c.voidedAt ? c.voidReason : c.outstanding===0 ? 'Paid' : `Unpaid ${money(c.outstanding,business.symbol)}`})),
+    ...account.payments.map(p=>({date:p.paymentDate,description:`${p.voidedAt ? 'REVERSED: ' : ''}Repayment - ${p.method}${p.reference ? ` (${p.reference})` : ''}`,charge:0,payment:p.voidedAt ? 0 : p.amount,status:p.voidedAt ? p.voidReason : 'Received'})),
+  ].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  autoTable(doc,{startY:y+12,margin:{left:geom.left,right:MARGIN,bottom:MARGIN+FOOTER_RESERVE},theme:'plain',
+    head:[['Date / due date','Description','Credit','Repaid','Status']],body:rows.map(r=>[
+      `${formatDate(r.date)}${r.due ? `\nDue ${formatDate(r.due)}` : ''}`,safeText(r.description),r.charge ? money(r.charge,business.symbol) : '-',r.payment ? money(r.payment,business.symbol) : '-',safeText(r.status)]),
+    styles:{fontSize:9,cellPadding:8,textColor:BODY,overflow:'linebreak'},headStyles:{textColor:INK,fontStyle:'bold',lineWidth:{bottom:.5},lineColor:HAIRLINE},
+    columnStyles:{0:{cellWidth:90},1:{cellWidth:135},2:{halign:'right'},3:{halign:'right'},4:{cellWidth:100}}});
+  drawFooters(doc,geom,business,{leftText:'Credit amounts exclude money received at the sale. Reversed payments do not reduce the balance.'});
+  doc.setProperties({title:`Customer statement - ${safeText(account.customer.name)}`,author:business.name});
+  return deliver(doc,`${slugify(account.customer.name)}-statement-${isoDate()}.pdf`,{title:'Customer statement',text:`Account statement from ${business.name}`});
+};
 
 const REPORT_TITLE = 'Inventory Report';
 const REPORT_ABOUT =

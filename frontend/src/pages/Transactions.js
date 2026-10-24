@@ -20,6 +20,7 @@ import api, { getErrorMessage } from '../services/api';
 import useApi from '../hooks/useApi';
 import useDebounce from '../hooks/useDebounce';
 import { useSettings } from '../context/SettingsContext';
+import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ui/ConfirmProvider';
 import { formatMoney, formatQuantity } from '../utils/currency';
 import PageHeader from '../components/PageHeader';
@@ -57,6 +58,7 @@ const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || 'Unknow
 export default function Transactions() {
   useAppLanguage();
   const { currencySymbol, settings } = useSettings();
+  const { can } = useAuth();
   const confirm = useConfirm();
 
   const [page, setPage] = usePageState('transactions.page', 1);
@@ -377,6 +379,7 @@ export default function Transactions() {
                             {translate(transaction.product?.name || 'Deleted product')}
                           </h3>
                           <Badge tone={tone.tone}>{translate(tone.label)}</Badge>
+                          {transaction.paymentType === 'credit' && <Badge tone="neutral">{translate('Credit')}</Badge>}
                         </div>
 
                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-content-muted">
@@ -435,7 +438,7 @@ export default function Transactions() {
                         >
                           <span className="hidden sm:inline">{translate("Receipt")}</span>
                         </Button>
-                        <button
+                        {can('transactions.reverse') && !transaction.barcodeLabelId && transaction.paymentType !== 'credit' && <button
                           type="button"
                           onClick={() => {
                             setEditing(transaction);
@@ -445,15 +448,15 @@ export default function Transactions() {
                           className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/12 transition-colors"
                         >
                           <FiEdit2 className="w-4 h-4" />
-                        </button>
-                        <button
+                        </button>}
+                        {can('transactions.reverse') && <button
                           type="button"
                           onClick={() => handleReverse(transaction)}
                           aria-label={translate("Reverse transaction")}
                           className="grid place-items-center min-h-[44px] min-w-[44px] rounded-lg text-content-subtle hover:text-red-500 hover:bg-red-500/10 transition-colors"
                         >
                           <FiTrash2 className="w-4 h-4" />
-                        </button>
+                        </button>}
                       </div>
                     </div>
                   </div>
@@ -494,6 +497,7 @@ export default function Transactions() {
               <Button
                 variant="secondary"
                 icon={FiEdit2}
+                hidden={!can('transactions.reverse') || detail.paymentType==='credit' || Boolean(detail.barcodeLabelId)}
                 onClick={() => {
                   setEditing(detail);
                   setDetail(null);
@@ -504,6 +508,7 @@ export default function Transactions() {
               <Button
                 variant="dangerGhost"
                 icon={FiTrash2}
+                hidden={!can('transactions.reverse')}
                 onClick={async () => {
                   const target = detail;
                   setDetail(null);
@@ -528,6 +533,10 @@ export default function Transactions() {
               [detail.type === 'stock_out' ? 'Customer' : 'Supplier', detail.customer || detail.supplier || '—'],
               ['Recorded by', firstName(detail.createdBy?.name)],
               ['When', formatSafe(detail.createdAt, 'd MMM yyyy, h:mm a')],
+              ...(detail.paymentType === 'credit' ? [
+                ['Payment','Credit'],['Received at sale',formatMoney(detail.amountReceived || 0,currencySymbol)],
+                ['Payment due date',formatSafe(detail.dueDate,'d MMM yyyy')],
+              ] : []),
             ].map(([label, value]) => (
               <div key={label} className="min-w-0">
                 <dt className="text-xs text-content-subtle">{translate(label)}</dt>
@@ -540,6 +549,7 @@ export default function Transactions() {
                 <dd className="text-content-muted break-words">{detail.notes}</dd>
               </div>
             )}
+            {detail.paymentType === 'credit' && can('credit.view') && <div className="col-span-2"><Button variant="secondary" onClick={()=>{setDetail(null);navigate(`/credit?customer=${detail.customerId}`);}}>{translate('View customer account')}</Button></div>}
           </dl>
         )}
       </Modal>

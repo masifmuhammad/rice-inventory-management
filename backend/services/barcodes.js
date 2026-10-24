@@ -21,7 +21,10 @@ const normaliseBatch = (data) => ({
   product: data.product, count: Number(data.count), quantity: round4(data.quantity),
   mode: data.mode, batchNumber: data.batchNumber || '', expiryDate: data.expiryDate || null,
 });
-const normaliseScan = (data) => ({ code: data.code, mode: data.mode, station: data.station || '', customer: data.customer || '' });
+const normaliseScan = (data) => ({ code: data.code, mode: data.mode, station: data.station || '', customer: data.customer || '',
+  // Omit default payment fields to preserve retry compatibility with old clients.
+  ...(data.paymentType === 'credit' ? {paymentType:'credit',customerId:data.customerId,dueDate:data.dueDate} : {}),
+});
 const assertSame = (stored, current) => {
   if (JSON.stringify(Object.entries(stored).sort()) !== JSON.stringify(Object.entries(current).sort())) {
     throw new ApiError(409, 'This request was already used for different details. Start a new operation.');
@@ -118,6 +121,7 @@ const scanLabel = (data, businessId, user) => withTransaction(async (client) => 
     product: label.product_id, type: input.mode, quantity: Number(label.quantity), barcodeLabelId: label.id,
     reference: label.code, batchNumber: label.batch_number, expiryDate: label.expiry_date,
     customer: input.customer, notes: input.station ? `Barcode scan · ${input.station}` : 'Barcode scan',
+    paymentType:input.paymentType, customerId:input.customerId, dueDate:input.dueDate, amountReceived:0,
   }, businessId, user);
   const updated = await client.query('UPDATE barcode_labels SET status=$1,updated_at=NOW() WHERE id=$2 RETURNING *', [input.mode === 'stock_in' ? 'in_stock' : 'stock_out', label.id]);
   const result = { label: presentLabel(updated.rows[0]), transaction, mode: input.mode };

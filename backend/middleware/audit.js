@@ -22,6 +22,11 @@ const SUMMARIES = {
   RESET_PASSWORD: 'Reset a password',
 
   CREATE_PRODUCT: 'Added a product',
+  CREATE_CREDIT_CUSTOMER: 'Opened a customer credit account',
+  UPDATE_CREDIT_CUSTOMER: 'Updated a customer credit account',
+  REVERSE_OPENING_CREDIT: 'Reversed an opening credit balance',
+  RECORD_CREDIT_PAYMENT: 'Recorded a credit repayment',
+  REVERSE_CREDIT_PAYMENT: 'Reversed a credit repayment',
   UPDATE_PRODUCT: 'Edited a product',
   DELETE_PRODUCT: 'Archived a product',
 
