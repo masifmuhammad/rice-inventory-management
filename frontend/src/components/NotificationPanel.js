@@ -23,7 +23,8 @@ const activityLink = (entry) => {
 
 export default function NotificationPanel({ variant = 'default' }) {
   useAppLanguage();
-  const { can } = useAuth();
+  const { can, businessId } = useAuth();
+  const canManageUsers = can('users.manage');
   const [open, setOpen] = useState(false);
   const [data, setData] = useState({ pendingCount: 0, recentActivity: [], pendingUsers: [] });
   const [badge, setBadge] = useState(0);
@@ -55,7 +56,7 @@ export default function NotificationPanel({ variant = 'default' }) {
   };
 
   useEffect(() => {
-    if (!can('users.manage')) return undefined;
+    if (!canManageUsers) return undefined;
 
     // This polls on mount, every 60s and on every window focus. Without a signal
     // the request in flight at unmount still resolves into setState.
@@ -70,7 +71,7 @@ export default function NotificationPanel({ variant = 'default' }) {
       clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
-  }, [can]);
+  }, [canManageUsers, businessId]);
 
   useEffect(() => {
     if (!open) return undefined;

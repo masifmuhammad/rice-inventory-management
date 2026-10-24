@@ -15,7 +15,7 @@ async function shot(page,path) {
 }
 test('customer credit: opening balance, sale, repayment, statement and reversal',async({page,isMobile},info)=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await signIn(page);await page.goto('/credit');
+  await signIn(page);await page.locator('main a[href="/credit"]').click();
   await page.getByRole('button',{name:'Add customer',exact:true}).click();
   const name=`Ahmed Traders ${info.project.name} ${Date.now()}`;
   await page.getByLabel('Customer name').fill(name);await page.getByLabel('Phone number').fill('+923001234567');
@@ -80,7 +80,8 @@ test('customer credit: opening balance, sale, repayment, statement and reversal'
 test('camera preview recovers when autoplay is denied and releases capture',async({page,isMobile})=>{
   test.skip(isMobile,'Synthetic canvas video capture requires Chromium; WebKit receives the UI workflow checks.');
   await signIn(page);
-  await page.addInitScript(()=>{
+  await page.locator('a[href="/barcodes"]').filter({visible:true}).first().click();
+  await page.evaluate(()=>{
     const originalPlay=HTMLMediaElement.prototype.play;
     let blocked=false;
     HTMLMediaElement.prototype.play=function(){
@@ -94,7 +95,7 @@ test('camera preview recovers when autoplay is denied and releases capture',asyn
       window.__creditCameraStream=stream;stream.getVideoTracks()[0].addEventListener('ended',()=>clearInterval(timer));return stream;
     }});
   });
-  await page.goto('/barcodes');await page.getByRole('button',{name:'Read label',exact:true}).click();
+  await page.getByRole('button',{name:'Read label',exact:true}).click();
   await page.getByRole('button',{name:'Use camera',exact:true}).click();
   await page.getByRole('button',{name:'Start camera preview',exact:true}).click();
   await expect(page.getByText('Looking for a barcode…',{exact:true})).toBeVisible();
@@ -105,19 +106,22 @@ test('camera preview recovers when autoplay is denied and releases capture',asyn
 
 test('permission errors offer retry without repeated permission prompts',async({page})=>{
   await signIn(page);
-  await page.addInitScript(()=>{
+  await page.locator('a[href="/barcodes"]').filter({visible:true}).first().click();
+  await expect(page.getByRole('button',{name:'Read label',exact:true})).toBeVisible();
+  await page.evaluate(()=>{
     window.__cameraRequests=0;
-    if(!navigator.mediaDevices) Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{}});
-    Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{
+    // Install after the route mounts, so navigation/chunk recovery cannot reset
+    // the counter underneath an assertion about the camera session.
+    Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>{
       window.__cameraRequests++;throw new DOMException('Denied','NotAllowedError');
-    }});
+    }}});
   });
-  await page.goto('/barcodes');await page.getByRole('button',{name:'Read label',exact:true}).click();
+  await page.getByRole('button',{name:'Read label',exact:true}).click();
   await page.getByRole('button',{name:'Use camera',exact:true}).click();
   await expect(page.getByRole('alert')).toContainText('Camera permission was denied');
-  expect(await page.evaluate(()=>window.__cameraRequests)).toBe(1);
+  await expect.poll(()=>page.evaluate(()=>window.__cameraRequests)).toBe(1);
   await page.getByRole('button',{name:'Try camera again',exact:true}).click();
   await expect(page.getByRole('alert')).toContainText('Camera permission was denied');
-  expect(await page.evaluate(()=>window.__cameraRequests)).toBe(2);
+  await expect.poll(()=>page.evaluate(()=>window.__cameraRequests)).toBe(2);
   await page.getByRole('button',{name:'Close camera',exact:true}).click();
 });
