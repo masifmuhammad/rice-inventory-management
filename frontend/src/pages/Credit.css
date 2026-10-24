@@ -62,6 +62,8 @@
 .credit-opening summary { cursor:pointer; min-height:32px; align-content:center; }
 .credit-form-balance { display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; padding:12px 0; font-size:14px; }
 .credit-form-balance strong { font-family:Manrope,sans-serif; font-variant-numeric:tabular-nums; }
+.credit-account-identity a,.credit-entry-amount strong,.credit-account-balance strong,.credit-form-balance strong { direction:ltr; unicode-bidi:isolate; }
+[dir=rtl] .credit-person-amount,[dir=rtl] .credit-overview dd { direction:ltr; unicode-bidi:isolate; text-align:right; }
 .credit-page button:focus-visible,.credit-page a:focus-visible { outline:2px solid rgb(var(--content)); outline-offset:3px; }
 @media(max-width:767px) {
   .credit-show-account>.credit-page-header,.credit-show-account>.credit-overview { display:none; }
