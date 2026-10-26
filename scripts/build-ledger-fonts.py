@@ -27,4 +27,3 @@ with TemporaryDirectory() as scratch:
             if record.nameID in names:
                 record.string = names[record.nameID].encode(record.getEncoding())
         font.save(target / f"LedgerSans-{weight}.ttf")
-
