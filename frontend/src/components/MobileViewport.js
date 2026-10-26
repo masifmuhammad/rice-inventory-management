@@ -10,6 +10,7 @@ export default function MobileViewport() {
     const root = document.documentElement;
     root.style.setProperty('--app-visual-height', `${viewport.height}px`);
     root.style.setProperty('--app-keyboard-inset', `${viewport.keyboard}px`);
+    root.style.setProperty('--app-visual-bottom-inset', `${viewport.bottomInset}px`);
     root.dataset.keyboardOpen = viewport.keyboard > 120 ? 'true' : 'false';
     return () => { delete root.dataset.keyboardOpen; };
   }, [viewport]);

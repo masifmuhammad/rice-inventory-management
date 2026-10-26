@@ -24,7 +24,7 @@ const importers = {
 };
 
 /** The routes the tab bar and swipe gesture can reach. */
-export const TAB_ROUTES = ['/', '/products', '/barcodes', '/transactions', '/cash-book'];
+export const TAB_ROUTES = ['/', '/products', '/transactions', '/cash-book'];
 
 /**
  * Warms every tab chunk once the app has gone quiet.

@@ -97,11 +97,10 @@ export default function Modal({
 
     if (Math.abs(delta) < 2) return;
 
-    body.scrollTo({
-      top: body.scrollTop + delta,
-      behavior: reducedMotion ? 'auto' : 'smooth',
-    });
-  }, [reducedMotion]);
+    // Safari already pans for focus. A second animated scroll restarts on each
+    // keyboard resize and makes date/text transitions jump back and forth.
+    body.scrollTop += delta;
+  }, []);
 
   // React capture handlers attach when Headless UI mounts its portal. An
   // open-effect can run before the portalled body exists and miss every focus.
@@ -125,7 +124,7 @@ export default function Modal({
     if (!open || !focusedFieldRef.current) return undefined;
     const timer = setTimeout(revealFocusedField, 60);
     return () => clearTimeout(timer);
-  }, [open, viewport.keyboard, viewport.height, revealFocusedField]);
+  }, [open, viewport.keyboard, viewport.height, viewport.offsetTop, revealFocusedField]);
 
   const handleDragEnd = (event, info) => {
     const dismissable = !disableClose && !busy;
@@ -158,6 +157,7 @@ export default function Modal({
   // padding, safe-area inset — is sized for reading; while typing it can eat two
   // thirds of a ~300px visible pane and leave room for a single field.
   const keyboardOpen = viewport.keyboard > 120;
+  const compact = keyboardOpen || (viewport.height > 0 && viewport.height < 500);
 
   return (
     <Dialog
@@ -221,7 +221,7 @@ export default function Modal({
               {/* The grabber is a drag affordance for a sheet the user is
                   reading. While they are typing it is 16px of a ~300px pane
                   spent on something they are not about to do. */}
-              {!keyboardOpen && (
+              {!compact && (
                 <div
                   className="sm:hidden pt-3 pb-1 flex justify-center flex-shrink-0 cursor-grab active:cursor-grabbing"
                   style={{ touchAction: 'none' }}
@@ -234,13 +234,13 @@ export default function Modal({
 
               <div
                 className={`flex items-start justify-between gap-4 px-5 sm:px-6 border-b border-hairline/[0.07] flex-shrink-0 ${
-                  keyboardOpen ? 'py-2.5' : 'py-4'
+                  compact ? 'py-2' : 'py-3 sm:py-4'
                 }`}
               >
                 <div className="min-w-0">
                   <DialogTitle
                     className={`font-semibold text-content truncate ${
-                      keyboardOpen ? 'text-base' : 'text-lg'
+                      compact ? 'text-base' : 'text-base sm:text-lg'
                     }`}
                   >
                     {translate(title)}
@@ -248,8 +248,8 @@ export default function Modal({
                   {/* The description explains the form before you start. Once
                       the keyboard is up it is costing two wrapped lines of the
                       only space the fields have. */}
-                  {description && !keyboardOpen && (
-                    <div className="mt-1 text-content-subtle">{translate(description)}</div>
+                  {description && !compact && (
+                    <div className="mt-1 text-sm text-content-subtle">{translate(description)}</div>
                   )}
                 </div>
                 <button
@@ -272,7 +272,7 @@ export default function Modal({
                   if (event.target === focusedFieldRef.current) focusedFieldRef.current = null;
                 }}
                 className={`min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 flex-1 transition-opacity duration-150 ${
-                  keyboardOpen ? 'py-2.5' : 'py-4 sm:py-5'
+                  compact ? 'py-2.5' : 'py-4 sm:py-5'
                 } ${busy ? 'opacity-60 pointer-events-none' : ''}`}
                 aria-busy={busy || undefined}
               >

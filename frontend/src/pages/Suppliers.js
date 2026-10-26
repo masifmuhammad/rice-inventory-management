@@ -1,8 +1,9 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FiArrowLeft, FiCheck, FiChevronRight, FiDownload, FiPhone, FiPlus, FiTruck } from 'react-icons/fi';
 import api, { getErrorMessage } from '../services/api';
 import useApi from '../hooks/useApi';
+import useLedgerSubmission from '../hooks/useLedgerSubmission';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { translate as t, useAppLanguage } from '../context/LanguageContext';
@@ -23,36 +24,45 @@ const AGING = [['current', 'Not overdue'], ['days1to30', '1–30 days'], ['days3
 const initials = (name) => String(name || '').trim().split(/\s+/).slice(0, 2).map(word => word[0]).join('');
 const refresh = () => window.dispatchEvent(new Event('rim:refresh'));
 
-function SupplierForm({ mode, supplier, balance, onClose, onSave }) {
+export function SupplierForm({ mode, supplier, balance, suppliers, onSupplierChange, onClose, onSave }) {
   const { currencySymbol } = useSettings();
-  const requestId = useRef(crypto.randomUUID());
   const contact = mode === 'add' || mode === 'edit';
-  const [values, setValues] = useState(contact
+  const financial = useLedgerSubmission('supplier-payment.' + (supplier?.id || 'choose'), async (payload) => {
+    const result = await api.post(`/suppliers/${supplier.id}/payments`, payload);
+    onSave(result.data); onClose();
+  });
+  const [values, setValues] = useState(!contact && financial.pending?.draft ? financial.pending.draft : contact
     ? { name: supplier?.name || '', phone: supplier?.phone || '', notes: supplier?.notes || '', openingBalance: '', dueDate: todayInput(), openingDate: todayInput() }
     : { amount: '', paymentDate: todayInput(), method: 'cash', reference: '', notes: '' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const busy = saving || financial.saving;
   const set = field => event => setValues(current => ({ ...current, [field]: event.target.value }));
   const title = mode === 'add' ? 'Add supplier' : mode === 'edit' ? 'Edit supplier' : 'Record supplier payment';
   const submit = async event => {
     event.preventDefault();
     setError('');
+    if (busy) return;
+    if (!contact && financial.pending) { await financial.save(null, null); return; }
+    if (!contact && !supplier?.id) { setError(t('Choose a supplier')); return; }
     if (contact && !values.name.trim()) { setError('Enter a supplier name.'); return; }
     if (!contact && (!(Number(values.amount) > 0) || Number(values.amount) > balance)) { setError('Enter a payment up to the outstanding balance.'); return; }
+    if (!contact) { await financial.save({ ...values, amount: Number(values.amount) }, values); return; }
     setSaving(true);
     try {
       const result = mode === 'add'
         ? await api.post('/suppliers', { ...values, openingBalance: Number(values.openingBalance) || 0 })
-        : mode === 'edit'
-          ? await api.put(`/suppliers/${supplier.id}`, { name: values.name, phone: values.phone, notes: values.notes })
-          : await api.post(`/suppliers/${supplier.id}/payments`, { ...values, amount: Number(values.amount), requestId: requestId.current });
+        : await api.put(`/suppliers/${supplier.id}`, { name: values.name, phone: values.phone, notes: values.notes });
       onSave(result.data);
       onClose();
     } catch (err) { setError(getErrorMessage(err)); } finally { setSaving(false); }
   };
-  return <Modal open onClose={onClose} disableClose={saving} busy={saving} title={t(title)} description={contact ? t('Keep purchases, bills and payments together.') : supplier.name}
-    submit={{ form: 'supplier-form', label: t(mode === 'edit' ? 'Save supplier' : title), loading: saving }}>
+  return <Modal open onClose={onClose} disableClose={busy} busy={busy} title={t(title)} description={contact ? t('Keep purchases, bills and payments together.') : supplier?.name}
+    submit={{ form: 'supplier-form', label: t(!contact && financial.pending && !busy ? 'Confirm previous save' : mode === 'edit' ? 'Save supplier' : title), loading: busy }}>
     <form id="supplier-form" onSubmit={submit} className="space-y-3">
+      {!contact && financial.pending && !busy && <p role="status" className="text-sm">{t('The previous save may already be recorded. Confirm it before making another entry. Stock and money will not be recorded twice.')}</p>}
+      <fieldset disabled={!contact && Boolean(financial.pending)} className="space-y-3 min-w-0">
+      {!contact && suppliers && <Select label={t('Supplier')} required value={supplier?.id || ''} onChange={onSupplierChange}><option value="">{t('Choose a supplier')}</option>{suppliers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select>}
       {contact ? <>
         <Input label={t('Supplier name')} required maxLength={120} value={values.name} onChange={set('name')} autoComplete="organization" />
         <Input label={t('Phone number')} type="tel" maxLength={40} value={values.phone} onChange={set('phone')} autoComplete="tel" />
@@ -72,22 +82,28 @@ function SupplierForm({ mode, supplier, balance, onClose, onSave }) {
           <Input label={t('Payment date')} required type="date" max={todayInput()} value={values.paymentDate} onChange={set('paymentDate')} />
           <Select label={t('Payment method')} value={values.method} onChange={set('method')}>{Object.entries(METHODS).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</Select>
         </div>
-        <Input label={t('Reference')} maxLength={120} value={values.reference} onChange={set('reference')} />
-        <Textarea label={t('Notes')} maxLength={500} value={values.notes} onChange={set('notes')} />
+        <details className="rounded-xl border border-hairline/10 px-3"><summary className="min-h-[44px] flex items-center cursor-pointer text-sm">{t('Reference & notes')}</summary><div className="space-y-3 pb-3">
+          <Input label={t('Reference')} maxLength={120} value={values.reference} onChange={set('reference')} />
+          <Textarea label={t('Notes')} maxLength={500} value={values.notes} onChange={set('notes')} />
+        </div></details>
         <p className="text-sm text-content-muted">{t('Pays the oldest due bill first and records money out. This does not send a bank transfer.')}</p>
       </>}
-      {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{t(error)}</p>}
+      </fieldset>
+      {(error || financial.error) && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{t(error || financial.error)}</p>}
     </form>
   </Modal>;
 }
 
-function PurchaseForm({ supplier, onClose, onSave }) {
+export function PurchaseForm({ supplier, suppliers, onSupplierChange, onClose, onSave }) {
   const { currencySymbol } = useSettings();
-  const requestId = useRef(crypto.randomUUID());
+  const financial = useLedgerSubmission('supplier-purchase.' + (supplier?.id || 'choose'), async (payload) => {
+    await api.post(`/suppliers/${supplier.id}/purchases`, payload);
+    onSave(); onClose();
+  });
   const products = useApi(signal => api.get('/products', { signal }).then(r => r.data), []);
-  const [values, setValues] = useState({ product: '', quantity: '', price: '', purchaseDate: todayInput(), dueDate: todayInput(), amountPaid: '0', method: 'cash', reference: '', notes: '' });
+  const [values, setValues] = useState(financial.pending?.draft || { product: '', quantity: '', price: '', purchaseDate: todayInput(), dueDate: todayInput(), amountPaid: '0', method: 'cash', reference: '', notes: '' });
   const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
+  const saving = financial.saving;
   const productList = Array.isArray(products.data) ? products.data : products.data?.products || [];
   const product = productList.find(p => (p._id || p.id) === values.product);
   const total = Math.round(Number(values.quantity) * Number(values.price) * 100) / 100;
@@ -95,18 +111,20 @@ function PurchaseForm({ supplier, onClose, onSave }) {
   const set = field => event => setValues(current => ({ ...current, [field]: event.target.value }));
   const submit = async event => {
     event.preventDefault(); setError('');
+    if (saving) return;
+    if (financial.pending) { await financial.save(null, null); return; }
+    if (!supplier?.id) { setError(t('Choose a supplier')); return; }
     if (!product || !(Number(values.quantity) > 0) || !(Number(values.price) > 0)) { setError('Choose a product and enter a positive quantity and cost.'); return; }
     if (Number(values.amountPaid) < 0 || Number(values.amountPaid) > total) { setError('The deposit cannot exceed the purchase total.'); return; }
-    setSaving(true);
-    try {
-      await api.post(`/suppliers/${supplier.id}/purchases`, { ...values, requestId: requestId.current, quantity: Number(values.quantity), price: Number(values.price), amountPaid: Number(values.amountPaid) });
-      onSave(); onClose();
-    } catch (err) { setError(getErrorMessage(err)); } finally { setSaving(false); }
+    await financial.save({ ...values, quantity: Number(values.quantity), price: Number(values.price), amountPaid: Number(values.amountPaid) }, values);
   };
-  return <Modal open onClose={onClose} disableClose={saving} busy={saving} title={t('Receive a purchase')} description={supplier.name}
-    submit={{ form: 'supplier-purchase', label: t('Receive stock and record bill'), loading: saving }}>
+  return <Modal open onClose={onClose} disableClose={saving} busy={saving} title={t('Receive a purchase')} description={supplier?.name}
+    submit={{ form: 'supplier-purchase', label: t(financial.pending && !saving ? 'Confirm previous save' : 'Receive stock and record bill'), loading: saving }}>
     <form id="supplier-purchase" onSubmit={submit} className="space-y-3">
-      <p className="text-sm text-content-muted">{t('This adds rice to stock and records the supplier bill together. Do not receive the same stock again in Transactions or Scan.')}</p>
+      {financial.pending && !saving && <p role="status" className="text-sm">{t('The previous save may already be recorded. Confirm it before making another entry. Stock and money will not be recorded twice.')}</p>}
+      <fieldset disabled={Boolean(financial.pending)} className="space-y-3 min-w-0">
+      {suppliers && <Select label={t('Supplier')} required value={supplier?.id || ''} onChange={onSupplierChange}><option value="">{t('Choose a supplier')}</option>{suppliers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select>}
+      <p className="text-sm text-content-muted">{t('Save once. Stock, supplier bill and payment update together.')}</p>
       {products.error ? <ErrorState message={products.error} onRetry={products.refetch} /> : <Select required label={t('Product')} value={values.product} disabled={products.loading} onChange={event => {
         const selected = productList.find(p => (p._id || p.id) === event.target.value);
         setValues(current => ({ ...current, product: event.target.value, price: selected?.costPrice ?? '' }));
@@ -122,9 +140,12 @@ function PurchaseForm({ supplier, onClose, onSave }) {
       </div>
       <dl className="supplier-purchase-summary"><div><dt>{t('Purchase total')}</dt><dd>{formatMoney(total || 0, currencySymbol)}</dd></div><div><dt>{t('Left to pay')}</dt><dd>{formatMoney(due || 0, currencySymbol)}</dd></div></dl>
       {product && Number(values.quantity) > 0 && <p className="text-sm text-content-muted">{t('Stock after receiving: {0}', [formatQuantity(Number(product.currentStock) + Number(values.quantity), product.unit)])}</p>}
-      <Input label={t('Supplier bill reference')} maxLength={120} value={values.reference} onChange={set('reference')} />
-      <Textarea label={t('Notes')} maxLength={500} value={values.notes} onChange={set('notes')} />
-      {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{t(error)}</p>}
+      <details className="rounded-xl border border-hairline/10 px-3"><summary className="min-h-[44px] flex items-center cursor-pointer text-sm">{t('Reference & notes')}</summary><div className="space-y-3 pb-3">
+        <Input label={t('Supplier bill reference')} maxLength={120} value={values.reference} onChange={set('reference')} />
+        <Textarea label={t('Notes')} maxLength={500} value={values.notes} onChange={set('notes')} />
+      </div></details>
+      </fieldset>
+      {(error || financial.error) && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{t(error || financial.error)}</p>}
     </form>
   </Modal>;
 }

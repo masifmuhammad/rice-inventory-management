@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiArrowDownLeft, FiArrowRight, FiArrowUpRight, FiPackage, FiTrendingUp } from 'react-icons/fi';
+import { FiArrowDownLeft, FiArrowRight, FiArrowUpRight } from 'react-icons/fi';
 import api from '../services/api';
 import useApi from '../hooks/useApi';
 import { useAuth } from '../context/AuthContext';
@@ -9,8 +9,8 @@ import { formatCompactMoney, formatMoney, formatNumber, formatQuantity } from '.
 import { formatSafe } from '../utils/date';
 import PageHeader from '../components/PageHeader';
 import MobileBusinessSummary from '../components/MobileBusinessSummary';
-import InventoryActions from '../components/InventoryActions';
-import Button from '../components/ui/Button';
+import DailyWork from '../components/DailyWork';
+import { useShopMode } from '../context/ShopModeContext';
 import Card from '../components/ui/Card';
 import { ErrorState, InlineError } from '../components/ui/States';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -20,6 +20,7 @@ const TYPES = { stock_in: 'Delivery', stock_out: 'Sale', adjustment: 'Adjustment
 
 
 const SalesOverview = lazy(() => import('./SalesOverview'));
+const ShopFloor = lazy(() => import('./ShopFloor'));
 function DeferredSalesOverview() {
   useAppLanguage();
   const ref = useRef(null);
@@ -36,6 +37,11 @@ function DeferredSalesOverview() {
 }
 
 export default function Dashboard() {
+  const { enabled } = useShopMode();
+  return enabled ? <Suspense fallback={<Skeleton className="h-96 rounded-card" />}><ShopFloor /></Suspense> : <BusinessDashboard />;
+}
+
+function BusinessDashboard() {
   useAppLanguage();
   const { can } = useAuth();
   const { currencySymbol } = useSettings();
@@ -47,12 +53,6 @@ export default function Dashboard() {
   const creditBalance = credit.data?.customers.reduce((sum,c)=>sum+c.balance,0) || 0;
   const suppliers = useApi((signal) => api.get('/suppliers', { signal }).then(r=>r.data), [], { immediate:can('suppliers.view'),keepPreviousData:true });
   const supplierBalance = suppliers.data?.suppliers.reduce((sum,supplier)=>sum+Number(supplier.balance),0) || 0;
-  const actions = [
-    can('transactions.create') && { label: 'Record sale', icon: FiTrendingUp, path: '/transactions', state: { openCreate: true, transactionType: 'stock_out' } },
-    can('cash.manage') && { label: 'Money in', icon: FiArrowDownLeft, path: '/cash-book', state: { openCreate: 'in' } },
-    can('transactions.create') && { label: 'Add delivery', icon: FiPackage, path: '/transactions', state: { openCreate: true, transactionType: 'stock_in' } },
-    can('cash.manage') && { label: 'Money out', icon: FiArrowUpRight, path: '/cash-book', state: { openCreate: 'out' } },
-  ].filter(Boolean);
   const totalProducts = stats.data?.totalProducts || 0;
   const lowStockCount = stats.data?.lowStockCount || 0;
   const healthy = Math.max(0, totalProducts - lowStockCount);
@@ -62,7 +62,7 @@ export default function Dashboard() {
     <div className="space-y-5 sm:space-y-6 max-w-[1400px] mx-auto">
       <PageHeader summary={translate(canReport && stats.data ? 'Stock ' + formatCompactMoney(stats.data.totalStockValue, currencySymbol) + (can('cash.view') ? ' | Funds ' + formatCompactMoney(stats.data.cashBalance, currencySymbol) : '') : totalProducts + ' products')} title={translate("Dashboard")} description={translate("Your business, in balance.")} actions={canReport && <Link to="/reports" className="hidden sm:inline-flex items-center gap-2 text-sm text-content-muted min-h-[44px]">{translate("View reports ")}<FiArrowUpRight aria-hidden="true" /></Link>} />
       {stats.error && <InlineError message={translate(stats.error)} onRetry={stats.refetch} />}
-      <InventoryActions />
+      <DailyWork customers={credit} suppliers={suppliers} />
       {can('credit.view') && <Link to="/credit" className="flex flex-wrap items-center justify-between gap-3 py-4 border-y border-hairline/10 min-h-[60px] group">
         <span><span className="text-sm font-semibold text-content">{translate('Customer credit')}</span><span className="block text-xs text-content-muted mt-1">{translate('Balances, due dates and repayments')}</span></span>
         <span className="flex items-center gap-3 text-sm font-money font-semibold tabular-nums">{credit.error ? translate('View accounts') : credit.loading && !credit.data ? translate('Loading…') : formatMoney(creditBalance,currencySymbol)}<FiArrowRight aria-hidden="true"/></span>
@@ -72,9 +72,6 @@ export default function Dashboard() {
         <span className="flex items-center gap-3 text-sm font-money font-semibold tabular-nums">{suppliers.error ? translate('View accounts') : suppliers.loading && !suppliers.data ? translate('Loading…') : formatMoney(supplierBalance,currencySymbol)}<FiArrowRight aria-hidden="true"/></span>
       </Link>}
       <MobileBusinessSummary stats={stats.data} loading={stats.loading && !stats.data} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5" aria-label={translate("Quick actions")}>
-        {actions.map(({ label, icon, path, state }) => <Button key={label} variant="secondary" icon={icon} onClick={() => navigate(path, { state })} className="min-h-[50px] text-[13px] sm:text-sm">{translate(label)}</Button>)}
-      </div>
       <div className="grid xl:grid-cols-[1.4fr_1fr] gap-5 sm:gap-6 items-start">
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between gap-3 px-4 sm:px-6 pt-5 pb-3"><h2 className="text-base font-semibold tracking-tight text-content">{translate("Recent activity")}</h2><Link to="/transactions" className="text-xs text-content-muted min-h-[44px] inline-flex items-center gap-1">{translate("View all ")}<FiArrowRight aria-hidden="true" /></Link></div>

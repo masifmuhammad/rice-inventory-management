@@ -126,6 +126,10 @@ test('product typing survives late metadata and fits the phone keyboard viewport
     const viewport = new EventTarget();
     Object.assign(viewport, { width: innerWidth, height: innerHeight, offsetTop: 0, offsetLeft: 0, scale: 1 });
     Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport });
+    document.addEventListener('DOMContentLoaded', () => {
+      Object.assign(viewport, { width: innerWidth, height: innerHeight });
+      viewport.dispatchEvent(new Event('resize'));
+    });
     window.__testKeyboard = (height) => { viewport.height = height; viewport.dispatchEvent(new Event('resize')); };
   });
   await signIn(page);

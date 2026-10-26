@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FiArrowDownLeft, FiArrowUpRight } from 'react-icons/fi';
 import { useSettings } from '../../context/SettingsContext';
 import { isValidDate, todayInput } from '../../utils/date';
 import Modal from '../ui/Modal';
+import useLedgerSubmission from '../../hooks/useLedgerSubmission';
 import { Input, Select, Textarea } from '../ui/Field';
 import { translate, useAppLanguage } from '../../context/LanguageContext';
 
@@ -46,14 +47,19 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
   const { currencySymbol } = useSettings();
   const [values, setValues] = useState(EMPTY);
   const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
+  const formRef = useRef(null);
+  const submission = useLedgerSubmission('cash', onSubmit);
+  const { saving } = submission;
+  const recovery = !entry && submission.pending;
 
   const isEditing = Boolean(entry);
 
   useEffect(() => {
     if (!open) return;
 
-    if (entry) {
+    if (recovery?.draft) {
+      setValues(recovery.draft);
+    } else if (entry) {
       setValues({
         ...EMPTY,
         ...entry,
@@ -69,7 +75,9 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
     }
 
     setErrors({});
-    setSaving(false);
+    submission.clearError();
+  // Restore only when opening; a failed save must keep the user's current draft.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, entry, defaultDirection]);
 
   const copy = COPY[values.direction] || COPY.in;
@@ -95,11 +103,13 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (saving) return;
+    if (recovery) { await submission.save(null, null); return; }
 
     const amount = Number(values.amount);
     const nextErrors = {};
 
-    if (values.amount === '' || Number.isNaN(amount) || amount <= 0) {
+    if (values.amount === '' || !Number.isFinite(amount) || amount <= 0) {
       nextErrors.amount = 'Enter an amount greater than 0';
     }
     if (!values.purpose.trim()) nextErrors.purpose = 'Say what this is for';
@@ -110,21 +120,19 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
     if (!isValidDate(values.occurredAt)) nextErrors.occurredAt = 'Choose a date';
 
     setErrors(nextErrors);
-    if (Object.values(nextErrors).some(Boolean)) return;
+    if (Object.values(nextErrors).some(Boolean)) {
+      requestAnimationFrame(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
+      return;
+    }
 
-    setSaving(true);
-    try {
-      await onSubmit({
+    await submission.save({
         ...values,
         amount,
         purpose: values.purpose.trim(),
         party: values.party.trim(),
         paymentMethod: values.paymentMethod || null,
         occurredAt: new Date(values.occurredAt).toISOString(),
-      });
-    } finally {
-      setSaving(false);
-    }
+      }, values, !isEditing);
   };
 
   return (
@@ -137,12 +145,14 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
       size="md"
       submit={{
         form: 'cash-form',
-        label: isEditing ? 'Save changes' : copy.button,
+        label: recovery && !saving ? 'Confirm previous save' : isEditing ? 'Save changes' : copy.button,
         loading: saving,
         variant: values.direction === 'in' ? 'success' : 'danger',
       }}
     >
-      <form id="cash-form" onSubmit={handleSubmit} className="space-y-2.5" noValidate>
+      <form ref={formRef} id="cash-form" onSubmit={handleSubmit} className="space-y-2.5" noValidate>
+        {recovery && !saving && <p role="status" className="rounded-xl border border-hairline/15 p-3 text-sm">{translate('The previous save may already be recorded. Confirm it before making another entry. Stock and money will not be recorded twice.')}</p>}
+        <fieldset disabled={Boolean(recovery)} className="space-y-2.5 min-w-0">
         {/* A two-way switch rather than a dropdown: direction is the single most
             consequential choice on this form, so it should be impossible to miss. */}
         <div className="grid grid-cols-2 gap-2 p-1 bg-surface-sunken rounded-xl">
@@ -249,6 +259,8 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
         <Textarea label={translate("Notes")} value={values.notes} onChange={set('notes')} placeholder={translate("Optional details…")} />
           </div>
         </details>
+        </fieldset>
+        {submission.error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{translate(submission.error)}</p>}
       </form>
     </Modal>
   );

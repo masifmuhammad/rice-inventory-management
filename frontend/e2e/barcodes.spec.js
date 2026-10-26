@@ -33,11 +33,11 @@ test('home actions lead to stock and a complete label → receive → sell workf
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.stack));
   await signIn(page);
-  await expect(page.locator('.inventory-action-stock')).toBeVisible();
+  await expect(page.locator('a.inventory-action-stock')).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.waitForTimeout(400);
   await capture(page, `test-results/inventory-home-${info.project.name}.png`);
-  await page.locator('.inventory-action-stock').click();
+  await page.locator('a.inventory-action-stock').click();
   await expect(page.getByRole('heading', { name: 'Stock', exact: true }).filter({ visible: true })).toBeVisible();
   await capture(page, `test-results/rice-stock-${info.project.name}.png`);
   await page.getByRole('button', { name: 'Make labels', exact: true }).click();

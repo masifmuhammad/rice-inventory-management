@@ -143,7 +143,7 @@ const recordPayment = (id,data,businessId,user) => withTransaction(async(client)
 
 const purchasePayload = (data) => ({product:data.product,quantity:round4(data.quantity),price:round4(data.price),
   purchaseDate:data.purchaseDate,dueDate:data.dueDate,amountPaid:Number(data.amountPaid || 0),method:data.method || 'cash',reference:data.reference || '',notes:data.notes || ''});
-const recordPurchase = (id,data,businessId,user) => withTransaction(async(client)=>{
+const recordPurchaseOnClient = async(client,id,data,businessId,user)=>{
   await lockRequest(client,businessId,data.requestId);
   const normalized=purchasePayload(data);
   const previous=(await client.query('SELECT * FROM supplier_charges WHERE business_id=$1 AND request_id=$2',[businessId,data.requestId])).rows[0];
@@ -179,7 +179,8 @@ const recordPurchase = (id,data,businessId,user) => withTransaction(async(client
   if(normalized.amountPaid>0) payment=await insertPayment(client,supplier,{requestId:randomUUID(),amount:normalized.amountPaid,
     paymentDate:data.purchaseDate,method:normalized.method,reference:normalized.reference,notes:normalized.notes},businessId,user,[{...rows[0],outstanding:total}]);
   return {...rowToDoc(rows[0]),payment,transaction:movement};
-});
+};
+const recordPurchase = (id,data,businessId,user) => withTransaction(client=>recordPurchaseOnClient(client,id,data,businessId,user));
 
 const reversePayment = (id,paymentId,reason,businessId) => withTransaction(async(client)=>{
   await lockSupplier(client,id,businessId);
@@ -216,4 +217,4 @@ const reverseCharge = (id,chargeId,reason,businessId) => withTransaction(async(c
   return rowToDoc((await client.query('UPDATE supplier_charges SET voided_at=NOW(),void_reason=$1 WHERE id=$2 RETURNING *',[reason,chargeId])).rows[0]);
 });
 
-module.exports={listSuppliers,supplierDetail,createSupplier,updateSupplier,recordPurchase,recordPayment,reversePayment,reverseCharge,buildStatement,agingFor};
+module.exports={listSuppliers,supplierDetail,createSupplier,updateSupplier,recordPurchase,recordPurchaseOnClient,recordPayment,reversePayment,reverseCharge,buildStatement,agingFor};

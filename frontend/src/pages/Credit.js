@@ -1,8 +1,9 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FiArrowLeft, FiArrowUpRight, FiCheck, FiChevronRight, FiCopy, FiDownload, FiPhone, FiPlus, FiUsers } from 'react-icons/fi';
 import api, { getErrorMessage } from '../services/api';
 import useApi from '../hooks/useApi';
+import useLedgerSubmission from '../hooks/useLedgerSubmission';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { translate as t, useAppLanguage } from '../context/LanguageContext';
@@ -23,32 +24,40 @@ const METHODS = { cash: 'Cash', bank: 'Bank transfer', easypaisa: 'Easypaisa', j
 const initials = (name) => name.trim().split(/\s+/).slice(0,2).map((word) => word[0]).join('');
 const day = (value) => String(value || '').slice(0,10);
 
-function CreditForm({ mode, customer, balance, onClose, onSave }) {
+export function CreditForm({ mode, customer, balance, customers, onCustomerChange, onClose, onSave }) {
   const { currencySymbol } = useSettings();
-  const requestId = useRef(crypto.randomUUID());
-  const [values, setValues] = useState(mode === 'edit' ? {name:customer.name,phone:customer.phone,notes:customer.notes} : mode === 'customer' ? { name: '', phone: '', notes: '', openingBalance: '', dueDate: todayInput() }
+  const customerForm = mode === 'customer' || mode === 'edit';
+  const financial = useLedgerSubmission('customer-payment.' + (customer?.id || 'choose'), async (payload) => {
+    const result = await api.post('/credit/customers/' + customer.id + '/payments', payload);
+    onSave(result.data); onClose();
+  });
+  const [values, setValues] = useState(!customerForm && financial.pending?.draft ? financial.pending.draft : mode === 'edit' ? {name:customer.name,phone:customer.phone,notes:customer.notes} : mode === 'customer' ? { name: '', phone: '', notes: '', openingBalance: '', dueDate: todayInput() }
     : { amount: '', paymentDate: todayInput(), method: 'cash', reference: '', notes: '' });
   const [error,setError] = useState('');
   const [saving,setSaving] = useState(false);
   const set = (field) => (event) => setValues((current) => ({...current,[field]:event.target.value}));
-  const customerForm = mode === 'customer' || mode === 'edit';
+  const busy = saving || financial.saving;
   const submit = async (event) => {
     event.preventDefault(); setError('');
+    if (busy) return;
+    if (!customerForm && financial.pending) { await financial.save(null, null); return; }
+    if (!customerForm && !customer?.id) { setError(t('Choose a customer')); return; }
     if (customerForm && !values.name.trim()) { setError(t('Enter a customer name.')); return; }
     if (!customerForm && (!(Number(values.amount) > 0) || Number(values.amount) > balance)) { setError(t('Enter a payment up to the outstanding balance.')); return; }
+    if (!customerForm) { await financial.save(values, values); return; }
     setSaving(true);
     try {
-      const result = customerForm
-        ? mode==='edit' ? await api.put(`/credit/customers/${customer.id}`,values) : await api.post('/credit/customers', {...values,openingBalance:values.openingBalance || 0})
-        : await api.post(`/credit/customers/${customer.id}/payments`, {...values,requestId:requestId.current});
+      const result = mode==='edit' ? await api.put(`/credit/customers/${customer.id}`,values) : await api.post('/credit/customers', {...values,openingBalance:values.openingBalance || 0});
       onSave(result.data); onClose();
     } catch (err) { setError(getErrorMessage(err)); } finally { setSaving(false); }
   };
-  return <Modal open onClose={onClose} disableClose={saving} busy={saving}
+  return <Modal open onClose={onClose} disableClose={busy} busy={busy}
     title={mode==='edit' ? t('Edit customer') : customerForm ? t('Add customer') : t('Record repayment')}
-    description={customerForm ? t('Keep their credit and repayments together.') : customer.name}
-    submit={{form:'credit-form',label:mode==='edit' ? t('Save customer') : customerForm ? t('Add customer') : t('Record repayment'),loading:saving}}>
+    description={customerForm ? t('Keep their credit and repayments together.') : customer?.name}
+    submit={{form:'credit-form',label:!customerForm && financial.pending && !busy ? t('Confirm previous save') : mode==='edit' ? t('Save customer') : customerForm ? t('Add customer') : t('Record repayment'),loading:busy}}>
     <form id="credit-form" onSubmit={submit} className="space-y-3">
+      {!customerForm && financial.pending && !busy && <p role="status" className="text-sm">{t('The previous save may already be recorded. Confirm it before making another entry. Stock and money will not be recorded twice.')}</p>}
+      <fieldset disabled={!customerForm && Boolean(financial.pending)} className="space-y-3 min-w-0">
       {customerForm ? <>
         <Input label={t('Customer name')} required value={values.name} onChange={set('name')} maxLength={120} autoComplete="name" />
         <Input label={t('Phone number')} type="tel" value={values.phone} onChange={set('phone')} maxLength={40} autoComplete="tel" />
@@ -59,17 +68,21 @@ function CreditForm({ mode, customer, balance, onClose, onSave }) {
         </div></details>}
         <Textarea label={t('Customer notes')} value={values.notes} onChange={set('notes')} maxLength={1000} />
       </> : <>
+        {customers && <Select label={t('Customer')} required value={customer?.id || ''} onChange={onCustomerChange}><option value="">{t('Choose a customer')}</option>{customers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select>}
         <div className="credit-form-balance"><span>{t('Outstanding balance')}</span><strong>{formatMoney(balance,currencySymbol)}</strong></div>
         <Input label={t('Amount received')} required type="number" min="0.01" max={balance} step="0.01" inputMode="decimal" prefix={currencySymbol} value={values.amount} onChange={set('amount')} />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label={t('Payment date')} required type="date" max={todayInput()} value={values.paymentDate} onChange={set('paymentDate')} />
           <Select label={t('Payment method')} value={values.method} onChange={set('method')}>{Object.entries(METHODS).map(([value,label]) => <option key={value} value={value}>{t(label)}</option>)}</Select>
         </div>
-        <Input label={t('Reference')} value={values.reference} onChange={set('reference')} maxLength={120} />
-        <Textarea label={t('Notes')} value={values.notes} onChange={set('notes')} maxLength={500} />
+        <details className="rounded-xl border border-hairline/10 px-3"><summary className="min-h-[44px] flex items-center cursor-pointer text-sm">{t('Reference & notes')}</summary><div className="space-y-3 pb-3">
+          <Input label={t('Reference')} value={values.reference} onChange={set('reference')} maxLength={120} />
+          <Textarea label={t('Notes')} value={values.notes} onChange={set('notes')} maxLength={500} />
+        </div></details>
         <p className="text-xs text-content-muted">{t('Pays the oldest due balance first and adds the received amount to the cash book.')}</p>
       </>}
-      {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{t(error)}</p>}
+      </fieldset>
+      {(error || financial.error) && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{t(error || financial.error)}</p>}
     </form>
   </Modal>;
 }

@@ -106,6 +106,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/businesses', require('./routes/businesses'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/transactions', require('./routes/transactions'));
+app.use('/api/shop', require('./routes/shop'));
 app.use('/api/barcodes', require('./routes/barcodes'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/cash-book', require('./routes/cashBook'));

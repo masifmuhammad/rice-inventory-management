@@ -26,6 +26,7 @@ test('supplier ledger receives stock, records credit and payments, and reverses 
   await page.getByLabel('Cost per unit').fill('10');
   await page.getByLabel('Paid now').fill('20');
   await page.getByLabel('Payment due date').fill('2030-01-01');
+  await page.getByText('Reference & notes', { exact: true }).click();
   await page.getByLabel('Supplier bill reference').fill('SUPPLIER-PURCHASE-100');
   await page.getByRole('button', { name: 'Receive stock and record bill', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -35,6 +36,7 @@ test('supplier ledger receives stock, records credit and payments, and reverses 
   await page.getByLabel('Amount paid').fill('80');
   await page.getByRole('button', { name: 'Payment method' }).click();
   await page.getByRole('option', { name: 'Bank transfer', exact: true }).click();
+  await page.getByText('Reference & notes', { exact: true }).click();
   await page.getByLabel('Reference', { exact: true }).fill('SUPPLIER-BANK-80');
   await page.getByRole('button', { name: 'Record supplier payment', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);

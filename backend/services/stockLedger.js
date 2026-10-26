@@ -105,7 +105,8 @@ const createMovementOnClient = async (client, data, businessId, user) => {
   await postCash(client, rows[0], product, user.id);
   return present(rows[0], product, user);
 };
-const createMovement = (data, businessId, user) => withTransaction((client) => createMovementOnClient(client, { ...data, barcodeLabelId: null }, businessId, user));
+const createMovement = (data, businessId, user) => require('./idempotentRequest')('transaction', data, businessId,
+  (client) => createMovementOnClient(client, { ...data, barcodeLabelId: null }, businessId, user));
 
 const changeMovement = (id, businessId, user, data) => withTransaction(async (client) => {
   const initial = await client.query('SELECT product_id FROM transactions WHERE id = $1 AND business_id = $2', [id, businessId]);

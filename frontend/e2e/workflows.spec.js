@@ -107,11 +107,11 @@ test('floating labels follow focus and values without losing their accessible na
 test('home shortcuts select the correct movement and cash entry saves', async ({ page }) => {
   await signIn(page);
   await page.getByRole('button', { name: 'Record sale', exact: true }).click();
-  await expect(page.getByRole('dialog').getByRole('button', { name: /^Type/ })).toContainText('Sale');
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Record sale', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
   await page.goto('/');
   await page.getByRole('button', { name: 'Add delivery', exact: true }).click();
-  await expect(page.getByRole('dialog').getByRole('button', { name: /^Type/ })).toContainText('Delivery');
+  await expect(page.getByRole('dialog').getByRole('heading', { name: /Receive a purchase|Add delivery/ })).toBeVisible();
   await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
   await page.goto('/');
   await page.getByRole('button', { name: 'Money out', exact: true }).click();
@@ -124,7 +124,7 @@ test('home shortcuts select the correct movement and cash entry saves', async ({
   expect(saved.status()).toBe(201);
   const entry = await saved.json();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByText('Browser verification expense', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Cash entry recorded.' })).toBeVisible();
   // Remove only this test's entry, using the same authenticated API as the UI.
   const token = await page.evaluate(() => localStorage.getItem('rim.token'));
   const removed = await page.request.delete('/api/cash-book/' + (entry.id || entry._id), { headers: { Authorization: 'Bearer ' + token } });
@@ -137,6 +137,10 @@ test('small-screen sheets keep focused inputs and keyboard navigation visible', 
     const viewport = new EventTarget();
     Object.assign(viewport, { width: innerWidth, height: innerHeight, offsetTop: 0, offsetLeft: 0, scale: 1 });
     Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport });
+    document.addEventListener('DOMContentLoaded', () => {
+      Object.assign(viewport, { width: innerWidth, height: innerHeight });
+      viewport.dispatchEvent(new Event('resize'));
+    });
     window.__testKeyboard = (height) => { viewport.height = height; viewport.dispatchEvent(new Event('resize')); };
   });
   await signIn(page);

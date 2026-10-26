@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { ShopModeProvider } from './context/ShopModeContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { PageTitleProvider } from './context/PageTitleContext';
@@ -194,6 +195,7 @@ export default function App() {
         <ThemeProvider>
           <AuthProvider>
             <SettingsProvider>
+              <ShopModeProvider>
               <PageTitleProvider>
                 <ConfirmProvider>
                   <ScrollToTop />
@@ -204,6 +206,7 @@ export default function App() {
                   <AppToaster />
                 </ConfirmProvider>
               </PageTitleProvider>
+              </ShopModeProvider>
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>

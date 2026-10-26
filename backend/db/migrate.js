@@ -40,7 +40,16 @@ const runMigrations = async () => {
 
     const schemaPath = path.join(__dirname, 'schema.sql');
     const sql = fs.readFileSync(schemaPath, 'utf8');
-    await pool.query(sql);
+    // Active traffic can hold row/table locks while a deployment expands the
+    // schema. Retry only PostgreSQL's rolled-back deadlock/serialization cases;
+    // the schema is additive/idempotent and other failures stay visible.
+    for (let attempt = 0; ; attempt++) {
+      try { await pool.query(sql); break; }
+      catch (error) {
+        if (!['40P01', '40001'].includes(error.code) || attempt >= 2) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+      }
+    }
   } finally {
     await pool.query('SELECT pg_advisory_unlock(74109213)').catch(() => {});
     pool.release();

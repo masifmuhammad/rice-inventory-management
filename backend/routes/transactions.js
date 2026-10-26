@@ -98,15 +98,15 @@ router.post(
   '/',
   auth,
   requireCapability('transactions.create'),
-  [body('product').isUUID().withMessage('Pick a product'), ...transactionValidators],
+  [body('requestId').optional().isUUID(), body('product').isUUID().withMessage('Pick a product'), ...transactionValidators],
   validate,
   asyncHandler(async (req, res) => {
     const transaction = await createMovement(req.body, req.businessId, req.user);
-    audit(req, 'CREATE_TRANSACTION', 'TRANSACTION', transaction.id, {
+    if (!transaction.replayed) audit(req, 'CREATE_TRANSACTION', 'TRANSACTION', transaction.id, {
       type: transaction.type, product: transaction.product.name,
       quantity: transaction.quantity, stockAfter: transaction.stockAfter,
     });
-    res.status(201).json(transaction);
+    res.status(transaction.replayed ? 200 : 201).json(transaction);
   })
 );
 

@@ -37,6 +37,7 @@ test('customer credit: opening balance, sale, repayment, statement and reversal'
   await page.getByRole('button',{name:'Record repayment',exact:true}).click();
   await page.getByLabel(/^Amount received/).fill('125');
   await page.getByRole('button',{name:'Payment method'}).click();await page.getByRole('option',{name:'Bank transfer',exact:true}).click();
+  await page.getByText('Reference & notes', { exact: true }).click();
   await page.getByLabel('Reference',{exact:true}).fill('BANK-125');
   await page.getByRole('button',{name:'Record repayment',exact:true}).last().click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -138,7 +139,7 @@ test('customers can be archived and restored without losing dues or Urdu stateme
 
 test('permission errors offer retry without repeated permission prompts',async({page})=>{
   await signIn(page);
-  await page.locator('a[href="/barcodes"]').filter({visible:true}).first().click();
+  await page.goto('/barcodes');
   await expect(page.getByRole('button',{name:'Read label',exact:true})).toBeVisible();
   await page.evaluate(()=>{
     window.__cameraRequests=0;

@@ -71,8 +71,7 @@ class CashEntry {
     return this;
   }
 
-  async populate(field) {
-    const pool = getPool();
+  async populate(field, select, pool = getPool()) {
     if (field === 'createdBy') {
       const { rows } = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [this.createdBy]);
       if (rows[0]) {
@@ -250,8 +249,7 @@ class CashEntry {
     return rows[0].count;
   }
 
-  static async create(data) {
-    const pool = getPool();
+  static async create(data, pool = getPool()) {
     try {
       const { rows } = await pool.query(
         `INSERT INTO cash_entries (

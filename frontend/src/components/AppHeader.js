@@ -8,8 +8,10 @@ import {
   FiPackage,
   FiPlus,
   FiTrendingUp,
+  FiShoppingBag,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
+import { useShopMode } from '../context/ShopModeContext';
 import { usePageTitle } from '../context/PageTitleContext';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { springSnappy, reducedTransition } from '../utils/motion';
@@ -31,7 +33,7 @@ function HeaderSearch() {
   };
 
   return (
-    <form onSubmit={submit} className="hidden lg:block relative min-w-[12rem] w-[min(18rem,28vw)]">
+    <form onSubmit={submit} className="hidden xl:block relative min-w-[12rem] w-[min(18rem,28vw)]">
       <Input label={translate("Search products")} enterKeyHint="search"
         type="search"
         value={query}
@@ -160,6 +162,8 @@ function HeaderCreate({ can }) {
 export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
   useAppLanguage();
   const { user, can } = useAuth();
+  const shopMode = useShopMode();
+  const navigate = useNavigate();
   const { title: pageTitle, summary, collapsed } = usePageTitle();
 
   return (
@@ -201,7 +205,7 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
             Raising this above the two z-10 siblings puts the button back in
             front for hit-testing. The wrapper stays `pointer-events-none`, so it
             never steals taps meant for the hamburger or the bell. */}
-        <div className="mobile-header-brand lg:hidden absolute left-14 right-[10.75rem] sm:left-[4.5rem] sm:right-[18rem] z-20 flex justify-center pointer-events-none">
+        <div className="mobile-header-brand lg:hidden absolute left-14 right-[14rem] sm:left-[4.5rem] sm:right-[26rem] z-20 flex justify-center pointer-events-none">
           {collapsed ? (
             <div className="min-w-0 text-center pointer-events-auto" data-testid="compact-page-header">
               {/* Two lines at most: stacking every summary part overflowed the
@@ -214,10 +218,16 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
         </div>
 
         <div className="z-10 flex items-center gap-2 sm:gap-2.5 flex-shrink-0 justify-end">
-          <HeaderSearch />
-          <HeaderCreate can={can} />
+          {!shopMode.enabled && <><HeaderSearch /><HeaderCreate can={can} /></>}
+          <button type="button" aria-label={translate('Shop mode')} aria-pressed={shopMode.enabled}
+            disabled={shopMode.enabled && shopMode.pending}
+            title={translate(shopMode.enabled ? 'Switch to full mode' : 'Switch to Shop mode')}
+            onClick={() => { shopMode.setEnabled(!shopMode.enabled); navigate('/'); }}
+            className={`shop-mode-toggle ${shopMode.enabled ? 'is-active' : ''}`}>
+            <FiShoppingBag aria-hidden="true" /><span className="hidden sm:inline">{translate('Shop mode')}</span><span className="sm:hidden">{translate('Shop')}</span>
+          </button>
           <LanguagePicker />
-          <NotificationPanel variant="circle" />
+          {!shopMode.enabled && <NotificationPanel variant="circle" />}
           {/* Theme switching lives in the sidebar footer only — the reference
               keeps this corner to search, create, alerts and account. */}
           <button

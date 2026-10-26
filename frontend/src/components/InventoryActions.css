@@ -2,6 +2,10 @@
 .inventory-actions-heading h2 { font-size:21px; font-weight:600; letter-spacing:-.02em; color:rgb(var(--content)); }
 .inventory-actions-heading>a { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; min-height:48px; font-size:13px; font-weight:500; color:rgb(var(--content)); }
 .inventory-action-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.daily-action-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.daily-action-grid .inventory-action { text-align:start; min-height:140px; border:0; }
+.daily-action-grid .inventory-action p { font-size:14px; }
+.inventory-actions-heading>a.inventory-action-stock { background:transparent; color:rgb(var(--content)); }
 .inventory-action { display:flex; flex-direction:column; min-height:176px; padding:23px; border-radius:16px; transition:transform .2s ease-out,box-shadow .2s ease-out; }
 .inventory-action-stock { background:#e0edf3; color:#264c60; }
 .inventory-action-in { background:#dceee3; color:#215c40; }

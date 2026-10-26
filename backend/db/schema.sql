@@ -12,6 +12,16 @@ CREATE TABLE IF NOT EXISTS businesses (
 
 CREATE INDEX IF NOT EXISTS idx_businesses_active ON businesses (is_active, name);
 
+CREATE TABLE IF NOT EXISTS ledger_requests (
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  scope VARCHAR(40) NOT NULL,
+  request_id UUID NOT NULL,
+  request_data JSONB NOT NULL,
+  result JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (business_id, scope, request_id)
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID REFERENCES businesses(id) ON DELETE RESTRICT,
@@ -131,9 +141,14 @@ CREATE TABLE IF NOT EXISTS barcode_labels (
 );
 CREATE INDEX IF NOT EXISTS idx_barcode_labels_product_status ON barcode_labels (business_id, product_id, status);
 -- Upgrade existing installations as well as fresh databases.
-ALTER TABLE barcode_labels DROP CONSTRAINT IF EXISTS barcode_labels_status_check;
-ALTER TABLE barcode_labels ADD CONSTRAINT barcode_labels_status_check
-  CHECK (status IN ('prepared', 'in_stock', 'stock_out', 'cancelled'));
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='barcode_labels'::regclass
+    AND conname='barcode_labels_status_check' AND pg_get_constraintdef(oid) LIKE '%cancelled%') THEN
+    ALTER TABLE barcode_labels DROP CONSTRAINT IF EXISTS barcode_labels_status_check;
+    ALTER TABLE barcode_labels ADD CONSTRAINT barcode_labels_status_check
+      CHECK (status IN ('prepared', 'in_stock', 'stock_out', 'cancelled'));
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_barcode_batches_created ON barcode_batches (business_id, created_at DESC);
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS barcode_label_id UUID REFERENCES barcode_labels(id) ON DELETE RESTRICT;
 CREATE INDEX IF NOT EXISTS idx_transactions_barcode_label ON transactions (barcode_label_id, created_at DESC);
@@ -370,3 +385,19 @@ CREATE TABLE IF NOT EXISTS business_settings (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Admin-configured packet buttons; stock and financial history keep using the
+-- existing product, transaction and supplier ledgers.
+CREATE TABLE IF NOT EXISTS shop_products (
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  pack_quantity NUMERIC(14,4) NOT NULL CHECK (pack_quantity > 0),
+  supplier_id UUID REFERENCES suppliers(id) ON DELETE RESTRICT,
+  button_number INTEGER NOT NULL CHECK (button_number > 0),
+  button_label VARCHAR(40) NOT NULL DEFAULT '',
+  payment_days INTEGER NOT NULL DEFAULT 0 CHECK (payment_days BETWEEN 0 AND 365),
+  colour VARCHAR(12) NOT NULL DEFAULT 'green' CHECK (colour IN ('green','blue','orange','purple','rose')),
+  PRIMARY KEY (business_id, product_id),
+  UNIQUE (business_id, button_number)
+);
+ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS payment_days INTEGER NOT NULL DEFAULT 0 CHECK (payment_days BETWEEN 0 AND 365);

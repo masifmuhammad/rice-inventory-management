@@ -31,11 +31,11 @@ test('English is clean by default; Urdu persists and switching preserves unsaved
   expect(await page.locator('body').innerText()).not.toMatch(/[\u0600-\u06ff]/);
   await capture(page, 'home-en', info.project.name);
   await language(page, 'ur');
-  await expect(page.locator('.inventory-action-stock')).toContainText(ur['View stock']);
+  await expect(page.locator('a.inventory-action-stock')).toContainText(ur['View stock']);
   await capture(page, 'home-ur', info.project.name);
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await expect(page.locator('.inventory-action-stock')).toContainText(ur['View stock']);
+  await expect(page.locator('a.inventory-action-stock')).toContainText(ur['View stock']);
   await page.goto('/barcodes?tab=labels');
   await page.getByLabel(ur['Find rice by name or SKU']).fill('Premium');
   await page.getByRole('button', { name: new RegExp(ur['Rice product']) }).click();

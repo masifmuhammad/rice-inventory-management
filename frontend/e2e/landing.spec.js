@@ -71,7 +71,8 @@ test('section links move along the page', async ({ page }) => {
     await page.getByRole('button', { name: 'Menu', exact: true }).click();
     await page.getByRole('navigation', { name: 'Page sections' }).getByRole('link', { name, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`#${id}$`));
-    await expect.poll(() => page.locator(`#${id}`).evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(90);
+    // WebKit can retain a fractional device-pixel scroll offset at this anchor.
+    await expect.poll(() => page.locator(`#${id}`).evaluate(el => Math.abs(el.getBoundingClientRect().top - 90))).toBeLessThanOrEqual(2);
     await expect(page.getByRole('button', { name: 'Menu', exact: true })).toHaveAttribute('aria-expanded', 'false');
   }
 });

@@ -212,12 +212,13 @@ router.post(
   '/',
   auth,
   requireCapability('cash.manage'),
-  entryValidators,
+  [body('requestId').optional().isUUID(), ...entryValidators],
   validate,
   asyncHandler(async (req, res) => {
     const { direction, amount, purpose, category, party, takenBy, reference, notes, occurredAt } = req.body;
 
-    const entry = await CashEntry.create({
+    const entry = await require('../services/idempotentRequest')('cash', req.body, req.businessId, async (client) => {
+    const created = await CashEntry.create({
       businessId: req.businessId,
       direction,
       amount,
@@ -231,18 +232,19 @@ router.post(
       source: 'manual',
       paymentMethod: req.body.paymentMethod ?? null,
       createdBy: req.user._id,
+    }, client);
+    await created.populate('createdBy', null, client);
+    return created;
     });
 
-    await entry.populate('createdBy', 'name email');
-
-    audit(req, direction === 'in' ? 'CREATE_CASH_IN' : 'CREATE_CASH_OUT', 'CASH_ENTRY', entry._id, {
+    if (!entry.replayed) audit(req, direction === 'in' ? 'CREATE_CASH_IN' : 'CREATE_CASH_OUT', 'CASH_ENTRY', entry._id, {
       amount,
       purpose,
       category: entry.category,
       paymentMethod: entry.paymentMethod,
     });
 
-    res.status(201).json(entry);
+    res.status(entry.replayed ? 200 : 201).json(entry);
   })
 );
 

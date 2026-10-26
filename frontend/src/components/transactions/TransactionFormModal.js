@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FiAlertTriangle, FiArrowRight } from 'react-icons/fi';
 import { useSettings } from '../../context/SettingsContext';
@@ -6,10 +6,11 @@ import { formatMoney, formatQuantity } from '../../utils/currency';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../../utils/motion';
 import Modal from '../ui/Modal';
+import Button from '../ui/Button';
 import { Input, Select, Textarea } from '../ui/Field';
-import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import useApi from '../../hooks/useApi';
+import useLedgerSubmission from '../../hooks/useLedgerSubmission';
 import { useAuth } from '../../context/AuthContext';
 import { translate, useAppLanguage } from '../../context/LanguageContext';
 
@@ -18,6 +19,7 @@ const TYPES = [
   { value: 'stock_out', label: 'Sale · stock out' },
   { value: 'adjustment', label: 'Stock adjustment' },
 ];
+const InlineCustomer = lazy(() => import('../../pages/Credit').then((m) => ({ default: m.CreditForm })));
 
 const EMPTY = {
   type: 'stock_in',
@@ -43,6 +45,7 @@ export default function TransactionFormModal({
   initialValues = null,
   editing = false,
   serverError = '',
+  intent,
 }) {
   useAppLanguage();
   const { currencySymbol } = useSettings();
@@ -50,7 +53,11 @@ export default function TransactionFormModal({
   const customers = useApi((signal) => api.get('/credit', { signal }).then(r => r.data.customers), [], { immediate: open && can('credit.view') });
   const [values, setValues] = useState(EMPTY);
   const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
+  const [addingCustomer, setAddingCustomer] = useState(false);
+  const formRef = useRef(null);
+  const submission = useLedgerSubmission('transaction', onSubmit);
+  const { saving } = submission;
+  const recovery = !editing && submission.pending;
   const [priceTouched, setPriceTouched] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
   const revealTransition = reducedMotion ? reducedTransition : springUI;
@@ -58,7 +65,7 @@ export default function TransactionFormModal({
   useEffect(() => {
     if (open) {
       setValues(
-        initialValues
+        recovery?.draft ? recovery.draft : initialValues
           ? {
               ...EMPTY,
               type: initialValues.type || 'stock_in',
@@ -77,9 +84,12 @@ export default function TransactionFormModal({
           : EMPTY
       );
       setErrors({});
-      setPriceTouched(Boolean(initialValues?.price));
-      setSaving(false);
+      setAddingCustomer(false);
+      submission.clearError();
+      setPriceTouched(Boolean(recovery) || Boolean(initialValues?.price));
     }
+  // Restore only when opening; a failed save must keep the user's current draft.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialValues]);
 
   const product = useMemo(
@@ -98,6 +108,7 @@ export default function TransactionFormModal({
   const set = (field) => (event) => {
     const value = event.target.value;
     if (field === 'price') setPriceTouched(true);
+    if (field === 'product') setPriceTouched(false);
     setValues((current) => ({ ...current, [field]: value }));
     setErrors((current) => (current[field] ? { ...current, [field]: undefined } : current));
   };
@@ -127,6 +138,8 @@ export default function TransactionFormModal({
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (saving) return;
+    if (recovery) { await submission.save(null, null); return; }
 
     const nextErrors = {};
     if (!values.product) nextErrors.product = 'Choose a product';
@@ -141,6 +154,7 @@ export default function TransactionFormModal({
     if (preview?.insufficient) {
       nextErrors.quantity = `Only ${formatQuantity(preview.before, preview.unit)} in stock`;
     }
+    if (values.price !== '' && (!Number.isFinite(price) || price < 0)) nextErrors.price = 'Enter a price of 0 or more';
     if (values.type === 'stock_out' && values.paymentType === 'credit') {
       if (!values.customerId) nextErrors.customerId = 'Choose a credit customer';
       if (!values.dueDate) nextErrors.dueDate = 'Choose a payment due date';
@@ -148,22 +162,18 @@ export default function TransactionFormModal({
     }
 
     setErrors(nextErrors);
-    if (Object.values(nextErrors).some(Boolean)) return;
+    if (Object.values(nextErrors).some(Boolean)) {
+      requestAnimationFrame(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
+      return;
+    }
 
-    setSaving(true);
-    try {
-      await onSubmit({
+    await submission.save({
         ...values,
         quantity,
         price: values.price === '' ? undefined : price,
         paymentType: values.type === 'stock_out' ? values.paymentType : 'cash',
         amountReceived: values.paymentType === 'credit' ? Number(values.amountReceived || 0) : undefined,
-      });
-    } catch {
-      // The owning screen shows the API error and keeps the form draft.
-    } finally {
-      setSaving(false);
-    }
+      }, values, !editing);
   };
 
   return (
@@ -172,16 +182,19 @@ export default function TransactionFormModal({
       onClose={saving ? () => {} : onClose}
       disableClose={saving}
       busy={saving}
-      title={translate(editing ? 'Correct transaction' : 'New transaction')}
+      title={translate(recovery ? 'Confirm previous save' : editing ? 'Correct transaction' : intent === 'sale' ? 'Record sale' : intent === 'delivery' ? 'Add delivery' : 'New transaction')}
       description={
         translate(editing
           ? 'Stock and the cash book are corrected to match.'
           : 'Stock moves and the ledger updates together.')
       }
       size="md"
-      submit={{ form: 'transaction-form', label: editing ? 'Save correction' : 'Record transaction', loading: saving }}
+      submit={{ form: 'transaction-form', label: recovery && !saving ? 'Confirm previous save' : editing ? 'Save correction' : 'Record transaction', loading: saving }}
     >
-      <form id="transaction-form" onSubmit={handleSubmit} className="space-y-2.5" noValidate>
+      <form ref={formRef} id="transaction-form" onSubmit={handleSubmit} className="space-y-2.5" noValidate>
+        {recovery && !saving && <p role="status" className="rounded-xl border border-hairline/15 p-3 text-sm">{translate('The previous save may already be recorded. Confirm it before making another entry. Stock and money will not be recorded twice.')}</p>}
+        <fieldset disabled={Boolean(recovery)} className="space-y-2.5 min-w-0">
+        {(!intent || recovery) && <>
         <Select label={translate("Type")} required value={values.type} onChange={set('type')}>
           {TYPES.map((option) => (
             <option key={option.value} value={option.value}>
@@ -189,6 +202,7 @@ export default function TransactionFormModal({
             </option>
           ))}
         </Select>
+        </>}
 
         <Select
           label={translate("Product")}
@@ -238,6 +252,7 @@ export default function TransactionFormModal({
             prefix={currencySymbol}
             value={values.price}
             onChange={set('price')}
+            error={errors.price}
             placeholder="0.00"
             hint={translate("Prefilled from the product")}
           />
@@ -303,7 +318,7 @@ export default function TransactionFormModal({
               {(customers.data || []).filter(c => !c.archivedAt).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
             {customers.error && <p role="alert" className="text-sm text-red-600">{translate(customers.error)} <button type="button" className="underline" onClick={()=>customers.refetch()}>{translate('Try again')}</button></p>}
-            {!customers.loading && !customers.data?.length && <Link className="inline-block text-sm underline py-2" to="/credit">{translate('Add a customer in Customer credit')}</Link>}
+            <Button variant="ghost" onClick={() => setAddingCustomer(true)}>{translate('Add customer')}</Button>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Input label={translate('Received now')} type="number" min="0" step="0.01" inputMode="decimal" prefix={currencySymbol} value={values.amountReceived} onChange={set('amountReceived')} error={errors.amountReceived}/>
               <Input label={translate('Payment due date')} required type="date" value={values.dueDate} onChange={set('dueDate')} error={errors.dueDate}/></div>
             {preview?.total>0 && <p className="text-sm text-content-muted">{translate('Left to collect: {0}',[formatMoney(Math.max(0,preview.total-Number(values.amountReceived || 0)),currencySymbol)])}</p>}
@@ -327,11 +342,19 @@ export default function TransactionFormModal({
           </div>
         </details>
 
-        {serverError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{translate(serverError)}</p>}
+        </fieldset>
+        {(submission.error || serverError) && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{translate(submission.error || serverError)}</p>}
         {values.type === 'stock_out' && (
           <p className="text-xs text-content-subtle">{translate(values.paymentType === 'credit' ? 'Only the amount received now enters the cash book. The rest stays on this customer’s account.' : 'Sales with a price are posted to the cash book automatically.')}</p>
         )}
       </form>
+      {addingCustomer && <Suspense fallback={<p role="status">{translate('Opening form...')}</p>}><InlineCustomer mode="customer" onClose={() => setAddingCustomer(false)} onSave={(result) => {
+        const customer = result.customer || result;
+        customers.setData((current) => [...(current || []), customer]);
+        setValues((current) => ({ ...current, customerId: customer.id }));
+        setAddingCustomer(false);
+        customers.refetch();
+      }} /></Suspense>}
     </Modal>
   );
 }

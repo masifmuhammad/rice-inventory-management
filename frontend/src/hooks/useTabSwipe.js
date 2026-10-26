@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { TAB_ROUTES } from './usePrefetchRoute';
 
 /** The tab bar's own order — swiping should match what the bar shows. */
-const TABS = ['/', '/products', '/barcodes', '/transactions', '/cash-book'];
+const TABS = TAB_ROUTES;
 
 const indexOf = (pathname, tabs) =>
   tabs.findIndex((path) => (path === '/' ? pathname === '/' : pathname.startsWith(path)));
