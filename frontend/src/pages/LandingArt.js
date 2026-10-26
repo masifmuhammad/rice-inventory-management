@@ -13,7 +13,7 @@ const JUTE = '#efe6d2';
 const DARK = '#2a2520';
 
 export function NineGlyph({ className }) {
-  return <svg className={className} viewBox="0 0 102 164" aria-hidden="true"><text x="51" y="124" textAnchor="middle" fontFamily="Georgia, serif" fontSize="150" fontWeight="700">9</text></svg>;
+  return <svg className={className} viewBox="0 0 102 164" aria-hidden="true"><path fillRule="evenodd" d="M50 0C84 0 102 22 102 58V94C102 140 82 164 40 164H8V132H38C58 132 66 124 68 106C62 110 54 112 46 112C16 112 0 92 0 58C0 22 16 0 50 0ZM48 24C36 38 34 58 40 74C44 84 50 90 58 90C66 76 68 58 64 44C62 36 56 28 48 24Z" /></svg>;
 }
 
 export function Nines({ fill = 'currentColor', gap = 104 }) {
@@ -190,18 +190,18 @@ export function PunjabScene({ className, truckHref }) {
   return <svg className={className} viewBox="0 0 1440 560" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
     <defs>
       <linearGradient id="k-dusk" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#24323d" />
-        <stop offset=".42" stopColor="#50667b" />
-        <stop offset=".72" stopColor="#b58d8f" />
-        <stop offset="1" stopColor="#dfcba5" />
+        <stop offset="0" stopColor="#102c3b" />
+        <stop offset=".42" stopColor="#2459a6" />
+        <stop offset=".72" stopColor="#d94383" />
+        <stop offset="1" stopColor="#ffb84e" />
       </linearGradient>
       <linearGradient id="k-sun" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor={MARI} />
-        <stop offset="1" stopColor="#e3cd9e" />
+        <stop offset="0" stopColor="#ffd34e" />
+        <stop offset="1" stopColor="#ff9c39" />
       </linearGradient>
       <linearGradient id="k-khaal" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor={MARI} />
-        <stop offset="1" stopColor="#6a8393" />
+        <stop offset="0" stopColor="#ffd34e" />
+        <stop offset="1" stopColor="#49c9f2" />
       </linearGradient>
       <radialGradient id="k-glow"><stop offset="0" stopColor={MARI} stopOpacity=".55" /><stop offset="1" stopColor={MARI} stopOpacity="0" /></radialGradient>
     </defs>

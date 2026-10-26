@@ -122,7 +122,7 @@ html.rice-public-page body { background: #f4f1ea; color: #16130f; }
 .k-hero { display: grid; justify-items: center; align-content: center; min-height: 100svh; padding: 110px var(--gutter) 48px; text-align: center; }
 .k-hero-mark { --w: min(860px, 86vw, 72svh); display: flex; justify-content: center; gap: calc(var(--w) * 0.0065); width: var(--w); }
 .k-nine { position: relative; flex: 0 0 calc(var(--w) * 0.329); aspect-ratio: 102 / 164; border-radius: 12px; }
-.k-nine svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: var(--idle); transition: translate 0.5s var(--ease); }
+.k-nine svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: var(--ver); stroke: var(--mari); stroke-width: 1; transition: translate 0.5s var(--ease); }
 .k-nine .k-nine-fill { fill: var(--tone); clip-path: inset(100% 0 0 0); transition: clip-path 0.75s var(--ease), translate 0.5s var(--ease); }
 .k-nine[aria-pressed='true'] svg { translate: 0 -8px; }
 .k-nine[aria-pressed='true'] .k-nine-fill { clip-path: inset(0 0 0 0); }
@@ -255,22 +255,22 @@ html.rice-public-page body { background: #f4f1ea; color: #16130f; }
 
 /* ---------- Footer: truck-art fringe and large type, after footer.design ---------- */
 
-.k-footer { position: relative; padding: 112px var(--gutter) 0; background: var(--slate); color: var(--rice); overflow: hidden; }
+.k-footer { --truck-gold: #ffd34e; --truck-pink: #ff67ae; --truck-blue: #49c9f2; --truck-green: #51e3a0; position: relative; padding: 112px var(--gutter) 0; background: #102c3b; color: var(--paper); overflow: hidden; }
 .k-footer-brand-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .k-footer-brand { display: inline-flex; align-items: center; gap: 18px; text-decoration: none; font-size: clamp(22px, 2.6vw, 36px); font-weight: 500; letter-spacing: -0.02em; }
 .k-footer-brand > svg { width: 64px; height: auto; }
 .k-footer-brand small { display: block; margin-top: 2px; font-size: 14px; font-weight: 400; letter-spacing: 0; color: #d4dce0; }
 .k-footer-rice-link { display: inline-flex; align-items: center; gap: 12px; padding: 12px 0; text-underline-offset: 6px; }
 .k-jhalar { position: absolute; top: 0; left: var(--gutter); right: var(--gutter); display: flex; justify-content: space-between; }
-.k-jhalar i { position: relative; display: block; width: 1.5px; height: var(--h); background: rgba(244, 241, 234, 0.45); transform-origin: top center; animation: k-swing 2.8s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -0.17s); }
-.k-jhalar i::after { content: ''; position: absolute; left: 50%; bottom: -10px; width: 11px; height: 11px; margin-left: -5.5px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #d7b578; }
-.k-jhalar i:nth-child(4n + 2)::after { background: var(--mari); }
-.k-jhalar i:nth-child(4n + 3)::after { background: var(--cob); }
-.k-jhalar i:nth-child(4n + 4)::after { background: #bc9399; }
+.k-jhalar i { position: relative; display: block; width: 2px; height: var(--h); background: var(--truck-gold); transform-origin: top center; animation: k-swing 2.8s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -0.17s); }
+.k-jhalar i::after { content: ''; position: absolute; left: 50%; bottom: -10px; width: 16px; height: 16px; margin-left: -8px; border: 2px solid var(--truck-gold); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--truck-gold); }
+.k-jhalar i:nth-child(4n + 2)::after { background: var(--truck-pink); }
+.k-jhalar i:nth-child(4n + 3)::after { background: var(--truck-blue); }
+.k-jhalar i:nth-child(4n + 4)::after { background: var(--truck-green); }
 @keyframes k-swing { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
 .k-motto { position: relative; display: grid; justify-items: center; padding: clamp(56px, 8vw, 110px) 0 clamp(48px, 6vw, 80px); text-align: center; }
 .k-motto-line { position: relative; padding: 0 24px; border-radius: 24px; cursor: help; }
-.k-motto-line [lang='ur'] { display: block; font-weight: 600; font-size: clamp(48px, 7vw, 104px); line-height: 1.5; color: #dfc38f; transition: color 0.4s var(--ease); }
+.k-motto-line [lang='ur'] { display: block; font-weight: 700; font-size: clamp(48px, 7vw, 104px); line-height: 1.5; color: var(--truck-gold); text-shadow: 2px 3px 0 #a93168; transition: color 0.4s var(--ease); }
 .k-motto-line:hover [lang='ur'], .k-motto-line[aria-expanded='true'] [lang='ur'] { color: var(--paper); }
 .k-motto-tr { display: grid; gap: 4px; justify-items: center; margin-top: 4px !important; opacity: 0; transform: translateY(-8px); filter: blur(6px); transition: opacity 0.45s var(--ease), transform 0.45s var(--ease), filter 0.45s var(--ease); pointer-events: none; }
 .k-motto-tr span:first-child { font-size: clamp(20px, 2vw, 26px); font-weight: 500; letter-spacing: -0.01em; }
@@ -279,9 +279,11 @@ html.rice-public-page body { background: #f4f1ea; color: #16130f; }
 @media (hover: none) { .k-motto::after { content: 'Tap to translate'; order: 3; margin-top: 10px; font-size: 12px; color: rgba(244, 241, 234, 0.4); } .k-motto:has([aria-expanded='true'])::after { content: none; } }
 .k-footer-cols { display: grid; grid-template-columns: 1.2fr 1fr 1.3fr; gap: 32px; width: min(1040px, 100%); margin: 0 auto; padding-top: 16px; }
 .k-footer-cols div { display: grid; gap: 8px; align-content: start; justify-items: start; }
-.k-footer-cols h3 { margin-bottom: 12px; font-size: 15px; font-weight: 500; color: #dfc38f; }
+.k-footer-cols h3 { margin-bottom: 12px; font-size: 15px; font-weight: 600; color: var(--truck-gold); }
+.k-footer-cols > div:nth-child(2) h3 { color: var(--truck-pink); }
+.k-footer-cols > div:nth-child(3) h3 { color: var(--truck-blue); }
 .k-footer-cols a, .k-footer-cols button { display: inline-flex; gap: 6px; align-items: center; min-height: 36px; font-size: 16px; text-decoration: none; text-align: left; transition: color 0.2s; }
-.k-footer-cols a:hover, .k-footer-cols button:hover { opacity: 1; color: var(--mari); }
+.k-footer-cols a:hover, .k-footer-cols button:hover { opacity: 1; color: var(--truck-green); }
 .k .k-footer-scene { display: block; margin: clamp(40px, 6vw, 72px) calc(-1 * var(--gutter)) 0; }
 .k-footer-scene svg, .k-footer-scene img { display: block; width: 100%; height: clamp(300px, 38vw, 560px); object-fit: cover; }
 .k-scene-truck { animation: k-drive 38s linear infinite; }
@@ -289,9 +291,9 @@ html.rice-public-page body { background: #f4f1ea; color: #16130f; }
 .k-birds { animation: k-birds 22s ease-in-out infinite alternate; }
 @keyframes k-birds { to { transform: translate(-160px, -24px); } }
 .k-lamp { animation: k-flicker 2.4s steps(3) infinite; }
-.k-footer-base { position: relative; z-index: 1; margin-top: 0 !important; background: #1d2932; margin-inline: calc(-1 * var(--gutter)); padding: 24px var(--gutter); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; font-size: 14px; color: #d4dce0; }
+.k-footer-base { position: relative; z-index: 1; margin-top: 0 !important; background: #0b2230; margin-inline: calc(-1 * var(--gutter)); padding: 24px var(--gutter); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; font-size: 14px; color: var(--paper); }
 .k-footer-base a { text-decoration: none; }
-.k-footer :focus-visible { outline-color: var(--mari); }
+.k-footer :focus-visible { outline-color: var(--truck-gold); }
 
 /* ---------- Breakpoints ---------- */
 

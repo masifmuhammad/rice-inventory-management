@@ -187,13 +187,13 @@ function Header({ onPreview }) {
 // rice's colour and puts that pack in the hero; otherwise the journey cycles.
 function Hero({ preview }) {
   const reduce = useReducedMotion();
-  const [rice, setRice] = useState(0);
+  const [rice, setRice] = useState(1);
   const chapter = CHAPTERS[preview ?? 2];
   const chosen = preview == null ? RICES[rice] : null;
 
   return <section id="top" className="k-hero" aria-labelledby="k-title">
     <div className="k-hero-mark" role="group" aria-label="999: one nine for each rice">
-      {RICES.map((item, i) => <button key={item.key} type="button" className="k-nine" style={{ '--tone': item.color, '--idle': ['#1f3b2e', '#98723b', '#303a43'][i] }} aria-pressed={rice === i} aria-label={`${item.name}: ${item.best.toLowerCase()}`}
+      {RICES.map((item, i) => <button key={item.key} type="button" className="k-nine" style={{ '--tone': item.color }} aria-pressed={rice === i} aria-label={`${item.name}: ${item.best.toLowerCase()}`}
         onPointerEnter={event => { if (event.pointerType === 'mouse') setRice(i); }}
         onFocus={() => setRice(i)}
         onClick={() => setRice(i)}>
