@@ -10,7 +10,8 @@ test('reports expose complete sales exports, daily closing and clearly scoped st
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await settingsReady;
-  await page.goto('/reports');
+  if (isMobile) await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Main', exact: true }).getByRole('link', { name: 'Reports', exact: true }).filter({ visible: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Sales register', exact: true })).toBeVisible();
   await expect(page.getByText('Payment balances include later repayments. Gross profit excludes operating expenses.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Export sales PDF', exact: true })).toBeEnabled();

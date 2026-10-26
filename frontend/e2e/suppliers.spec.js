@@ -10,7 +10,7 @@ test('supplier ledger receives stock, records credit and payments, and reverses 
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await settingsReady;
-  await page.goto('/suppliers');
+  await page.locator('main a[href="/suppliers"]').click();
   await page.getByRole('button', { name: 'Add supplier', exact: true }).first().click();
   const name = `Supplier ${info.project.name} ${Date.now()}`;
   await page.getByLabel('Supplier name').fill(name);

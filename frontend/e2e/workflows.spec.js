@@ -186,17 +186,23 @@ test('navigation preserves filters without reloading and long pages keep context
     }
   };
   await openPage('Stock', 'Stock');
-  await page.getByLabel('Search products', { exact: true }).filter({ visible: true }).last().fill('Basmati');
+  const stockSearch = page.locator('main').getByLabel('Search products', { exact: true });
+  await stockSearch.fill('Basmati');
+  await expect(stockSearch).toHaveValue('Basmati');
   await openPage('Dashboard', 'Home');
   await openPage('Stock', 'Stock');
-  await expect(page.getByLabel('Search products', { exact: true }).filter({ visible: true }).last()).toHaveValue('Basmati');
+  await expect(stockSearch).toHaveValue('Basmati');
   await openPage('Settings');
   await expect(page.getByRole('heading', { name: 'Settings', exact: true }).first()).toBeVisible();
-  await page.evaluate(() => window.scrollTo(0, 600));
+  await expect(page.getByLabel('Business name')).toBeVisible();
   if (isMobile) {
+    await expect.poll(async () => {
+      await page.evaluate(() => window.scrollTo(0, 600));
+      return page.getByTestId('compact-page-header').isVisible();
+    }).toBe(true);
     await expect(page.getByTestId('compact-page-header')).toContainText('Settings');
     await expect(page.getByTestId('compact-page-header')).toContainText('Test Rice Mill');
-  }
+  } else await page.evaluate(() => window.scrollTo(0, 600));
   expect(await page.evaluate(() => window.__navigationSentinel)).toBe('same-document');
 });
 
