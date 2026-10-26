@@ -4,42 +4,40 @@ import { motion } from 'framer-motion';
 // Flat illustrations for the 999 journey. Every piece is drawn in local
 // coordinates with its base on y = 0, so the scene can stand it on the road.
 
-export const INK = '#16130f';
+export const INK = '#252823';
 export const RICE = '#f4f1ea';
-export const VER = '#e8322a';
-export const MARI = '#f4b400';
-export const COB = '#1f4fd8';
+export const VER = '#1f3b2e';
+export const MARI = '#c79a4a';
+export const COB = '#66849a';
 const JUTE = '#efe6d2';
 const DARK = '#2a2520';
 
-export const NINE = 'M50 0C84 0 102 22 102 58V94C102 140 82 164 40 164H8V132H38C58 132 66 124 68 106C62 110 54 112 46 112C16 112 0 92 0 58C0 22 16 0 50 0ZM48 24C36 38 34 58 40 74C44 84 50 90 58 90C66 76 68 58 64 44C62 36 56 28 48 24Z';
-const TAJ = 'M210 46C250 92 350 124 412 150V470H8V150C70 124 170 92 210 46Z';
-const TAJ_INNER = 'M210 92C178 126 104 156 46 178V432H374V178C316 156 242 126 210 92Z';
-const FINIAL = 'M210 0C222 14 222 30 210 40C198 30 198 14 210 0Z';
-
-export function Nines({ fill = 'currentColor', gap = 104 }) {
-  return <g fill={fill} fillRule="evenodd">{[0, gap, gap * 2].map(x => <path key={x} d={NINE} transform={`translate(${x})`} />)}</g>;
+export function NineGlyph({ className }) {
+  return <svg className={className} viewBox="0 0 102 164" aria-hidden="true"><text x="51" y="124" textAnchor="middle" fontFamily="Georgia, serif" fontSize="150" fontWeight="700">9</text></svg>;
 }
 
-// The taj, drawn as filled layers so it can be painted onto the truck and packs.
-export function Taj({ crown = COB, field = MARI, nines = VER }) {
+export function Nines({ fill = 'currentColor', gap = 104 }) {
+  return <g fill={fill} fontFamily="Georgia, serif" fontWeight="700" fontSize="172">{[0, gap, gap * 2].map(x => <text key={x} x={x} y="145">9</text>)}</g>;
+}
+
+// The scalloped label from the supplied 999 packaging, shared by every drawing.
+export function BrandBadge({ field = RICE, nines = VER, edge = MARI }) {
   return <g>
-    <path d={FINIAL} fill={field} />
-    <path d={TAJ} fill={crown} />
-    <path d={TAJ_INNER} fill={field} />
-    <g transform="translate(55 210)"><Nines fill={nines} /></g>
+    <path d="M210 106Q234 138 282 130Q348 120 353 174Q354 198 396 232Q354 262 353 290Q348 344 282 334Q236 328 210 362Q184 328 138 334Q72 344 67 290Q66 262 24 232Q66 198 67 174Q72 120 138 130Q186 138 210 106Z" fill={field} stroke={edge} strokeWidth="10" />
+    <text x="210" y="286" textAnchor="middle" fontFamily="Georgia, serif" fontSize="164" fontWeight="700" fill={nines}>999</text>
   </g>;
 }
 
-// The one-colour mark used in the interface.
-export function Logo({ className, title = '999' }) {
+// HM monogram and wheat from the owner's supplied identity.
+export function Logo({ className, title = 'HM Edibles' }) {
   const label = title ? { role: 'img', 'aria-label': title } : { 'aria-hidden': true };
   return <svg className={className} viewBox="0 0 420 470" fill="currentColor" {...label}>
     {title && <title>{title}</title>}
-    <path d={FINIAL} />
-    <path fillRule="evenodd" d={`${TAJ}M210 76C174 114 92 146 32 168V446H388V168C328 146 246 114 210 76Z`} />
-    <path fillRule="evenodd" d={`${TAJ_INNER}M210 96C180 129 108 158 50 181V428H370V181C312 158 240 129 210 96Z`} />
-    <g transform="translate(55 210)"><Nines /></g>
+    <path d="M208 408A182 182 0 1 1 332 92" fill="none" stroke={MARI} strokeWidth="8" />
+    <text x="85" y="258" fontFamily="Georgia, serif" fontSize="216" fill="currentColor">H</text>
+    <text x="173" y="304" fontFamily="Georgia, serif" fontSize="188" fill={MARI}>M</text>
+    <path d="M232 406Q386 364 365 100" fill="none" stroke={MARI} strokeWidth="7" />
+    {[0, 1, 2, 3, 4].map(i => <g key={i} transform={`translate(${358 - i * i * 3} ${132 + i * 43}) rotate(${i * 7})`} fill={MARI}><path d="M0 0Q-40-10-34-49Q-5-36 0 0Z" /><path d="M3 18Q39-2 34-37Q5-24 3 18Z" /></g>)}
   </svg>;
 }
 
@@ -71,7 +69,7 @@ export function Sack() {
     <path d="M-32 0C-38-30-34-62-22-76L-12-84H12L22-76C34-62 38-30 32 0Z" fill={JUTE} stroke={INK} strokeWidth="3" strokeLinejoin="round" />
     <path d="M-35-52H35" stroke={COB} strokeWidth="6" />
     <path d="M-15-76H15" stroke={INK} strokeWidth="4" strokeLinecap="round" />
-    <g transform="translate(-17 -40) scale(.11)"><Nines fill={VER} /></g>
+    <g transform="translate(-21 -58) scale(.1)"><BrandBadge /></g>
   </g>;
 }
 
@@ -79,7 +77,7 @@ export function Carton() {
   return <g>
     <rect x="-44" y="-64" width="88" height="64" rx="3" fill="#cfa86c" stroke={INK} strokeWidth="3" />
     <path d="M-44-50H44" stroke="#b08a50" strokeWidth="6" />
-    <g transform="translate(-14 -40) scale(.068)"><Taj crown={VER} field={RICE} nines={INK} /></g>
+    <g transform="translate(-21 -57) scale(.1)"><BrandBadge /></g>
   </g>;
 }
 
@@ -130,18 +128,19 @@ export function ArtTruck({ href, spin, sacks = 0, cartons = 0 }) {
 }
 
 // A rice pack seen from the front: a gusseted pouch with a crimped top seal.
-export function Pack({ color = VER, name = 'Basmati', urdu = 'باسمتی', ink = RICE }) {
+export function Pack({ color = VER, name = 'Adwar Totaa', urdu = 'Made in Pakistan', ink = RICE }) {
   // 28 steps of 5 span the 144-wide seal exactly; a longer run poked out past its corner.
   const crimp = Array.from({ length: 28 }, (_, i) => `l5 ${i % 2 ? 5 : -5}`).join('');
   return <g>
     <path d="M-74 0Q-82-110-72-200H72Q82-110 74 0Z" fill={color} stroke={INK} strokeWidth="3" />
     <rect x="-74" y="-214" width="148" height="18" rx="3" fill={color} stroke={INK} strokeWidth="3" />
     <path d={`M-70-205${crimp}`} stroke={INK} strokeWidth="1.5" fill="none" opacity=".45" />
-    <g transform="translate(-30 -182) scale(.143)"><Taj crown={ink} field={color} nines={ink} /></g>
-    <text x="0" y="-86" textAnchor="middle" fill={ink} fontSize="20" fontWeight="700" letterSpacing="2">{name.toUpperCase()}</text>
-    <text x="0" y="-60" textAnchor="middle" fill={ink} fontSize="15" fontWeight="600" fontFamily="'Noto Sans Arabic', sans-serif">{urdu}</text>
-    <rect x="-46" y="-42" width="92" height="28" rx="14" fill={RICE} stroke={INK} strokeWidth="2" />
-    {[-30, -14, 2, 18, 32].map((x, i) => <path key={x} d={`M${x}-35c3 4 3 10 0 14c-3-4-3-10 0-14Z`} fill="#d9cfb9" transform={`rotate(${i % 2 ? 30 : -30} ${x} -28)`} />)}
+    <g transform="translate(-42 -208) scale(.2)"><BrandBadge /></g>
+    <text x="0" y="-105" textAnchor="middle" fill={ink} fontSize="15" fontWeight="600" fontFamily="Georgia, serif">{name.toUpperCase()}</text>
+    <text x="0" y="-89" textAnchor="middle" fill={ink} fontSize="8">{urdu}</text>
+    <ellipse cx="0" cy="-49" rx="38" ry="33" fill={RICE} stroke={MARI} strokeWidth="2" />
+    {[-24, -12, 0, 12, 24].map((x, i) => <g key={x}>{[-61, -47, -33].map(y => <path key={y} d={`M${x} ${y}c3 4 3 10 0 14c-3-4-3-10 0-14Z`} fill="#d9cfb9" transform={`rotate(${i % 2 ? 30 : -30} ${x} ${y + 6})`} />)}</g>)}
+    <text y="-5" textAnchor="middle" fontSize="9" fill={ink}>NET WT. 1 kg</text>
   </g>;
 }
 
@@ -191,26 +190,25 @@ export function PunjabScene({ className, truckHref }) {
   return <svg className={className} viewBox="0 0 1440 560" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
     <defs>
       <linearGradient id="k-dusk" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor={INK} />
-        <stop offset=".38" stopColor="#1d2a6e" />
-        <stop offset=".66" stopColor="#9b2c3c" />
-        <stop offset=".84" stopColor={VER} />
-        <stop offset="1" stopColor={MARI} />
+        <stop offset="0" stopColor="#24323d" />
+        <stop offset=".42" stopColor="#50667b" />
+        <stop offset=".72" stopColor="#b58d8f" />
+        <stop offset="1" stopColor="#dfcba5" />
       </linearGradient>
       <linearGradient id="k-sun" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stopColor={MARI} />
-        <stop offset="1" stopColor={VER} />
+        <stop offset="1" stopColor="#e3cd9e" />
       </linearGradient>
       <linearGradient id="k-khaal" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stopColor={MARI} />
-        <stop offset="1" stopColor="#9b2c3c" />
+        <stop offset="1" stopColor="#6a8393" />
       </linearGradient>
       <radialGradient id="k-glow"><stop offset="0" stopColor={MARI} stopOpacity=".55" /><stop offset="1" stopColor={MARI} stopOpacity="0" /></radialGradient>
     </defs>
     <rect width="1440" height="310" fill="url(#k-dusk)" />
     {[[120, 40], [260, 90], [410, 30], [980, 60], [1130, 26], [1300, 84], [1380, 40], [560, 70], [860, 22]].map(([x, y]) => <circle key={x} cx={x} cy={y} r="1.6" fill={RICE} opacity=".6" />)}
     <ellipse cx="720" cy="290" rx="520" ry="200" fill="url(#k-glow)" />
-    <g transform="translate(410 96) scale(2)"><Nines fill="url(#k-sun)" /></g>
+    <circle cx="720" cy="284" r="116" fill="url(#k-sun)" />
     <g className="k-birds" fill="none" stroke={INK} strokeWidth="2.4" strokeLinecap="round">
       <path d="M1040 120q8-8 16 0q8-8 16 0" /><path d="M1084 104q6-6 12 0q6-6 12 0" /><path d="M1010 96q5-5 10 0q5-5 10 0" />
     </g>

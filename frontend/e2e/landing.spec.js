@@ -43,16 +43,20 @@ test('the chapters tray jumps to a chapter and closes', async ({ page }) => {
 
 test('each nine names its rice and shows its pack', async ({ page }) => {
   await page.goto('/welcome');
-  const sella = page.getByRole('button', { name: /^Sella:/ });
-  await sella.click();
-  await expect(sella).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.k-hero-rice')).toContainText('Sella');
-  await expect(page.locator('.k-hero-object .k-cutout-pack')).toHaveAttribute('src', /sella.webp$/);
+  for (const [column, name] of ['Adwar Totaa', 'Kainat Steam', 'Short Grain'].entries()) {
+    const button = page.getByRole('button', { name: new RegExp(`^${name}:`) });
+    await button.click();
+    await expect(button).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.k-hero-rice')).toContainText(name);
+    await expect(page.locator('.k-hero-object .k-cutout-pack')).toHaveCount(1);
+    await expect(page.locator('.k-hero-object .k-cutout-pack img')).toHaveAttribute('src', /front-lineup.png$/);
+    await expect(page.locator('.k-hero-object .k-cutout-pack')).toHaveCSS('--pack-column', String(column));
+  }
 });
 
 test('every rice is shown with its dish and use', async ({ page }) => {
   await page.goto('/welcome#rice');
-  for (const [name, best] of [['Basmati', 'Biryani and pulao'], ['Sella', 'Deghs and large gatherings'], ['Steam', 'Daal chawal and daily meals']]) {
+  for (const [name, best] of [['Adwar Totaa', 'Everyday meals'], ['Kainat Steam', 'Biryani and pulao'], ['Short Grain', 'Daal chawal']]) {
     const item = page.locator('.k-rices li').filter({ has: page.getByRole('heading', { name: new RegExp(`^${name}`) }) });
     await expect(item.getByRole('img')).toBeVisible();
     await expect(item).toContainText(best);
@@ -61,10 +65,15 @@ test('every rice is shown with its dish and use', async ({ page }) => {
 
 test('section links move along the page', async ({ page }) => {
   await page.goto('/welcome');
-  await page.getByRole('button', { name: 'Menu', exact: true }).click();
-  await page.getByRole('navigation', { name: 'Page sections' }).getByRole('link', { name: 'Rice', exact: true }).click();
-  await expect(page).toHaveURL(/#rice$/);
-  await expect(page.getByRole('heading', { name: 'Three rices, each for its dish.' })).toBeInViewport();
+  // Rice is the first long-distance jump on a fresh load: previously its hash
+  // changed while the menu's closing animation could leave the page at the top.
+  for (const [name, id] of [['Rice', 'rice'], ['Family', 'family'], ['Journey', 'safar']]) {
+    await page.getByRole('button', { name: 'Menu', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Page sections' }).getByRole('link', { name, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`#${id}$`));
+    await expect.poll(() => page.locator(`#${id}`).evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(90);
+    await expect(page.getByRole('button', { name: 'Menu', exact: true })).toHaveAttribute('aria-expanded', 'false');
+  }
 });
 
 test('header and bottom inventory buttons reach the existing sign-in screen', async ({ page }) => {

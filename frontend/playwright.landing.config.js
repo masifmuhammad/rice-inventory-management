@@ -21,5 +21,7 @@ module.exports = defineConfig({
     { name: 'landing-desktop', use: { viewport: { width: 1440, height: 1000 } } },
     { name: 'landing-tablet', use: { viewport: { width: 768, height: 1024 } } },
     { name: 'landing-phone', use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+    { name: 'landing-desktop-motion', use: { viewport: { width: 1440, height: 1000 }, reducedMotion: 'no-preference' } },
+    { name: 'landing-phone-motion', use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'no-preference' } },
   ],
 });

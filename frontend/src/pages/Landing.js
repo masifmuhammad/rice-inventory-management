@@ -10,7 +10,7 @@ import '@fontsource/schibsted-grotesk/latin-400.css';
 import '@fontsource/schibsted-grotesk/latin-500.css';
 import '@fontsource/schibsted-grotesk/latin-600.css';
 import './Landing.css';
-import { ArtTruck, COB, Carton, Degh, Grain, INK, Logo, MARI, Mill, NINE, Pack, Paddy, PunjabScene, RICE, Sack, Shop, Stubble, Taj, VER } from './LandingArt';
+import { ArtTruck, BrandBadge, Carton, Degh, Grain, INK, Logo, MARI, Mill, NineGlyph, Pack, Paddy, PunjabScene, RICE, Sack, Shop, Stubble, VER } from './LandingArt';
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
 const MOTION_OK = '(prefers-reduced-motion: no-preference)';
@@ -20,6 +20,7 @@ const MOTION_OK = '(prefers-reduced-motion: no-preference)';
 const FONTS = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&display=swap';
 
 const ASSETS = '/brand/999/';
+const ART = `${ASSETS}rebrand-v2/`;
 const EASE = [0.22, 1, 0.36, 1];
 const W = 8400; // width of the journey world, in SVG units; its height is 1000.
 
@@ -31,33 +32,64 @@ const useFade = (p, input, output) => useTransform(p, transform(input, output));
 const CHAPTERS = [
   { key: 'field', title: 'The field', at: 0, to: 0.115, heading: 'It starts in the paddy.', body: 'Rice ripens gold across the fields of Punjab in autumn. Then it is cut, threshed and gathered in.' },
   { key: 'sacks', title: 'The sacks', at: 0.115, to: 0.235, heading: 'Into the boriyan.', body: 'Threshed paddy is filled into jute sacks and stacked at the edge of the field until the truck arrives.' },
-  { key: 'road', title: 'The road', at: 0.235, to: 0.38, heading: 'Loaded onto a painted truck.', body: 'In Pakistan a goods truck is a moving painting. Ours wears the crown you see in the 999 mark.' },
+  { key: 'road', title: 'The road', at: 0.235, to: 0.38, heading: 'Loaded onto a painted truck.', body: 'In Pakistan a goods truck is a moving painting. Ours carries the green and gold of HM Edibles.' },
   { key: 'mill', title: 'The mill', at: 0.38, to: 0.58, heading: 'Husked, polished, sorted.', body: 'At the mill the husk comes off, the grain is polished, and a sorter picks out every discoloured grain.' },
-  { key: 'pack', title: 'The pack', at: 0.58, to: 0.70, heading: 'Sealed under the crown.', body: 'Clean rice is weighed and sealed into a 999 pack, then boxed for the road again.' },
+  { key: 'pack', title: 'The pack', at: 0.58, to: 0.70, heading: 'Sealed with the 999 mark.', body: 'Clean rice is weighed and sealed into a 999 pack, then boxed for the road again.' },
   { key: 'shop', title: 'The shop', at: 0.70, to: 0.85, heading: 'To the kiryana on your street.', body: 'The truck sets off once more, to the corner shop where your family buys its groceries.' },
   { key: 'table', title: 'The table', at: 0.85, to: 1, heading: 'And onto your dastarkhwan.', body: 'Basmati in the biryani, sella in the degh, steam rice with the daal.' },
 ];
 
 const RICES = [
-  { key: 'basmati', name: 'Basmati', color: VER, description: 'Long, slender grains with the aroma basmati is known for. Light and separate once cooked.', best: 'Biryani and pulao' },
-  { key: 'sella', name: 'Sella', color: MARI, description: 'Parboiled before milling, so each grain stays firm and whole through a long cook.', best: 'Deghs and large gatherings' },
-  { key: 'steam', name: 'Steam', color: COB, description: 'Soft and forgiving, the rice for whatever is on the stove today.', best: 'Daal chawal and daily meals' },
+  { key: 'adwar', name: 'Adwar Totaa', color: '#1f3b2e', pack: 0, description: 'The green 999 pack. Totaa rice for familiar recipes and everyday cooking.', best: 'Everyday meals' },
+  { key: 'kainat', name: 'Kainat Steam', color: '#684087', pack: 1, description: 'The purple 999 pack. Kainat steam rice for the dishes you love to share.', best: 'Biryani and pulao' },
+  { key: 'short-grain', name: 'Short Grain', color: '#235d95', pack: 2, description: 'The blue 999 pack. Short grain rice for comforting meals around the family table.', best: 'Daal chawal' },
 ];
+
+function Packshot({ rice, className = '' }) {
+  return <span className={`k-packshot ${className}`} style={{ '--pack-column': rice.pack }}>
+    <img src={`${ASSETS}packs/front-lineup.png`} alt={`999 ${rice.name} rice, front of the 1 kg pack`} draggable="false" />
+  </span>;
+}
 
 // Every picture the page shows, under /brand/999/. The preloader decodes them
 // all before the page appears.
 const IMAGES = [
-  'cutouts/field.webp', 'cutouts/sacks.webp', 'cutouts/road.webp', 'cutouts/mill.webp', 'cutouts/pack.webp', 'cutouts/shop.webp', 'cutouts/table.webp',
-  'packs/basmati.webp', 'packs/sella.webp', 'packs/steam.webp',
-  'art/family.webp', 'art/table.webp',
+  ...['field', 'sacks', 'road', 'mill', 'pack', 'shop', 'table', 'family', 'dinner-premium'].map(key => `rebrand-v2/${key}.webp`),
+  'packs/front-lineup.png', 'originals/kainat-25kg.png',
 ];
 
 function Cutout({ chapter, className = '' }) {
-  return <img className={`k-cutout ${className}`} src={`${ASSETS}cutouts/${chapter.key}.webp`} alt="" draggable="false" />;
+  return <img className={`k-cutout ${className}`} src={`${ART}${chapter.key}.webp`} alt="" draggable="false" />;
 }
 
 function InventoryLink({ className = '', children }) {
   return <Link to="/inventory" className={`k-inventory ${className}`}><span>{children}</span><FiArrowUpRight aria-hidden="true" /></Link>;
+}
+
+const scrollBehavior = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth';
+const navigationBehavior = top => Math.abs(top - window.scrollY) > window.innerHeight * 2 ? 'instant' : scrollBehavior();
+
+function navigateToSection(hash) {
+  const target = document.getElementById(hash.slice(1));
+  if (!target) return;
+  // Keep section navigation local, so app-level route restoration cannot reset it.
+  window.history.replaceState(window.history.state, '', hash);
+  const heading = target.querySelector('h1, h2');
+  if (heading) {
+    heading.setAttribute('tabindex', '-1');
+    heading.focus({ preventScroll: true });
+    heading.addEventListener('blur', () => heading.removeAttribute('tabindex'), { once: true });
+  }
+  const top = Math.max(0, target.getBoundingClientRect().top + window.scrollY - 90);
+  window.scrollTo({ top, behavior: navigationBehavior(top) });
+}
+
+function handleLocalAnchor(event) {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  const link = event.target.closest('a[href^="#"]');
+  if (!link || !document.getElementById(link.hash.slice(1))) return;
+  event.preventDefault();
+  navigateToSection(link.hash);
 }
 
 // Scroll the story so a chapter is on stage.
@@ -65,13 +97,15 @@ function jumpTo(chapter) {
   const story = document.getElementById('safar');
   if (!story) return;
   const share = chapter.at + (chapter.to - chapter.at) * 0.35;
-  window.scrollTo({ top: story.offsetTop + share * (story.offsetHeight - window.innerHeight) });
+  const top = story.offsetTop + share * (story.offsetHeight - window.innerHeight);
+  window.scrollTo({ top, behavior: navigationBehavior(top) });
 }
 
 // One bar on every screen: menu on the left, the mark in the centre, and on
 // the right inventory access (the staff's main way in) beside the chapters.
 function Header({ onPreview }) {
   const [tray, setTray] = useState(null);
+  const pendingNavigation = useRef(null);
   const reduce = useReducedMotion();
 
   const close = () => setTray(null);
@@ -88,7 +122,20 @@ function Header({ onPreview }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [tray]);
 
-  const go = chapter => { close(); jumpTo(chapter); };
+  const go = chapter => { pendingNavigation.current = () => jumpTo(chapter); close(); };
+  const goToSection = (event, hash) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (!tray) { navigateToSection(hash); return; }
+    pendingNavigation.current = () => navigateToSection(hash);
+    close();
+  };
+  const finishNavigation = () => {
+    if (tray || !pendingNavigation.current) return;
+    const navigate = pendingNavigation.current;
+    pendingNavigation.current = null;
+    requestAnimationFrame(navigate);
+  };
 
   return <>
     <motion.div className="k-scrim" aria-hidden="true" initial={false} animate={{ opacity: tray ? 1 : 0 }} style={{ pointerEvents: tray ? 'auto' : 'none' }} transition={{ duration: 0.4 }} onClick={close} />
@@ -99,9 +146,9 @@ function Header({ onPreview }) {
             <span className="k-burger" data-x={tray === 'menu' ? '' : undefined}><i /><i /></span>
           </button>
         </div>
-        <a href="#top" className="k-brand" aria-label="999, back to top" onClick={close}>
+        <a href="#top" className="k-brand" aria-label="999, back to top" onClick={event => goToSection(event, '#top')}>
           <Logo className="k-brand-mark" />
-          <span className="k-brand-name">Rice Company</span>
+          <span className="k-brand-name">HM Edibles</span>
         </a>
         <div className="k-bar-side k-bar-end">
           <InventoryLink className="k-inventory-small">Inventory</InventoryLink>
@@ -110,9 +157,9 @@ function Header({ onPreview }) {
           </button>
         </div>
       </div>
-      <motion.div id="k-tray" className="k-tray" initial={false} animate={{ height: tray ? 'auto' : 0 }} transition={reduce ? { duration: 0 } : { duration: 0.55, ease: EASE }}>
-        <AnimatePresence mode="wait" initial={false}>
-          {tray === 'chapters' && <motion.div key="chapters" exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+      <motion.div id="k-tray" className="k-tray" initial={false} animate={{ height: tray ? 'auto' : 0 }} transition={reduce ? { duration: 0 } : { duration: 0.35, ease: EASE }} onAnimationComplete={finishNavigation}>
+        <>
+          {tray === 'chapters' && <div>
             <ol className="k-rail">{CHAPTERS.map((chapter, index) => <motion.li key={chapter.key}
               initial={reduce ? false : { opacity: 0, y: 14, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.5, delay: 0.06 + index * 0.04, ease: EASE }}>
               <button type="button" onClick={() => go(chapter)} onPointerEnter={() => onPreview(index)} onFocus={() => onPreview(index)}>
@@ -120,15 +167,16 @@ function Header({ onPreview }) {
                 <span className="k-rail-title">{chapter.title}</span>
               </button>
             </motion.li>)}</ol>
-          </motion.div>}
-          {tray === 'menu' && <motion.div key="menu" className="k-menu" exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+          </div>}
+          {tray === 'menu' && <div className="k-menu">
             <InventoryLink className="k-inventory-tray">Inventory software</InventoryLink>
-            <nav aria-label="Page sections">{[['#safar', 'Journey'], ['#rice', 'Rice'], ['#family', 'Family']].map(([href, label], index) => <motion.a key={href} href={href} onClick={close}
+            <nav aria-label="Page sections">{[['#safar', 'Journey', 'From the field to your table'], ['#rice', 'Rice', 'Find the pack for your dish'], ['#family', 'Family', 'The people behind 999']].map(([href, label, detail], index) => <motion.a key={href} href={href} onClick={event => goToSection(event, href)} aria-label={label}
               initial={reduce ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.08 + index * 0.05, ease: EASE }}>
-              <span>{label}</span>
+              <span className="k-menu-link-copy"><span>{label}</span><small>{detail}</small></span><FiArrowUpRight aria-hidden="true" />
             </motion.a>)}</nav>
-          </motion.div>}
-        </AnimatePresence>
+            <div className="k-menu-aside" aria-hidden="true"><img src={`${ART}road.webp`} alt="" /><p>A little closer to where<br />your rice comes from.</p></div>
+          </div>}
+        </>
         {tray && <p className="k-tray-foot"><span>Made in Pakistan</span><a href="https://hmricemills.com/" target="_blank" rel="noreferrer">Haji Muhammad Rice Mills <FiArrowUpRight aria-hidden="true" /></a></p>}
       </motion.div>
     </header>
@@ -139,26 +187,18 @@ function Header({ onPreview }) {
 // rice's colour and puts that pack in the hero; otherwise the journey cycles.
 function Hero({ preview }) {
   const reduce = useReducedMotion();
-  const [index, setIndex] = useState(2);
-  const [rice, setRice] = useState(null);
-  useEffect(() => {
-    if (preview != null) { setIndex(preview); return undefined; }
-    if (reduce || rice != null) return undefined;
-    const timer = setInterval(() => setIndex(i => (i + 1) % CHAPTERS.length), 2400);
-    return () => clearInterval(timer);
-  }, [preview, reduce, rice]);
-  const chapter = CHAPTERS[index];
-  const chosen = rice != null ? RICES[rice] : null;
+  const [rice, setRice] = useState(0);
+  const chapter = CHAPTERS[preview ?? 2];
+  const chosen = preview == null ? RICES[rice] : null;
 
   return <section id="top" className="k-hero" aria-labelledby="k-title">
-    <div className="k-hero-mark" role="group" aria-label="999: one nine for each rice" onPointerLeave={event => { if (event.pointerType === 'mouse') setRice(null); }}
-      onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setRice(null); }}>
-      {RICES.map((item, i) => <button key={item.key} type="button" className="k-nine" style={{ '--tone': item.color }} aria-pressed={rice === i} aria-label={`${item.name}: ${item.best.toLowerCase()}`}
+    <div className="k-hero-mark" role="group" aria-label="999: one nine for each rice">
+      {RICES.map((item, i) => <button key={item.key} type="button" className="k-nine" style={{ '--tone': item.color, '--idle': ['#1f3b2e', '#98723b', '#303a43'][i] }} aria-pressed={rice === i} aria-label={`${item.name}: ${item.best.toLowerCase()}`}
         onPointerEnter={event => { if (event.pointerType === 'mouse') setRice(i); }}
         onFocus={() => setRice(i)}
         onClick={() => setRice(i)}>
-        <svg viewBox="0 0 102 164" aria-hidden="true"><path d={NINE} fillRule="evenodd" /></svg>
-        <svg viewBox="0 0 102 164" aria-hidden="true" className="k-nine-fill"><path d={NINE} fillRule="evenodd" /></svg>
+        <NineGlyph />
+        <NineGlyph className="k-nine-fill" />
       </button>)}
     </div>
     <div className="k-hero-object" aria-hidden="true">
@@ -166,7 +206,7 @@ function Hero({ preview }) {
         <motion.div key={chosen ? chosen.key : chapter.key} className="k-hero-object-inner"
           initial={reduce ? false : { opacity: 0, scale: 0.94, filter: 'blur(10px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 1.03, filter: 'blur(10px)' }} transition={{ duration: 0.45, ease: EASE }}>
           {chosen
-            ? <img className="k-cutout k-cutout-pack" src={`${ASSETS}packs/${chosen.key}.webp`} alt="" />
+            ? <Packshot rice={chosen} className="k-cutout-pack" />
             : <Cutout chapter={chapter} />}
         </motion.div>
       </AnimatePresence>
@@ -283,10 +323,10 @@ function Story() {
         <path d="M-1600 846H8800" stroke={RICE} strokeWidth="6" strokeDasharray="44 36" opacity=".55" />
         <rect x="-1600" y="886" width="10400" height="200" fill="#ddd1b8" />
 
-        <motion.g style={{ x: truckX }}><g transform="translate(0 836)"><ArtTruck href={`${ASSETS}cutouts/road.webp`} spin={spin} sacks={sacks} cartons={cartons} /></g></motion.g>
+        <motion.g style={{ x: truckX }}><g transform="translate(0 836)"><ArtTruck href={`${ART}road.webp`} spin={spin} sacks={sacks} cartons={cartons} /></g></motion.g>
 
         <g transform="translate(3480 806)"><Mill /></g>
-        <g transform="translate(4224 150) scale(.36)"><Taj crown={VER} field={RICE} nines={INK} /></g>
+        <g transform="translate(4224 150) scale(.36)"><BrandBadge /></g>
         <path d="M3390 560H3510L3470 640H3430Z" fill={MARI} stroke={INK} strokeWidth="4" />
         <g fill="none" strokeLinecap="round" strokeWidth="9" strokeDasharray="12 11">
           <motion.path d="M3450 640V690H3640" stroke="#d9a531" style={{ strokeDashoffset: flow }} />
@@ -332,11 +372,11 @@ function Story() {
       </div>
 
       <motion.figure className="k-end-art" style={{ opacity: endOpacity }}>
-        <motion.img style={{ scale: endZoom }} src={`${ASSETS}art/table.webp`} alt="A dastarkhwan laid at sunset: a copper degh of biryani, plates of rice, roti and a 999 pack" width="1536" height="1024" loading="lazy" />
+        <motion.img style={{ scale: endZoom }} src={`${ART}dinner-premium.webp`} alt="Biryani and raita on an ivory linen table, with the green 999 Adwar Totaa rice pack" width="1536" height="1024" loading="lazy" />
       </motion.figure>
       <motion.div className="k-end k-end-over" style={{ opacity: endOpacity, scale: endScale }}>
-        <p lang="ur" dir="rtl">کھانا لگ گیا</p>
-        <p>Dinner is served.</p>
+        <h2 className="k-end-title">Made to be shared.</h2>
+        <p>For the meals that bring us together.</p>
         <a className="k-end-cta" href="#rice">Choose your rice <FiArrowDown aria-hidden="true" /></a>
       </motion.div>
     </motion.div>
@@ -352,7 +392,7 @@ function RiceCard({ rice, index, progress }) {
   const rotate = useTransform(progress, [0, 1], [from.rotate, index === 1 ? 0 : (index - 1) * 4]);
   return <li className="k-rice-card">
     <motion.div className="k-pack" style={{ x, y, rotate }}>
-      <img src={`${ASSETS}packs/${rice.key}.webp`} alt={`999 ${rice.name} rice pack`} />
+      <Packshot rice={rice} />
     </motion.div>
     <h3>{rice.name}</h3>
     <p>{rice.description}</p>
@@ -360,19 +400,30 @@ function RiceCard({ rice, index, progress }) {
   </li>;
 }
 
-const FLOATERS = Array.from({ length: 14 }, (_, i) => ({ left: `${(i * 53) % 96 + 2}%`, top: `${(i * 37) % 88 + 4}%`, size: 10 + (i % 4) * 6, rotate: (i * 47) % 180, delay: -(i * 1.3) }));
+const FLOATERS = Array.from({ length: 16 }, (_, i) => ({ left: `${(i * 29) % 92 + 4}%`, top: `${(i * 37) % 88 + 4}%`, size: 11 + (i % 3) * 3, rotate: (i * 47) % 180, delay: -(i * 3.7), duration: 18 + (i % 4) * 3 }));
 
 function Range() {
   const ref = useRef(null);
   const reduce = useReducedMotion();
+  useEffect(() => {
+    const section = ref.current;
+    const measure = () => section.style.setProperty('--fall-distance', `${section.offsetHeight + 80}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'start 0.15'] });
   const progress = useTransform(scrollYProgress, [0, 1], reduce ? [1, 1] : [0, 1]);
   return <section id="rice" ref={ref} className="k-range" aria-labelledby="k-rice-title">
-    <div className="k-floaters" aria-hidden="true">{FLOATERS.map((f, i) => <Grain key={i} className="k-floater" style={{ left: f.left, top: f.top, width: f.size, '--r': `${f.rotate}deg`, animationDelay: `${f.delay}s` }} />)}</div>
+    <div className="k-floaters" aria-hidden="true">{FLOATERS.map((f, i) => <Grain key={i} className="k-floater" style={{ left: f.left, width: f.size, '--rest-top': f.top, '--r': `${f.rotate}deg`, animationDelay: `${f.delay}s`, animationDuration: `${f.duration}s` }} />)}</div>
     <p className="k-label"><span>The rice</span></p>
     <h2 id="k-rice-title" className="k-reveal">Three rices, each for its dish.</h2>
     <ul className="k-rices">{RICES.map((rice, index) => <RiceCard key={rice.key} rice={rice} index={index} progress={progress} />)}</ul>
-    <p className="k-note">Pack artwork shown is a design concept.</p>
+    <div className="k-bulk">
+      <img src={`${ASSETS}originals/kainat-25kg.png`} alt="Original 999 Kainat 1121 Steam Rice 25 kg sack" loading="lazy" />
+      <div><h3>For a bigger table.</h3><p>Kainat 1121 Steam Rice. Extra long grain, in the original 25 kg sack.</p><span>Product of Pakistan</span></div>
+    </div>
   </section>;
 }
 
@@ -394,17 +445,21 @@ function Motto() {
 function Footer() {
   return <footer className="k-footer">
     <div className="k-jhalar" aria-hidden="true">{Array.from({ length: 48 }, (_, i) => <i key={i} style={{ '--i': i, '--h': `${34 + (i * 7) % 30}px` }} />)}</div>
+    <div className="k-footer-brand-row">
+      <a href="#top" className="k-footer-brand"><Logo title="" /><span>HM Edibles<small>999 · Premium grains</small></span></a>
+      <a className="k-footer-rice-link" href="#rice">Find your rice <FiArrowUpRight aria-hidden="true" /></a>
+    </div>
     <Motto />
     <nav className="k-footer-cols" aria-label="Footer">
       <div><h3>Journey</h3>{CHAPTERS.map(chapter => <button key={chapter.key} type="button" onClick={() => jumpTo(chapter)}>{chapter.title}</button>)}</div>
       <div><h3>Rice</h3>{RICES.map(rice => <a key={rice.key} href="#rice">{rice.name}</a>)}</div>
-      <div><h3>999</h3>
+      <div><h3>HM Edibles</h3>
         <a href="https://hmricemills.com/" target="_blank" rel="noreferrer">Haji Muhammad Rice Mills <FiArrowUpRight aria-hidden="true" /></a>
         <Link to="/inventory">Inventory software</Link>
       </div>
     </nav>
     <a href="#top" className="k-footer-scene" aria-label="999, back to top">
-      <PunjabScene truckHref={`${ASSETS}cutouts/road.webp`} />
+      <PunjabScene truckHref={`${ART}road.webp`} />
     </a>
     <p className="k-footer-base"><span>© {new Date().getFullYear()} 999</span><span>Made in Pakistan</span><a href="#top">Back to top ↑</a></p>
   </footer>;
@@ -426,7 +481,7 @@ function Family() {
 
   return <section id="family" ref={ref} className="k-family" aria-labelledby="k-family-title">
     <div className="k-family-copy">
-      <p className="k-label"><span>Family</span></p>
+      <div className="k-hm-identity"><Logo title="" /><span>HM Edibles<small>Premium grains</small></span></div>
       <h2 id="k-family-title" className="k-reveal">A new name, from a family that knows rice.</h2>
       <p>999 is its own label, with its own look. Behind it is the family of Haji Muhammad Rice Mills, and a simple idea: good rice belongs at the centre of the cloth.</p>
       <div className="k-lineage">
@@ -436,7 +491,7 @@ function Family() {
       </div>
     </div>
     <figure className="k-family-scene">
-      <img src={`${ASSETS}art/family.webp`} alt="Punjab paddy fields from above at harvest: gold plots, a canal, a farmhouse and harvesters" loading="lazy" />
+      <img src={`${ART}family.webp`} alt="Punjab paddy fields from above at harvest: gold plots, a canal, a farmhouse and harvesters" loading="lazy" />
       <figcaption>Punjab</figcaption>
     </figure>
   </section>;
@@ -509,7 +564,7 @@ export default function Landing() {
         type: 'lines', mask: 'lines', autoSplit: true,
         onSplit: self => gsap.from(self.lines, { yPercent: 105, duration: 1, ease: 'expo.out', stagger: 0.09, scrollTrigger: { trigger: element, start: 'top 90%', once: true } }),
       }));
-      gsap.from('.k-nine', { y: -260, rotation: i => [-18, 10, -12][i], opacity: 0, transformOrigin: '50% 100%', duration: 1.25, ease: 'bounce.out', stagger: 0.14, delay: 0.15 });
+      gsap.from('.k-nine', { y: 24, opacity: 0, duration: 1, ease: 'expo.out', stagger: 0.08, delay: 0.1 });
       gsap.from('.k-hero-object', { y: 50, opacity: 0, duration: 1.1, ease: 'expo.out', delay: 0.7 });
       gsap.from('.k-hero-copy > p, .k-hero-cue', { y: 16, opacity: 0, duration: 1, ease: 'expo.out', stagger: 0.1, delay: 0.9 });
     });
@@ -540,7 +595,7 @@ export default function Landing() {
     };
   }, []);
 
-  return <div className="k" ref={rootRef}>
+  return <div className="k" ref={rootRef} onClick={handleLocalAnchor}>
     {!loaderGone && <Preloader onReady={onReady} onGone={onGone} />}
     <a className="k-skip" href="#k-main">Skip to content</a>
     <Header onPreview={setPreview} />
