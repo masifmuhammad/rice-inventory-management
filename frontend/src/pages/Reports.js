@@ -39,6 +39,7 @@ import { EmptyState, ErrorState, InlineError } from '../components/ui/States';
 import { SkeletonChart, SkeletonGate, SkeletonStatCards, SkeletonTable, Skeleton } from '../components/ui/Skeleton';
 import { RefetchSection } from '../components/ui/RefetchIndicator';
 import { translate, useAppLanguage } from '../context/LanguageContext';
+import { SalesRegister, DailyClosing } from '../components/BusinessReports';
 
 // Local dates, not UTC. `toISOString()` reports yesterday until 05:00 in PKT,
 // so the default range and the presets were both off by a day overnight.
@@ -46,11 +47,23 @@ const isoDaysAgo = daysAgoInput;
 
 export default function Reports() {
   useAppLanguage();
+  const [view, setView] = usePageState('reports.view', 'sales');
+  return <div className="space-y-6">
+    <nav aria-label={translate('Report type')} className="flex flex-wrap gap-2">
+      { [['sales', 'Sales register'], ['closing', 'Daily closing'], ['stock', 'Stock and movement']].map(([value,label]) =>
+        <Button key={value} variant={view === value ? 'primary' : 'secondary'} aria-pressed={view === value} onClick={() => setView(value)}>{translate(label)}</Button>) }
+    </nav>
+    {view === 'closing' ? <DailyClosing/> : view === 'stock' ? <InventoryReports/> : <SalesRegister/>}
+  </div>;
+}
+
+function InventoryReports() {
+  useAppLanguage();
   const { currencySymbol, settings } = useSettings();
   const { user } = useAuth();
   const { isDark } = useTheme();
   const [exporting, setExporting] = useState(false);
-  const [range, setRange] = usePageState('reports.range', { startDate: isoDaysAgo(30), endDate: todayInput() });
+  const [range, setRange] = usePageState('reports.range', { startDate: isoDaysAgo(29), endDate: todayInput() });
 
   const chartTheme = useMemo(
     () => ({
@@ -180,10 +193,10 @@ export default function Reports() {
     <div className="space-y-6">
       <PageHeader
         summary={translate("{0} to {1}", [range.startDate, range.endDate])}
-        title={translate("Reports")}
+        title={translate("Stock and movement")}
         description={translate("What you are holding, what moved and what it earned.")}
         actions={
-          <Button icon={FiDownload} onClick={handleExport} loading={exporting}>{translate("Export PDF")}</Button>
+          <Button icon={FiDownload} onClick={handleExport} loading={exporting}>{translate("Export current stock PDF")}</Button>
         }
       />
 
@@ -220,8 +233,9 @@ export default function Reports() {
                 key={preset.label}
                 type="button"
                 onClick={() =>
-                  setRange({ startDate: isoDaysAgo(preset.days), endDate: todayInput() })
+                  setRange({ startDate: isoDaysAgo(preset.days - 1), endDate: todayInput() })
                 }
+                aria-pressed={range.startDate === isoDaysAgo(preset.days - 1) && range.endDate === todayInput()}
                 className="px-3 py-2.5 min-h-[44px] rounded-lg border border-hairline/[0.12] bg-surface-1 text-sm
                   font-medium text-content-muted hover:bg-hairline/[0.05] hover:text-content transition-colors"
               >
@@ -237,6 +251,7 @@ export default function Reports() {
       </Card>
 
       {/* Inventory value */}
+      <p className="text-sm text-content-muted">{translate('Stock values show the current position. The date range applies to sales and movement only.')}</p>
       {loadingValue ? (
         <SkeletonStatCards count={4} />
       ) : stockValue.error ? (
@@ -294,7 +309,7 @@ export default function Reports() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: 'Revenue', value: profit.data.summary.totalRevenue, type: 'compactMoney' },
-                { label: 'Profit', value: profit.data.summary.totalProfit, type: 'compactMoney' },
+                { label: 'Gross profit', value: profit.data.summary.totalProfit, type: 'compactMoney' },
                 {
                   label: 'Average margin',
                   value: profit.data.summary.averageMargin ?? 0,
@@ -328,6 +343,7 @@ export default function Reports() {
       <Card>
         <CardHeader title={translate("Movement by product")} subtitle={translate("Quantities in each product&apos;s own unit")} icon={FiBarChart2} />
         <CardBody className="pt-2">
+          {movement.data?.length > 0 && <p className="text-sm text-content-muted mb-3">{translate('Showing {0} of {1} products. Quantities use each product’s own unit.', [chartData.length, movement.data.length])}</p>}
           {movement.loading && !movement.data ? (
             <SkeletonChart height={340} />
           ) : movement.error ? (
@@ -397,6 +413,7 @@ export default function Reports() {
                   <p className="mt-1.5 text-xs text-content-subtle tabular-nums">
                     {translate(formatQuantity(product.currentStock, product.unit))} ·{' '}
                     {translate(formatMoney(product.costPrice, currencySymbol))}{translate(" cost")}</p>
+                  <details className="mt-2 text-sm"><summary className="cursor-pointer py-2 text-content-muted">{translate('Valuation details')}</summary><dl className="space-y-2"><div className="flex justify-between gap-3"><dt>{translate('Category')}</dt><dd>{translate(product.category)}</dd></div><div className="flex justify-between gap-3"><dt>{translate('At retail')}</dt><dd className="tabular-nums">{formatMoney(product.potentialValue,currencySymbol)}</dd></div><div className="flex justify-between gap-3"><dt>{translate('Potential profit')}</dt><dd className="tabular-nums">{formatMoney(product.potentialProfit,currencySymbol)}</dd></div></dl></details>
                 </li>
               ))}
             </ul>

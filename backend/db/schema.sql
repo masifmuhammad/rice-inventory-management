@@ -183,6 +183,7 @@ CREATE TABLE IF NOT EXISTS credit_customers (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_credit_customer_name ON credit_customers (business_id, lower(name));
+ALTER TABLE credit_customers ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_type VARCHAR(10) NOT NULL DEFAULT 'cash' CHECK (payment_type IN ('cash', 'credit'));
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS amount_received NUMERIC(14,2);
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES credit_customers(id) ON DELETE RESTRICT;
@@ -227,8 +228,72 @@ CREATE TABLE IF NOT EXISTS credit_allocations (
 );
 CREATE INDEX IF NOT EXISTS idx_credit_allocations_charge ON credit_allocations (charge_id);
 ALTER TABLE cash_entries DROP CONSTRAINT IF EXISTS cash_entries_source_check;
-ALTER TABLE cash_entries ADD CONSTRAINT cash_entries_source_check CHECK (source IN ('manual', 'sale', 'credit'));
+ALTER TABLE cash_entries ADD CONSTRAINT cash_entries_source_check CHECK (source IN ('manual', 'sale', 'credit', 'supplier'));
 ALTER TABLE cash_entries ADD COLUMN IF NOT EXISTS credit_payment_id UUID UNIQUE REFERENCES credit_payments(id) ON DELETE RESTRICT;
+
+-- Supplier accounts are additive: historical free-text suppliers and stock
+-- receipts remain unchanged. Every new bill/payment retains reversal history.
+CREATE TABLE IF NOT EXISTS suppliers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  name VARCHAR(120) NOT NULL,
+  phone VARCHAR(40) NOT NULL DEFAULT '',
+  notes VARCHAR(1000) NOT NULL DEFAULT '',
+  created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_name ON suppliers (business_id, lower(name));
+CREATE TABLE IF NOT EXISTS supplier_charges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  supplier_id UUID NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
+  transaction_id UUID UNIQUE REFERENCES transactions(id) ON DELETE RESTRICT,
+  request_id UUID,
+  request_payload JSONB,
+  charge_type VARCHAR(10) NOT NULL CHECK (charge_type IN ('opening','purchase')),
+  amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+  description VARCHAR(200) NOT NULL,
+  reference VARCHAR(120) NOT NULL DEFAULT '',
+  due_date DATE NOT NULL,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  voided_at TIMESTAMPTZ,
+  void_reason VARCHAR(300),
+  UNIQUE (business_id, request_id)
+);
+CREATE INDEX IF NOT EXISTS idx_supplier_charges_account ON supplier_charges (business_id, supplier_id, due_date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_bill_reference ON supplier_charges (business_id, supplier_id, lower(reference))
+  WHERE charge_type='purchase' AND voided_at IS NULL AND reference<>'';
+CREATE TABLE IF NOT EXISTS supplier_payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  supplier_id UUID NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
+  request_id UUID NOT NULL,
+  amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+  payment_date DATE NOT NULL,
+  method VARCHAR(20) NOT NULL CHECK (method IN ('cash','bank','easypaisa','jazzcash','other')),
+  reference VARCHAR(120) NOT NULL DEFAULT '',
+  notes VARCHAR(500) NOT NULL DEFAULT '',
+  created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  voided_at TIMESTAMPTZ,
+  void_reason VARCHAR(300),
+  UNIQUE (business_id, request_id)
+);
+CREATE TABLE IF NOT EXISTS supplier_allocations (
+  payment_id UUID NOT NULL REFERENCES supplier_payments(id) ON DELETE CASCADE,
+  charge_id UUID NOT NULL REFERENCES supplier_charges(id) ON DELETE RESTRICT,
+  amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+  PRIMARY KEY (payment_id, charge_id)
+);
+CREATE INDEX IF NOT EXISTS idx_supplier_allocations_charge ON supplier_allocations(charge_id);
+ALTER TABLE cash_entries ADD COLUMN IF NOT EXISTS supplier_payment_id UUID UNIQUE REFERENCES supplier_payments(id) ON DELETE RESTRICT;
+-- NULL means an older entry whose account was not recorded. Never relabel it
+-- as physical cash: known repayment methods are the only safe backfill.
+ALTER TABLE cash_entries ADD COLUMN IF NOT EXISTS payment_method VARCHAR(12)
+  CHECK (payment_method IN ('cash','bank','easypaisa','jazzcash','other'));
+UPDATE cash_entries e SET payment_method=p.method FROM credit_payments p
+  WHERE e.credit_payment_id=p.id AND e.business_id=p.business_id AND e.payment_method IS NULL;
 
 -- Sale references/customer names accept 120 characters on transactions too.
 ALTER TABLE cash_entries ALTER COLUMN party TYPE VARCHAR(120);

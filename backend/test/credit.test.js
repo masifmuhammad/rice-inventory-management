@@ -86,6 +86,21 @@ test('customer credit keeps stock, receivables, repayments and cash consistent',
       assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM cash_entries WHERE transaction_id=$1',[first.data.transaction.id])).rows[0].n,0);
       assert.equal((await request(`/api/transactions/${first.data.transaction.id}`,'DELETE')).status,200);
     });
+    await t.test('archiving preserves debt and payments, blocks new credit, and can be restored',async()=>{
+      const before=await detail();const stock=(await Product.findById(product.id)).currentStock;
+      assert.equal((await request(`/api/credit/customers/${customer.id}/archive`,'POST',{archived:'false'})).status,400);
+      assert.equal((await request(`/api/credit/customers/${randomUUID()}/archive`,'POST',{archived:true})).status,404);
+      assert.equal((await request(`/api/credit/customers/${customer.id}/archive`,'POST',{archived:true})).status,200);
+      assert.ok((await detail()).customer.archivedAt);assert.equal((await detail()).balance,before.balance);
+      assert.ok((await request('/api/credit')).data.customers.find(c=>c.id===customer.id).archivedAt);
+      const blocked=await request('/api/transactions','POST',{product:product.id,type:'stock_out',quantity:1,paymentType:'credit',customerId:customer.id,dueDate:today});
+      assert.equal(blocked.status,409);assert.equal((await Product.findById(product.id)).currentStock,stock);
+      const payment=await request(`/api/credit/customers/${customer.id}/payments`,'POST',{requestId:randomUUID(),amount:10,paymentDate:today,method:'bank'});
+      assert.equal(payment.status,201);assert.equal((await detail()).balance,before.balance-10);
+      assert.equal((await request(`/api/credit/customers/${customer.id}/payments/${payment.data.id}/reverse`,'POST',{reason:'Archive collection verification'})).status,200);
+      assert.equal((await request(`/api/credit/customers/${customer.id}/archive`,'POST',{archived:false})).status,200);
+      assert.equal((await detail()).customer.archivedAt,null);assert.equal((await detail()).balance,before.balance);
+    });
     await t.test('customer corrections and opening reversals retain the audit history',async()=>{
       assert.equal((await request(`/api/credit/customers/${customer.id}`,'PUT',{name:'Ahmed Rice Traders',phone:'+923009876543',notes:'Call before collecting'})).status,200);
       const opening=(await detail()).charges.find(c=>c.chargeType==='opening');
@@ -98,6 +113,7 @@ test('customer credit keeps stock, receivables, repayments and cash consistent',
       const worker=await User.create({businessId:business.id,name:'Credit Worker',email:`worker-${suffix}@credit.test`,password:'Credit-password-42',role:'worker',status:'active'});
       const auth=(await request('/api/auth/login','POST',{email:worker.email,password:'Credit-password-42'})).data.token;
       assert.equal((await request('/api/credit','GET',null,auth)).status,403);
+      assert.equal((await request(`/api/credit/customers/${customer.id}/archive`,'POST',{archived:true},auth)).status,403);
       assert.equal((await request('/api/transactions','POST',{product:product.id,type:'stock_out',quantity:1,paymentType:'credit',customerId:customer.id,dueDate:today},auth)).status,403);
     });
   } finally {

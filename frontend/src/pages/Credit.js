@@ -16,6 +16,7 @@ import Modal from '../components/ui/Modal';
 import { EmptyState, ErrorState } from '../components/ui/States';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import TransactionFormModal from '../components/transactions/TransactionFormModal';
+import { useConfirm } from '../components/ui/ConfirmProvider';
 import './Credit.css';
 
 const METHODS = { cash: 'Cash', bank: 'Bank transfer', easypaisa: 'Easypaisa', jazzcash: 'JazzCash', other: 'Other' };
@@ -91,19 +92,30 @@ function ReversePayment({ customer, payment, onClose, onSave }) {
 export default function Credit() {
   useAppLanguage();
   const { can } = useAuth(); const { currencySymbol, settings } = useSettings();
+  const confirm = useConfirm();
   const [params,setParams] = useSearchParams(); const selected = params.get('customer');
   const [search,setSearch] = useState(''); const [filter,setFilter] = useState('all');
   const [form,setForm] = useState(null); const [saleOpen,setSaleOpen] = useState(false); const [reversing,setReversing] = useState(null);
   const [exporting,setExporting] = useState(false); const [saleError,setSaleError] = useState('');
+  const [archiving, setArchiving] = useState(false);
+  const [statementRange, setStatementRange] = useState({ startDate: '', endDate: '' });
+  const invalidStatementRange = statementRange.startDate && statementRange.endDate && statementRange.startDate > statementRange.endDate;
   const accounts = useApi((signal)=>api.get('/credit',{signal}).then(r=>r.data),[]);
   const detail = useApi((signal)=>api.get(`/credit/customers/${selected}`,{signal}).then(r=>r.data),[selected],{immediate:Boolean(selected)});
   const products = useApi((signal)=>api.get('/products',{signal}).then(r=>r.data),[],{immediate:saleOpen});
   const customers = accounts.data?.customers || [];
   const totals = customers.reduce((a,c)=>({balance:a.balance+c.balance,overdue:a.overdue+c.overdue,repaid:a.repaid+c.repaid}),{balance:0,overdue:0,repaid:0});
-  const filtered = customers.filter(c=>(`${c.name} ${c.phone}`.toLowerCase().includes(search.toLowerCase())) && (filter==='all' || (filter==='overdue' ? c.overdue>0 : c.balance===0)));
+  const filtered = customers.filter(c=>(`${c.name} ${c.phone}`.toLowerCase().includes(search.toLowerCase())) && (filter==='archived' ? Boolean(c.archivedAt) : !c.archivedAt && (filter==='all' || (filter==='overdue' ? c.overdue>0 : c.balance===0))));
   const account = detail.data; const customer = account?.customer;
   const refresh = () => {window.dispatchEvent(new Event('rim:refresh'));};
-  const select = (id) => {setParams(id ? {customer:id} : {});};
+  const select = (id) => {setParams(id ? {customer:id} : {});setStatementRange({startDate:'',endDate:''});};
+  const toggleArchived = async () => {
+    const archived = !customer.archivedAt;
+    if (archived && !await confirm({ title: t('Archive customer?'), message: t('Sales and balances stay in the ledger. You can still collect payments and restore this customer later.'), confirmLabel: t('Archive customer'), tone: 'neutral' })) return;
+    setArchiving(true);
+    try { await api.post(`/credit/customers/${customer.id}/archive`, { archived }); refresh(); toast.success(t(archived ? 'Customer archived' : 'Customer restored')); }
+    catch(error) { toast.error(getErrorMessage(error)); } finally { setArchiving(false); }
+  };
   const salePrefill = useMemo(()=>({type:'stock_out',paymentType:'credit',customerId:selected || ''}),[selected]);
   const history = account ? [
     ...account.charges.map(c=>({...c,kind:'charge',date:c.occurredDate || c.occurredAt})),
@@ -118,7 +130,7 @@ export default function Credit() {
   };
   const download = async () => {
     setExporting(true);
-    try {const {generateCreditStatementPDF}=await import('../utils/pdfGenerator');await generateCreditStatementPDF(account,settings);}
+    try {const {generateCreditStatementPDF}=await import('../utils/pdfGenerator');await generateCreditStatementPDF(account,settings,statementRange);}
     catch {toast.error(t('Could not download the statement. Please try again.'));} finally {setExporting(false);}
   };
   return <div className={`credit-page space-y-5 ${selected ? 'credit-show-account' : ''}`}>
@@ -130,6 +142,7 @@ export default function Credit() {
         <div data-overdue={totals.overdue>0}><dt>{t('Overdue')}</dt><dd>{formatMoney(totals.overdue,currencySymbol)}</dd></div>
         <div><dt>{t('Repaid')}</dt><dd>{formatMoney(totals.repaid,currencySymbol)}</dd></div>
       </dl>
+      <p className="text-sm text-content-muted">{t('Totals include outstanding balances on archived customers.')}</p>
       {!customers.length ? <div className="credit-welcome"><div className="credit-welcome-mark"><FiUsers aria-hidden="true" /></div>
         <h2>{t('A clear account for every customer.')}</h2><p>{t('Start with the people you sell to on credit. Add what they already owe, record new sales, and keep every repayment in one place.')}</p>
         <Button icon={FiPlus} onClick={()=>setForm('customer')}>{t('Add your first customer')}</Button>
@@ -137,7 +150,7 @@ export default function Credit() {
       </div> : <div className={`credit-workspace ${selected ? 'credit-has-selection' : ''}`}>
         <aside className="credit-directory" aria-label={t('Credit customers')}>
           <div className="credit-directory-tools"><Input type="search" label={t('Find a customer')} value={search} onChange={e=>setSearch(e.target.value)} />
-            <div className="credit-filters" aria-label={t('Filter customers')}>{[['all','All'],['overdue','Overdue'],['settled','Settled']].map(([value,label])=><button key={value} type="button" aria-pressed={filter===value} onClick={()=>setFilter(value)}>{t(label)}</button>)}</div>
+            <div className="credit-filters flex-wrap" aria-label={t('Filter customers')}>{[['all','Active'],['overdue','Overdue'],['settled','Settled'],['archived','Archived']].map(([value,label])=><button key={value} type="button" aria-pressed={filter===value} onClick={()=>setFilter(value)}>{t(label)}</button>)}</div>
           </div>
           {!filtered.length ? <p className="p-5 text-sm text-content-muted">{t('No customers match this view.')}</p> : <ul>{filtered.map(c=><li key={c.id}><button type="button" className="credit-person" aria-current={selected===c.id ? 'true' : undefined} onClick={()=>select(c.id)}>
             <span className="credit-avatar" aria-hidden="true">{initials(c.name)}</span><span className="credit-person-copy"><strong>{c.name}</strong><span>{c.overdue>0 ? t('Overdue') : c.balance===0 ? t('All settled') : t('Due {0}',[formatSafe(c.nextDueDate,'d MMM')])}</span></span>
@@ -150,11 +163,14 @@ export default function Credit() {
             <div className="credit-account-header"><Button className="credit-back" variant="ghost" icon={FiArrowLeft} onClick={()=>select(null)}>{t('Customers')}</Button>
               <div className="credit-account-identity"><span className="credit-avatar credit-avatar-large" aria-hidden="true">{initials(customer.name)}</span><div><h2>{customer.name}</h2>{customer.phone ? <a href={`tel:${customer.phone.replace(/[^+\d]/g,'')}`}><FiPhone aria-hidden="true"/>{customer.phone}</a> : <p>{t('Customer account')}</p>}</div></div>
               <button type="button" className="credit-edit" onClick={()=>setForm('edit')}>{t('Edit customer')}</button>
+              {can('credit.manage') && <Button variant="ghost" size="sm" loading={archiving} onClick={toggleArchived}>{t(customer.archivedAt ? 'Restore customer' : 'Archive customer')}</Button>}
+              {customer.archivedAt && <p className="text-sm text-content-muted mt-3">{t('Archived customer. Payments and statements remain available. Restore to record a new credit sale.')}</p>}
               {customer.notes && <p className="credit-notes">{customer.notes}</p>}
               <div className="credit-account-balance"><span>{t('Outstanding balance')}</span><strong>{formatMoney(account.balance,currencySymbol)}</strong>{account.balance===0 && <span className="credit-settled"><FiCheck aria-hidden="true"/>{t('All settled')}</span>}</div>
-              <div className="credit-account-actions"><Button icon={FiArrowUpRight} disabled={account.balance<=0} onClick={()=>setForm('payment')}>{t('Record repayment')}</Button><Button variant="secondary" icon={FiPlus} onClick={()=>{setSaleError('');setSaleOpen(true);}}>{t('New credit sale')}</Button></div>
+              <div className="credit-account-actions"><Button icon={FiArrowUpRight} disabled={account.balance<=0} onClick={()=>setForm('payment')}>{t('Record repayment')}</Button><Button variant="secondary" icon={FiPlus} disabled={Boolean(customer.archivedAt)} onClick={()=>{setSaleError('');setSaleOpen(true);}}>{t('New credit sale')}</Button></div>
             </div>
-            <div className="credit-history-heading"><h3>{t('Account history')}</h3><div><Button variant="ghost" size="sm" icon={FiCopy} disabled={account.balance<=0} onClick={copyReminder}>{t('Copy reminder')}</Button><Button variant="ghost" size="sm" icon={FiDownload} loading={exporting} onClick={download}>{t('Statement')}</Button></div></div>
+            <details className="mx-4 sm:mx-7 mb-4"><summary className="min-h-[44px] flex items-center text-sm cursor-pointer text-content-muted">{t('Statement period')}</summary><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Input type="date" label={t('From')} value={statementRange.startDate} max={statementRange.endDate || undefined} onChange={e=>setStatementRange(r=>({...r,startDate:e.target.value}))}/><Input type="date" label={t('To')} value={statementRange.endDate} min={statementRange.startDate || undefined} onChange={e=>setStatementRange(r=>({...r,endDate:e.target.value}))}/></div>{invalidStatementRange && <p role="alert">{t('The start date must be on or before the end date.')}</p>}</details>
+            <div className="credit-history-heading"><h3>{t('Account history')}</h3><div><Button variant="ghost" size="sm" icon={FiCopy} disabled={account.balance<=0} onClick={copyReminder}>{t('Copy reminder')}</Button><Button variant="ghost" size="sm" icon={FiDownload} loading={exporting} disabled={Boolean(invalidStatementRange)} onClick={download}>{t('Statement')}</Button></div></div>
             {!history.length ? <EmptyState title={t('Ready for the first sale')} description={t('Record a credit sale when this customer takes products to pay for later.')} /> : <ol className="credit-history">{history.map(entry=>{
               const payment = entry.kind==='payment'; const overdue = !payment && entry.outstanding>0 && day(entry.dueDate)<account.today;
               return <li key={`${entry.kind}-${entry.id}`} className={entry.voidedAt ? 'credit-entry-void' : ''}>

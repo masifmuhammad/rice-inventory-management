@@ -51,7 +51,7 @@ class CashEntry {
     const { rows } = await pool.query(
       `UPDATE cash_entries SET
         direction = $1, amount = $2, category = $3, purpose = $4, party = $5,
-        reference = $6, notes = $7, occurred_at = $8, updated_at = NOW()
+        reference = $6, notes = $7, occurred_at = $8, payment_method = $10, updated_at = NOW()
       WHERE id = $9
       RETURNING *`,
       [
@@ -64,6 +64,7 @@ class CashEntry {
         this.notes ?? null,
         this.occurredAt,
         this.id,
+        this.paymentMethod ?? null,
       ]
     );
     Object.assign(this, mapEntryRow(rows[0]));
@@ -255,8 +256,8 @@ class CashEntry {
       const { rows } = await pool.query(
         `INSERT INTO cash_entries (
           business_id, direction, amount, category, purpose, party, reference, notes,
-          source, transaction_id, occurred_at, created_by, migrated_from
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+          source, transaction_id, occurred_at, created_by, migrated_from, payment_method
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
         RETURNING *`,
         [
           data.businessId,
@@ -272,6 +273,7 @@ class CashEntry {
           data.occurredAt || new Date(),
           data.createdBy,
           data.migratedFrom ?? null,
+          data.paymentMethod ?? null,
         ]
       );
       return new CashEntry(rows[0]);

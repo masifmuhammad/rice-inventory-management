@@ -76,9 +76,9 @@ const recordPayment = (id, data, businessId, user) => withTransaction(async (cli
     await client.query('INSERT INTO credit_allocations (payment_id,charge_id,amount) VALUES ($1,$2,$3)', [rows[0].id, charge.id, amount]);
     remaining = round2(remaining - amount);
   }
-  await client.query(`INSERT INTO cash_entries (business_id,direction,amount,category,purpose,party,reference,notes,source,credit_payment_id,occurred_at,created_by)
-    VALUES ($1,'in',$2,'Credit repayment','Credit repayment',$3,$4,$5,'credit',$6,$7,$8)`,
-    [businessId,data.amount,customer.name,data.reference || '',data.notes || '',rows[0].id,dayStart(data.paymentDate),user.id]);
+  await client.query(`INSERT INTO cash_entries (business_id,direction,amount,category,purpose,party,reference,notes,source,credit_payment_id,occurred_at,created_by,payment_method)
+    VALUES ($1,'in',$2,'Credit repayment','Credit repayment',$3,$4,$5,'credit',$6,$7,$8,$9)`,
+    [businessId,data.amount,customer.name,data.reference || '',data.notes || '',rows[0].id,dayStart(data.paymentDate),user.id,data.method]);
   return rowToDoc(rows[0]);
 });
 const reversePayment = (id, paymentId, reason, businessId) => withTransaction(async (client) => {
@@ -94,6 +94,11 @@ const updateCustomer = (id,data,businessId) => withTransaction(async(client)=>{
   const {rows}=await client.query('UPDATE credit_customers SET name=$1,phone=$2,notes=$3 WHERE id=$4 AND business_id=$5 RETURNING *',[data.name,data.phone || '',data.notes || '',id,businessId]);
   return rowToDoc(rows[0]);
 });
+const setCustomerArchived = (id, archived, businessId) => withTransaction(async (client) => {
+  await lockCustomer(client, id, businessId);
+  const { rows } = await client.query('UPDATE credit_customers SET archived_at=CASE WHEN $1 THEN COALESCE(archived_at,NOW()) ELSE NULL END WHERE id=$2 AND business_id=$3 RETURNING *', [archived, id, businessId]);
+  return rowToDoc(rows[0]);
+});
 const reverseOpening = (id,chargeId,reason,businessId) => withTransaction(async(client)=>{
   await lockCustomer(client,id,businessId);
   const charge=(await chargesFor(client,id,businessId)).find(c=>c.id===chargeId && c.charge_type==='opening' && !c.voided_at);
@@ -102,4 +107,4 @@ const reverseOpening = (id,chargeId,reason,businessId) => withTransaction(async(
   await client.query('UPDATE credit_charges SET voided_at=NOW(),void_reason=$1 WHERE id=$2',[reason,chargeId]);
   return rowToDoc(charge);
 });
-module.exports = { lockCustomer, listCustomers, customerDetail, createCustomer, updateCustomer, recordPayment, reversePayment, reverseOpening };
+module.exports = { lockCustomer, listCustomers, customerDetail, createCustomer, updateCustomer, setCustomerArchived, recordPayment, reversePayment, reverseOpening };

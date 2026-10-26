@@ -104,6 +104,38 @@ test('camera preview recovers when autoplay is denied and releases capture',asyn
   expect(await page.evaluate(()=>window.__creditCameraStream.getTracks().every(t=>t.readyState==='ended'))).toBe(true);
 });
 
+test('customers can be archived and restored without losing dues or Urdu statements', async ({page,isMobile},info) => {
+  await signIn(page);await page.goto('/credit');
+  await page.getByRole('button',{name:'Add customer',exact:true}).click();
+  const name=`احمد رائس ٹریڈرز ${info.project.name} ${Date.now()}`;
+  await page.getByLabel('Customer name').fill(name);
+  await page.getByText('Already owes you money?',{exact:true}).click();
+  await page.getByLabel('Existing balance').fill('100');
+  await page.getByRole('button',{name:'Add customer',exact:true}).last().click();
+  await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Archive customer',exact:true}).click();
+  await page.getByRole('dialog').getByRole('button',{name:'Archive customer',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Restore customer',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'New credit sale',exact:true})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Record repayment',exact:true})).toBeEnabled();
+  await expect(page.locator('.credit-account-balance strong')).toContainText('100.00');
+  if(!isMobile) {
+    const download=page.waitForEvent('download');
+    await page.getByRole('button',{name:'Statement',exact:true}).click();
+    await (await download).saveAs('test-results/credit-urdu-statement.pdf');
+  }
+  await page.getByRole('button',{name:'Restore customer',exact:true}).click();
+  await expect(page.getByRole('button',{name:'New credit sale',exact:true})).toBeEnabled();
+  await page.getByRole('button',{name:'Archive customer',exact:true}).click();
+  await page.getByRole('dialog').getByRole('button',{name:'Archive customer',exact:true}).click();
+  if(isMobile) await page.getByRole('button',{name:'Customers',exact:true}).click();
+  await page.getByRole('button',{name:'Archived',exact:true}).click();
+  await expect(page.locator('.credit-person').filter({hasText:name})).toBeVisible();
+  await page.locator('.credit-person').filter({hasText:name}).click();
+  await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
 test('permission errors offer retry without repeated permission prompts',async({page})=>{
   await signIn(page);
   await page.locator('a[href="/barcodes"]').filter({visible:true}).first().click();

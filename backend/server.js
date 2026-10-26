@@ -110,6 +110,7 @@ app.use('/api/barcodes', require('./routes/barcodes'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/cash-book', require('./routes/cashBook'));
 app.use('/api/credit', require('./routes/credit'));
+app.use('/api/suppliers', require('./routes/suppliers'));
 // Superseded by /api/cash-book; kept so older clients keep working.
 app.use('/api/cash-withdrawals', require('./routes/cashWithdrawals'));
 app.use('/api/settings', require('./routes/settings'));

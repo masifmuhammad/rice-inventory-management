@@ -1,4 +1,9 @@
-import ur from './ur.json';
+import baseUr from './ur.json';
+import supplierUr from './suppliers.ur.json';
+import reportsUr from './reports.ur.json';
+import ledgerUr from './ledger.ur.json';
+
+const ur = { ...baseUr, ...supplierUr, ...reportsUr, ...ledgerUr };
 
 export const LANGUAGE_KEY = 'rim.language';
 const supported = (value) => value === 'ur' ? 'ur' : 'en';

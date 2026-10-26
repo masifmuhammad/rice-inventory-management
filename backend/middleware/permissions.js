@@ -35,6 +35,10 @@ const CAPABILITIES = {
   'credit.manage': 'accountant',
   'credit.reverse': 'admin',
 
+  'suppliers.view': 'accountant',
+  'suppliers.manage': 'accountant',
+  'suppliers.reverse': 'admin',
+
   'reports.view': 'accountant',
 
   'settings.view': 'worker', // needed for branding on every screen

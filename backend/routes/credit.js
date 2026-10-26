@@ -22,6 +22,13 @@ router.post('/customers', requireCapability('credit.manage'), [
   res.status(201).json(customer);
 }));
 router.get('/customers/:id', [param('id').isUUID()], validate, asyncHandler(async(req,res) => res.json(await ledger.customerDetail(req.params.id,req.businessId))));
+router.post('/customers/:id/archive', requireCapability('credit.manage'), [
+  param('id').isUUID(), body('archived').custom(value => typeof value === 'boolean').withMessage('Choose archive or restore'),
+], validate, asyncHandler(async (req, res) => {
+  const customer = await ledger.setCustomerArchived(req.params.id, req.body.archived, req.businessId);
+  audit(req, req.body.archived ? 'ARCHIVE_CUSTOMER' : 'RESTORE_CUSTOMER', 'CUSTOMER', customer.id, { name: customer.name });
+  res.json(customer);
+}));
 router.put('/customers/:id',requireCapability('credit.manage'),[
   param('id').isUUID(),body('name').trim().notEmpty().isLength({max:120}),body('phone').optional().trim().isLength({max:40}),body('notes').optional().trim().isLength({max:1000}),
 ],validate,asyncHandler(async(req,res)=>{

@@ -183,12 +183,12 @@ export default function CashBook() {
       ) : (
         <StatGrid className="cash-overview">
           <StatCard
-            title={translate("Cash balance")}
+            title={translate("Money balance")}
             rawValue={balance}
             valueType="money"
             currencySymbol={currencySymbol}
             fullValue={formatMoney(balance, currencySymbol)}
-            hint={translate(balance >= 0 ? 'In hand' : 'More out than in')}
+            hint={translate('Across all payment methods')}
             icon={FiDollarSign}
             tone={balance < 0 ? 'danger' : 'neutral'}
           />

@@ -28,7 +28,7 @@ const FOOTER_RESERVE = 46; // strip at the bottom that body content may not ente
 const INK = [17, 24, 39]; // near-black; pure black prints harshly
 const BODY = [55, 65, 81];
 const MUTED = [107, 114, 128];
-const FAINT = [156, 163, 175];
+const FAINT = [107, 114, 128];
 const HAIRLINE = [229, 231, 235];
 const RULE_STRONG = [209, 213, 219];
 const PANEL = [249, 250, 251];
@@ -42,10 +42,9 @@ const hexToRgb = (hex, fallback = [2, 132, 199]) => {
 };
 
 /**
- * jsPDF's built-in fonts are WinAnsi-encoded. Anything outside that range draws
- * as a wrong glyph, so unsupported characters are folded to safe equivalents
- * rather than silently corrupting the page. Newlines survive, because callers
- * rely on them to break notes into paragraphs.
+ * Preserve names and notes in their original language. The embedded Ledger Sans
+ * fonts cover Latin and Arabic/Urdu, including Arabic presentation forms used by
+ * jsPDF's shaping support. Only control characters are removed.
  */
 const safeText = (input) => {
   if (input === null || input === undefined) return '';
@@ -56,7 +55,7 @@ const safeText = (input) => {
     .replace(/[“”]/g, '"')
     .replace(/→/g, '->')
     .replace(/\r\n?/g, '\n')
-    .replace(/[^\x20-\xFF\n]/g, '');
+    .split('').filter(char => char === '\n' || (char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127)).join('');
 };
 
 const money = (amount, symbol) => safeText(formatMoney(amount, symbol));
@@ -68,8 +67,28 @@ const money = (amount, symbol) => safeText(formatMoney(amount, symbol));
  * exactly the same containment logic as the portrait receipt, instead of the
  * two swapping width and height by hand at each call site.
  */
-const createCanvas = (orientation = 'portrait') => {
+let fontData;
+const loadFonts = () => {
+  if (!fontData) fontData = Promise.all(['Regular', 'Bold'].map(async (weight) => {
+    const response = await fetch(`${process.env.PUBLIC_URL || ''}/fonts/LedgerSans-${weight}.ttf`);
+    if (!response.ok) throw new Error('Document fonts could not load. Refresh the app and try again.');
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += 8192) binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+    return btoa(binary);
+  })).catch((error) => { fontData = null; throw error; });
+  return fontData;
+};
+
+const createCanvas = async (orientation = 'portrait') => {
   const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation });
+  const fonts = await loadFonts();
+  fonts.forEach((data, index) => {
+    const file = `LedgerSans-${index ? 'Bold' : 'Regular'}.ttf`;
+    doc.addFileToVFS(file, data);
+    doc.addFont(file, 'LedgerSans', index ? 'bold' : 'normal');
+  });
+  doc.setFont('LedgerSans', 'normal');
   const landscape = orientation === 'landscape';
   const width = landscape ? A4.long : A4.short;
   const height = landscape ? A4.short : A4.long;
@@ -135,7 +154,7 @@ const fitFontSize = (doc, text, maxWidth, startSize, minSize = 7.5) => {
 
 /** Small uppercase label with tracking — the workhorse of the layout. */
 const label = (doc, text, x, y, { align = 'left', color = MUTED, size = 7.5, maxWidth } = {}) => {
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('LedgerSans', 'bold');
   doc.setFontSize(size);
   doc.setTextColor(...color);
   doc.setCharSpace(0.8);
@@ -147,7 +166,7 @@ const label = (doc, text, x, y, { align = 'left', color = MUTED, size = 7.5, max
 };
 
 const value = (doc, text, x, y, { align = 'left', size = 10, bold = false, color = INK, maxWidth } = {}) => {
-  doc.setFont('helvetica', bold ? 'bold' : 'normal');
+  doc.setFont('LedgerSans', bold ? 'bold' : 'normal');
   doc.setFontSize(size);
   doc.setTextColor(...color);
   doc.text(maxWidth ? fitLines(doc, text, maxWidth, 1) : safeText(text), x, y, { align });
@@ -309,7 +328,7 @@ const drawLetterhead = (doc, geom, business, logo, { documentType, documentNumbe
   const railWidth = 170; // reserved for the document type and number
   const identityWidth = geom.right - railWidth - 20 - textX;
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('LedgerSans', 'bold');
   doc.setFontSize(15);
   doc.setTextColor(...INK);
   const nameLines = fitLines(doc, business.name, identityWidth, 2);
@@ -317,7 +336,7 @@ const drawLetterhead = (doc, geom, business, logo, { documentType, documentNumbe
 
   let subY = top + 14 + nameLines.length * 16;
 
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('LedgerSans', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(...MUTED);
 
@@ -337,7 +356,7 @@ const drawLetterhead = (doc, geom, business, logo, { documentType, documentNumbe
     maxWidth: railWidth,
   });
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('LedgerSans', 'bold');
   const numberSize = fitFontSize(doc, documentNumber, railWidth, 13, 9);
   doc.setFontSize(numberSize);
   doc.setTextColor(...INK);
@@ -382,7 +401,7 @@ const drawMetaGrid = (doc, geom, entries, startY, { columns = 3 } = {}) => {
 
     label(doc, entry.label, x, y, { maxWidth: cellWidth });
 
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('LedgerSans', 'normal');
     doc.setFontSize(9.5);
     doc.setTextColor(...INK);
     const lines = fitLines(doc, entry.value || '-', cellWidth, 2);
@@ -407,7 +426,7 @@ const drawFooters = (doc, geom, business, { leftText }) => {
 
     rule(doc, geom, y - 16);
 
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('LedgerSans', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...FAINT);
     doc.text(fitLines(doc, leftText || business.footerText, geom.contentWidth - 90, 1), geom.left, y);
@@ -424,7 +443,7 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
   const business = businessFrom(settings);
   const logo = settings.logo ? await loadImage(settings.logo) : null;
 
-  const { doc, geom } = createCanvas('portrait');
+  const { doc, geom } = await createCanvas('portrait');
 
   const isSale = transaction.type === 'stock_out';
   const isCredit = isSale && transaction.paymentType === 'credit';
@@ -492,7 +511,7 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
     ],
     theme: 'plain',
     styles: {
-      font: 'helvetica',
+      font: 'LedgerSans',
       fontSize: 9.5,
       textColor: BODY,
       cellPadding: { top: 10, bottom: 10, left: 0, right: 0 },
@@ -541,7 +560,7 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
 
   // Shrink to fit rather than overflow the panel it sits in.
   const totalText = money(transaction.totalValue, business.symbol);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('LedgerSans', 'bold');
   const totalSize = fitFontSize(doc, totalText, panelWidth - panelPad * 2, 15, 9);
   value(doc, totalText, geom.right - panelPad, y + 36, {
     align: 'right',
@@ -578,7 +597,7 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
   const drawTextBlock = (heading, text, { size, color }) => {
     if (!text) return;
 
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('LedgerSans', 'normal');
     doc.setFontSize(size);
     const lines = doc.splitTextToSize(safeText(text), geom.contentWidth);
     const lineHeight = size * 1.35;
@@ -586,7 +605,7 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
     y = ensureSpace(doc, geom, y, 14 + lines.length * lineHeight + 12);
 
     label(doc, heading, geom.left, y);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('LedgerSans', 'normal');
     doc.setFontSize(size);
     doc.setTextColor(...color);
     doc.text(lines, geom.left, y + 14);
@@ -621,25 +640,149 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
 
 /* ------------------------------------------------------------------ report */
 
-export const generateCreditStatementPDF = async (account, settings = {}) => {
-  const business = businessFrom(settings);
-  const {doc,geom} = createCanvas();
+const reportTable = (doc, geom, y, head, body, { widths, numeric = [], foot } = {}) => {
+  const columns = {};
+  if (widths) widths.forEach((weight, i) => { columns[i] = { cellWidth: weight * geom.contentWidth }; });
+  numeric.forEach(i => { columns[i] = { ...columns[i], halign: 'right' }; });
+  autoTable(doc, {
+    startY: y, margin: { left: geom.left, right: MARGIN, top: geom.top + 10, bottom: MARGIN + FOOTER_RESERVE },
+    head: [head], body, ...(foot ? { foot: [foot], showFoot: 'lastPage' } : {}),
+    theme: 'plain', showHead: 'everyPage', rowPageBreak: 'avoid',
+    styles: { font: 'LedgerSans', fontSize: 9, cellPadding: { top: 8, bottom: 8, left: 6, right: 6 }, textColor: BODY, overflow: 'linebreak', valign: 'top', lineColor: HAIRLINE, lineWidth: { bottom: 0.4 } },
+    headStyles: { fontStyle: 'bold', fontSize: 8, textColor: INK, fillColor: PANEL, lineWidth: { bottom: 0.7 }, lineColor: RULE_STRONG },
+    footStyles: { fontStyle: 'bold', textColor: INK, fillColor: PANEL },
+    alternateRowStyles: { fillColor: ZEBRA }, columnStyles: columns,
+  });
+  return doc.lastAutoTable.finalY + 20;
+};
+
+const drawReportSummary = (doc, geom, y, figures) => {
+  const columns = Math.min(figures.length, 4);
+  const height = Math.ceil(figures.length / columns) * 46 + 10;
+  y = ensureSpace(doc, geom, y, height);
+  doc.setFillColor(...PANEL);
+  doc.roundedRect(geom.left, y, geom.contentWidth, height, 4, 4, 'F');
+  const width = (geom.contentWidth - 24) / columns;
+  figures.forEach((figure, index) => {
+    const x = geom.left + 12 + (index % columns) * width;
+    const top = y + 16 + Math.floor(index / columns) * 46;
+    label(doc, figure.label, x, top, { maxWidth: width - 12 });
+    doc.setFont('LedgerSans', 'bold');
+    const size = fitFontSize(doc, figure.value, width - 12, 14, 9);
+    value(doc, figure.value, x, top + 21, { bold: true, size });
+  });
+  return y + height + 20;
+};
+
+const reportNote = (doc, geom, y, text) => {
+  doc.setFont('LedgerSans', 'normal'); doc.setFontSize(8.5);
+  const lines = doc.splitTextToSize(safeText(text), geom.contentWidth);
+  y = ensureSpace(doc, geom, y, lines.length * 12 + 16);
+  doc.setTextColor(...MUTED); doc.text(lines, geom.left, y);
+  return y + lines.length * 12 + 16;
+};
+
+const statementForCustomer = (account, options) => {
+  const day = date => String(date || '').slice(0, 10);
+  const events = [
+    ...account.charges.map(c => ({ id: c.id, date: c.occurredDate || day(c.occurredAt), kind: 0, dueDate: c.dueDate,
+      description: c.description, reference: '', debit: c.voidedAt ? 0 : Number(c.amount), credit: 0, voidedAt: c.voidedAt, voidReason: c.voidReason })),
+    ...account.payments.map(p => ({ id: p.id, date: day(p.paymentDate), kind: 1,
+      description: `Repayment - ${p.method}`, reference: p.reference, debit: 0, credit: p.voidedAt ? 0 : Number(p.amount), voidedAt: p.voidedAt, voidReason: p.voidReason })),
+  ].sort((a, b) => a.date.localeCompare(b.date) || a.kind - b.kind || String(a.id).localeCompare(String(b.id)));
+  let openingBalance = 0, balance = 0, totalCharges = 0, totalPayments = 0;
+  const rows = [];
+  events.forEach(event => {
+    if (options.endDate && event.date > options.endDate) return;
+    balance = Math.round((balance + event.debit - event.credit) * 100) / 100;
+    if (options.startDate && event.date < options.startDate) { openingBalance = balance; return; }
+    totalCharges += event.debit; totalPayments += event.credit;
+    rows.push({ ...event, balance });
+  });
+  return { openingBalance, closingBalance: balance, totalCharges, totalPayments, rows };
+};
+
+const generatePartyStatementPDF = async (account, settings, options, supplier) => {
+  const business = businessFrom(settings), party = supplier ? account.supplier : account.customer;
+  const statement = supplier ? account.statement : statementForCustomer(account, options);
+  const title = supplier ? 'Supplier Statement' : 'Customer Statement';
+  const { doc, geom } = await createCanvas('landscape');
   const logo = settings.logo ? await loadImage(settings.logo) : null;
-  let y = drawLetterhead(doc,geom,business,logo,{documentType:'Customer Statement',documentNumber:isoDate()});
-  y = drawMetaGrid(doc,geom,[{label:'Customer',value:account.customer.name},{label:'Phone',value:account.customer.phone || '-'},
-    {label:'Outstanding',value:money(account.balance,business.symbol)}],y);
-  const rows = [
-    ...account.charges.map(c=>({date:c.occurredAt,description:`${c.voidedAt ? 'REVERSED: ' : ''}${c.description}`,due:c.dueDate,charge:c.voidedAt ? 0 : c.amount,payment:0,status:c.voidedAt ? c.voidReason : c.outstanding===0 ? 'Paid' : `Unpaid ${money(c.outstanding,business.symbol)}`})),
-    ...account.payments.map(p=>({date:p.paymentDate,description:`${p.voidedAt ? 'REVERSED: ' : ''}Repayment - ${p.method}${p.reference ? ` (${p.reference})` : ''}`,charge:0,payment:p.voidedAt ? 0 : p.amount,status:p.voidedAt ? p.voidReason : 'Received'})),
-  ].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  autoTable(doc,{startY:y+12,margin:{left:geom.left,right:MARGIN,bottom:MARGIN+FOOTER_RESERVE},theme:'plain',
-    head:[['Date / due date','Description','Credit','Repaid','Status']],body:rows.map(r=>[
-      `${formatDate(r.date)}${r.due ? `\nDue ${formatDate(r.due)}` : ''}`,safeText(r.description),r.charge ? money(r.charge,business.symbol) : '-',r.payment ? money(r.payment,business.symbol) : '-',safeText(r.status)]),
-    styles:{fontSize:9,cellPadding:8,textColor:BODY,overflow:'linebreak'},headStyles:{textColor:INK,fontStyle:'bold',lineWidth:{bottom:.5},lineColor:HAIRLINE},
-    columnStyles:{0:{cellWidth:90},1:{cellWidth:135},2:{halign:'right'},3:{halign:'right'},4:{cellWidth:100}}});
-  drawFooters(doc,geom,business,{leftText:'Credit amounts exclude money received at the sale. Reversed payments do not reduce the balance.'});
-  doc.setProperties({title:`Customer statement - ${safeText(account.customer.name)}`,author:business.name});
-  return deliver(doc,`${slugify(account.customer.name)}-statement-${isoDate()}.pdf`,{title:'Customer statement',text:`Account statement from ${business.name}`});
+  let y = drawLetterhead(doc, geom, business, logo, { documentType: title, documentNumber: isoDate() });
+  y = drawMetaGrid(doc, geom, [
+    { label: supplier ? 'Supplier' : 'Customer', value: party.name }, { label: 'Phone', value: party.phone || '-' },
+    { label: 'Period', value: `${options.startDate ? formatDate(options.startDate) : 'Beginning'} to ${options.endDate ? formatDate(options.endDate) : formatDate(new Date())}` },
+  ], y);
+  y = drawReportSummary(doc, geom, y, [
+    { label: 'Opening balance', value: money(statement.openingBalance, business.symbol) },
+    { label: supplier ? 'Bills in period' : 'Credit in period', value: money(statement.totalCharges, business.symbol) },
+    { label: 'Payments in period', value: money(statement.totalPayments, business.symbol) },
+    { label: 'Closing balance', value: money(statement.closingBalance, business.symbol) },
+  ]);
+  y = reportTable(doc, geom, y, ['Date / due', 'Description / reference', supplier ? 'Bills' : 'Credit', 'Payments', 'Balance'], statement.rows.map(r => [
+    `${formatDate(r.date)}${r.dueDate ? `\nDue ${formatDate(r.dueDate)}` : ''}`,
+    safeText(`${r.voidedAt ? 'REVERSED: ' : ''}${r.description}${r.reference ? `\nRef ${r.reference}` : ''}${r.voidedAt ? `\n${r.voidReason || ''}` : ''}`),
+    r.debit ? money(r.debit, business.symbol) : '-', r.credit ? money(r.credit, business.symbol) : '-', money(r.balance, business.symbol),
+  ]), { widths: [.16, .36, .16, .16, .16], numeric: [2, 3, 4], foot: ['Closing balance', '', '', '', money(statement.closingBalance, business.symbol)] });
+  reportNote(doc, geom, y, supplier ? 'Bills increase the amount payable. Payments reduce it. Reversed entries have no effect on the running balance.' : 'Credit amounts exclude deposits received at sale. Later repayments reduce the balance. Reversed entries have no effect on the running balance.');
+  drawFooters(doc, geom, business, { leftText: `${business.name} - ${title} - ${party.name}` });
+  doc.setProperties({ title: `${title} - ${party.name}`, author: business.name });
+  return deliver(doc, `${slugify(party.name)}-${slugify(title)}-${isoDate()}.pdf`, { title, text: `Account statement from ${business.name}` });
+};
+
+export const generateCreditStatementPDF = (account, settings = {}, options = {}) => generatePartyStatementPDF(account, settings, options, false);
+export const generateSupplierStatementPDF = (account, settings = {}, options = {}) => generatePartyStatementPDF(account, settings, options, true);
+
+export const generateSalesReportPDF = async (report, settings = {}, options = {}) => {
+  if (!report.complete) throw new Error('Load all matching sales before exporting this report.');
+  const business = businessFrom(settings), title = 'Sales Register';
+  const { doc, geom } = await createCanvas('landscape');
+  const logo = settings.logo ? await loadImage(settings.logo) : null;
+  let y = drawLetterhead(doc, geom, business, logo, { documentType: title, documentNumber: formatDate(report.generatedAt) });
+  y = drawMetaGrid(doc, geom, [
+    { label: 'Period', value: `${formatDate(report.filters.startDate)} to ${formatDate(report.filters.endDate)}` },
+    { label: 'Prepared by', value: options.preparedBy || '-' },
+    { label: 'Filters', value: [report.filters.customer, report.filters.productId ? report.products?.find(p => p.id === report.filters.productId)?.name : '', report.filters.paymentType, report.filters.status].filter(Boolean).join(' / ') || 'All sales' },
+  ], y);
+  y = drawReportSummary(doc, geom, y, [
+    { label: `${report.summary.count} sales`, value: money(report.summary.totalSales, business.symbol) },
+    { label: 'Received to date', value: money(report.summary.received, business.symbol) },
+    { label: 'Outstanding to date', value: money(report.summary.outstanding, business.symbol) },
+    { label: 'Gross profit', value: money(report.summary.grossProfit, business.symbol) },
+  ]);
+  y = reportNote(doc, geom, y, `${report.balanceBasis} Gross profit excludes operating expenses. All ${report.rows.length} matching sales are included. Reporting timezone: ${report.timezone}.`);
+  reportTable(doc, geom, y, ['Date / receipt', 'Customer / rice', 'Quantity', 'Rate', 'Sale', 'Received', 'Due', 'Status'], report.rows.map(r => [
+    `${formatDate(r.date)}\n${r.reference || String(r.id).slice(-8).toUpperCase()}`,
+    safeText(`${r.customer || 'Walk-in customer'}\n${r.productName}`), safeText(formatQuantity(r.quantity, r.unit)),
+    money(r.rate, business.symbol), money(r.total, business.symbol), money(r.received, business.symbol), money(r.outstanding, business.symbol),
+    `${r.status}\n${r.paymentType}${r.dueDate ? `\n${formatDate(r.dueDate)}` : ''}`,
+  ]), { widths: [.12, .22, .09, .09, .12, .12, .12, .12], numeric: [2, 3, 4, 5, 6] });
+  drawFooters(doc, geom, business, { leftText: `${business.name} - ${title} - ${report.filters.startDate} to ${report.filters.endDate}` });
+  doc.setProperties({ title: `${title} - ${business.name}`, author: business.name });
+  return deliver(doc, `${slugify(business.name)}-sales-${report.filters.startDate}-${report.filters.endDate}.pdf`, { title, text: `Complete sales register from ${business.name}` });
+};
+
+export const generateDailyClosingPDF = async (report, settings = {}, options = {}) => {
+  const business = businessFrom(settings), title = 'Daily Closing';
+  const { doc, geom } = await createCanvas('portrait');
+  const logo = settings.logo ? await loadImage(settings.logo) : null;
+  let y = drawLetterhead(doc, geom, business, logo, { documentType: title, documentNumber: formatDate(report.date) });
+  y = drawMetaGrid(doc, geom, [{ label: 'Business day', value: `${formatDate(report.date)} / ${report.timezone}` }, { label: 'Prepared by', value: options.preparedBy || '-' }, { label: 'Generated', value: formatDateTime(report.generatedAt) }], y);
+  y = drawReportSummary(doc, geom, y, [
+    { label: 'Opening funds', value: money(report.openingBalance, business.symbol) }, { label: 'Money in', value: money(report.moneyIn, business.symbol) },
+    { label: 'Money out', value: money(report.moneyOut, business.symbol) }, { label: 'Closing funds', value: money(report.closingBalance, business.symbol) },
+  ]);
+  y = reportNote(doc, geom, y, `${report.balanceBasis} ${report.profitBasis}`);
+  y = reportTable(doc, geom, y, ['Payment method', 'Opening', 'In', 'Out', 'Closing'], report.methods.map(r => [r.method === 'unclassified' ? 'Unclassified / legacy' : r.method, money(r.openingBalance, business.symbol), money(r.moneyIn, business.symbol), money(r.moneyOut, business.symbol), money(r.closingBalance, business.symbol)]), { widths: [.28, .18, .18, .18, .18], numeric: [1, 2, 3, 4] });
+  y = drawReportSummary(doc, geom, y, [
+    { label: 'Sales booked', value: money(report.sales.total, business.symbol) }, { label: 'Credit sales', value: money(report.sales.creditSales, business.symbol) },
+    { label: 'Old debt collected', value: money(report.collectionsFromEarlierDebt, business.symbol) }, { label: 'Gross profit', value: money(report.sales.grossProfit, business.symbol) },
+  ]);
+  if (report.categories.length) reportTable(doc, geom, y, ['Direction', 'Category', 'Entries', 'Amount'], report.categories.map(r => [r.direction === 'in' ? 'Money in' : 'Money out', safeText(r.category), String(r.count), money(r.amount, business.symbol)]), { widths: [.18, .46, .12, .24], numeric: [2, 3] });
+  else reportNote(doc, geom, y, 'No money moved on this date.');
+  drawFooters(doc, geom, business, { leftText: `${business.name} - ${title} - ${report.date}` });
+  doc.setProperties({ title: `${title} - ${report.date} - ${business.name}`, author: business.name });
+  return deliver(doc, `${slugify(business.name)}-daily-closing-${report.date}.pdf`, { title, text: `Daily closing from ${business.name}` });
 };
 
 const REPORT_TITLE = 'Inventory Report';
@@ -665,7 +808,7 @@ export const generateInventoryReportPDF = async (
   const stamp = isoDate(generatedAt);
 
   // Landscape: eight columns need the width to stay readable.
-  const { doc, geom } = createCanvas('landscape');
+  const { doc, geom } = await createCanvas('landscape');
 
   doc.setProperties({
     title: `${REPORT_TITLE} - ${business.name} - ${formatDate(generatedAt)}`,
@@ -698,7 +841,7 @@ export const generateInventoryReportPDF = async (
     { columns: 3 }
   );
 
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('LedgerSans', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(...MUTED);
   const aboutLines = doc.splitTextToSize(safeText(REPORT_ABOUT), geom.contentWidth);
@@ -724,7 +867,7 @@ export const generateInventoryReportPDF = async (
     const x = geom.left + index * figureWidth;
     label(doc, figure.label, x, y, { maxWidth: figureBudget });
 
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('LedgerSans', 'bold');
     const size = fitFontSize(doc, figure.value, figureBudget, 13, 8.5);
     value(doc, figure.value, x, y + 17, { size, bold: true });
   });
@@ -751,7 +894,7 @@ export const generateInventoryReportPDF = async (
 
   // Measure against the widest face the table uses, so normal-weight cells that
   // reuse this calculation are never underestimated.
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('LedgerSans', 'bold');
 
   autoTable(doc, {
     startY: y,
@@ -780,7 +923,7 @@ export const generateInventoryReportPDF = async (
     showHead: 'everyPage',
     rowPageBreak: 'avoid',
     styles: {
-      font: 'helvetica',
+      font: 'LedgerSans',
       fontSize: 8.5,
       textColor: BODY,
       cellPadding: { top: 7, bottom: 7, left: 6, right: 6 },

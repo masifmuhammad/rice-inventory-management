@@ -8,6 +8,14 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const { requireCapability, can } = require('../middleware/permissions');
 
 const { round2 } = require('../db/helpers');
+const reporting = require('../services/reporting');
+
+router.get('/sales-register', auth, requireCapability('reports.view'), asyncHandler(async (req, res) => {
+  res.json(await reporting.salesRegister(req.businessId, req.query));
+}));
+router.get('/daily-closing', auth, requireCapability('reports.view'), requireCapability('cash.view'), asyncHandler(async (req, res) => {
+  res.json(await reporting.dailyClosing(req.businessId, req.query));
+}));
 
 /** How many individual sales the profit report lists. Totals are not capped by it. */
 const DETAIL_LIMIT = 1000;

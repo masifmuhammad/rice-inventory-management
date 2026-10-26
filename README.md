@@ -93,6 +93,11 @@ credit sales, overdue filters, PDF statements, copied reminders, and recorded
 reversals. See [the credit workflow](docs/CREDIT.md).
 
 ### Reports
+Complete sales registers with customer/product/payment filters and full PDF/CSV
+exports, daily closing by payment method, supplier credit and period statements.
+Customers can be archived/restored without losing their dues. See
+[ledger and reporting workflows](docs/LEDGERS-AND-REPORTS.md).
+
 Stock valued at cost and at retail, movement per product, realised profit and
 margin over any date range. Exports to PDF.
 

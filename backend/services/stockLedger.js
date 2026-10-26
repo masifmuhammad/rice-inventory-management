@@ -34,8 +34,8 @@ const postCash = async (client, row, product, userId) => {
   await client.query(
     `INSERT INTO cash_entries
       (business_id, direction, amount, category, purpose, party, reference,
-       source, transaction_id, occurred_at, created_by)
-     VALUES ($1, 'in', $2, 'Sale', $3, $4, $5, 'sale', $6, $7, $8)`,
+       source, transaction_id, occurred_at, created_by, payment_method)
+     VALUES ($1, 'in', $2, 'Sale', $3, $4, $5, 'sale', $6, $7, $8, 'cash')`,
     [row.business_id, received, `Sale — ${product.name}`, row.customer || '',
       row.reference || '', row.id, row.created_at, userId]
   );
@@ -86,6 +86,7 @@ const createMovementOnClient = async (client, data, businessId, user) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data.dueDate || '')) throw new ApiError(400, 'Choose a payment due date.');
     dayStart(data.dueDate);
     customer = await lockCustomer(client, data.customerId, businessId);
+    if (customer.archived_at) throw new ApiError(409, 'This customer is archived. Restore the customer before recording a new credit sale.');
   }
   const { rows } = await client.query(
     `INSERT INTO transactions
@@ -113,6 +114,8 @@ const changeMovement = (id, businessId, user, data) => withTransaction(async (cl
   const { rows: locked } = await client.query('SELECT * FROM transactions WHERE id = $1 AND business_id = $2 FOR UPDATE', [id, businessId]);
   const before = locked[0];
   if (!before) throw new ApiError(404, 'Transaction not found');
+  const supplierBill = await client.query('SELECT 1 FROM supplier_charges WHERE transaction_id=$1 AND business_id=$2 AND voided_at IS NULL', [id, businessId]);
+  if (supplierBill.rows.length) throw new ApiError(409, 'Correct this purchase in Supplier credit so stock, payments and supplier dues stay together.');
   if (data && (before.payment_type === 'credit' || data.paymentType === 'credit')) {
     throw new ApiError(409, 'To correct a credit sale, reverse it and record it again. Reverse its repayments first.');
   }

@@ -197,6 +197,7 @@ const entryValidators = [
   body('amount').isFloat({ gt: 0 }).withMessage('Enter an amount greater than 0').toFloat(),
   body('purpose').trim().notEmpty().withMessage('Describe what this is for').isLength({ max: 200 }),
   body('category').optional().trim().isLength({ max: 60 }),
+  body('paymentMethod').optional({ nullable: true }).isIn(['cash', 'bank', 'easypaisa', 'jazzcash', 'other']),
   body('party').optional({ values: 'falsy' }).trim().isLength({ max: 80 }),
   body('occurredAt').optional({ values: 'falsy' }).isISO8601().withMessage('Enter a valid date'),
   // Bounded to match the columns, so over-long input is a field error rather
@@ -228,6 +229,7 @@ router.post(
       notes,
       occurredAt: occurredAt || new Date(),
       source: 'manual',
+      paymentMethod: req.body.paymentMethod ?? null,
       createdBy: req.user._id,
     });
 
@@ -237,6 +239,7 @@ router.post(
       amount,
       purpose,
       category: entry.category,
+      paymentMethod: entry.paymentMethod,
     });
 
     res.status(201).json(entry);
@@ -258,11 +261,11 @@ router.put(
     if (entry.source !== 'manual') {
       throw new ApiError(
         400,
-        'This line was posted automatically. Correct the sale or reverse its credit repayment in Customer credit.'
+        'This line was posted automatically. Correct the sale, customer repayment or supplier payment in its original ledger.'
       );
     }
 
-    const before = { amount: entry.amount, purpose: entry.purpose, category: entry.category };
+    const before = { amount: entry.amount, purpose: entry.purpose, category: entry.category, paymentMethod: entry.paymentMethod };
     const { direction, amount, purpose, category, party, takenBy, reference, notes, occurredAt } = req.body;
 
     Object.assign(entry, {
@@ -273,6 +276,7 @@ router.put(
       party: party ?? takenBy ?? entry.party,
       reference,
       notes,
+      paymentMethod: req.body.paymentMethod === undefined ? entry.paymentMethod : req.body.paymentMethod,
       ...(occurredAt ? { occurredAt } : {}),
     });
 
@@ -283,6 +287,7 @@ router.put(
       amount: entry.amount,
       purpose: entry.purpose,
       category: entry.category,
+      paymentMethod: entry.paymentMethod,
     });
 
     res.json(entry);
@@ -302,7 +307,7 @@ router.delete(
     if (entry.source !== 'manual') {
       throw new ApiError(
         400,
-        'This line was posted automatically. Reverse the sale or its credit repayment in Customer credit.'
+        'This line was posted automatically. Reverse the sale, customer repayment or supplier payment in its original ledger.'
       );
     }
 

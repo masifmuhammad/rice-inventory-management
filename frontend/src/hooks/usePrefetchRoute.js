@@ -15,6 +15,7 @@ const importers = {
   '/transactions': () => import('../pages/Transactions'),
   '/cash-book': () => import('../pages/CashBook'),
   '/credit': () => import('../pages/Credit'),
+  '/suppliers': () => import('../pages/Suppliers'),
   '/reports': () => import('../pages/Reports'),
   '/settings': () => import('../pages/Settings'),
   '/admin/users': () => import('../pages/AdminUsers'),

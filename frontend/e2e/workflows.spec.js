@@ -39,7 +39,7 @@ test('core pages load, product edits save, and direct routes survive refresh', a
   await page.getByRole('button', { name: 'Edit Premium Basmati', exact: true }).filter({ visible: true }).click();
   await expect(page.getByRole('dialog').getByLabel('Storage location')).toHaveValue('Warehouse A');
   await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
-  for (const [path, title] of [['/transactions', 'Transactions'], ['/cash-book', 'Cash Book'], ['/reports', 'Reports'], ['/settings', 'Settings']]) {
+  for (const [path, title] of [['/transactions', 'Transactions'], ['/cash-book', 'Cash Book'], ['/reports', 'Sales register'], ['/settings', 'Settings']]) {
     await page.goto(path);
     await expect(page.getByRole('heading', { name: title, exact: true }).first()).toBeVisible();
     await expect(page.getByText('Something went wrong', { exact: true })).toHaveCount(0);
@@ -207,7 +207,7 @@ test('responsive header summaries and optional assistant stay clear of content',
   await page.evaluate(() => scrollTo(0, 200));
   const summary = page.getByTestId('compact-page-header');
   await expect(summary).toContainText('Stock');
-  await expect(summary).toContainText('Cash');
+  await expect(summary).toContainText('Funds');
   expect(await summary.locator('p').last().evaluate((node) => {
     const parent = node.getBoundingClientRect();
     return Array.from(node.children).every((child) => {

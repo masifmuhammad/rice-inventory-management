@@ -13,7 +13,7 @@ export default function MobileBusinessSummary({ stats, loading }) {
   const hasCash = can('cash.view');
   const cards = [
     { title: can('reports.view') ? 'Stock value' : 'Rice products', to: '/products', value: can('reports.view') ? formatMoney(stats?.totalStockValue, '', false) : formatNumber(stats?.totalProducts), unit: can('reports.view') ? currencySymbol : 'Products', caption: can('reports.view') ? 'At cost price · tap for quantities' : 'Tap to see available quantities' },
-    hasCash && { title: 'Cash balance', to: '/cash-book', value: formatMoney(stats?.cashBalance, '', false), unit: currencySymbol, caption: 'Cash book total' },
+    hasCash && { title: 'Money balance', to: '/cash-book', value: formatMoney(stats?.cashBalance, '', false), unit: currencySymbol, caption: 'Across all payment methods' },
   ].filter(Boolean);
   return (
     <section className={['grid surface-card rounded-card overflow-hidden divide-x divide-hairline/[0.08]', hasCash ? 'grid-cols-2' : 'grid-cols-1'].join(' ')} aria-label={translate("Business overview")} aria-busy={loading}>

@@ -20,6 +20,7 @@ const EMPTY = {
   reference: '',
   notes: '',
   occurredAt: today(),
+  paymentMethod: 'cash',
 };
 
 /** Money in and money out are different enough that the form re-labels itself. */
@@ -60,6 +61,7 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
         category: entry.category || '',
         reference: entry.reference || '',
         notes: entry.notes || '',
+        paymentMethod: entry.paymentMethod || '',
         occurredAt: String(entry.occurredAt || '').slice(0, 10) || today(),
       });
     } else {
@@ -117,6 +119,7 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
         amount,
         purpose: values.purpose.trim(),
         party: values.party.trim(),
+        paymentMethod: values.paymentMethod || null,
         occurredAt: new Date(values.occurredAt).toISOString(),
       });
     } finally {
@@ -195,6 +198,11 @@ export default function CashEntryModal({ open, onClose, onSubmit, meta, metaLoad
             hint={translate("Back-date if it happened earlier")}
           />
         </div>
+
+        <Select label={translate('Payment method')} value={values.paymentMethod} onChange={set('paymentMethod')}>
+          {isEditing && <option value="">{translate('Unclassified')}</option>}
+          {[["cash", "Cash"], ["bank", "Bank transfer"], ["easypaisa", "Easypaisa"], ["jazzcash", "JazzCash"], ["other", "Other"]].map(([key, name]) => <option key={key} value={key}>{translate(name)}</option>)}
+        </Select>
 
         <Select
           label={translate("Category")}

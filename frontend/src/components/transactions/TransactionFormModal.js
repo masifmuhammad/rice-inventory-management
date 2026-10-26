@@ -300,7 +300,7 @@ export default function TransactionFormModal({
           {values.paymentType === 'credit' && <div className="space-y-3">
             <Select label={translate('Credit customer')} required value={values.customerId} onChange={set('customerId')} error={errors.customerId} disabled={customers.loading}>
               <option value="">{translate(customers.loading ? 'Loading customers…' : 'Choose a customer')}</option>
-              {(customers.data || []).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+              {(customers.data || []).filter(c => !c.archivedAt).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
             {customers.error && <p role="alert" className="text-sm text-red-600">{translate(customers.error)} <button type="button" className="underline" onClick={()=>customers.refetch()}>{translate('Try again')}</button></p>}
             {!customers.loading && !customers.data?.length && <Link className="inline-block text-sm underline py-2" to="/credit">{translate('Add a customer in Customer credit')}</Link>}

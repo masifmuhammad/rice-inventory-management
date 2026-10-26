@@ -28,6 +28,7 @@ const Barcodes = lazyPage(() => import('./pages/Barcodes'), 'scan and labels');
 const Transactions = lazyPage(() => import('./pages/Transactions'), 'transactions page');
 const CashBook = lazyPage(() => import('./pages/CashBook'), 'cash book');
 const Credit = lazyPage(() => import('./pages/Credit'), 'customer credit');
+const Suppliers = lazyPage(() => import('./pages/Suppliers'), 'supplier ledger');
 const Reports = lazyPage(() => import('./pages/Reports'), 'reports page');
 const Settings = lazyPage(() => import('./pages/Settings'), 'settings page');
 const AdminUsers = lazyPage(() => import('./pages/AdminUsers'), 'users page');
@@ -136,6 +137,7 @@ function AppRoutes() {
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/cash-book" element={<RequireCapability capability="cash.view"><CashBook /></RequireCapability>} />
         <Route path="/credit" element={<RequireCapability capability="credit.view"><Credit /></RequireCapability>} />
+        <Route path="/suppliers" element={<RequireCapability capability="suppliers.view"><Suppliers /></RequireCapability>} />
         <Route path="/cash-withdrawals" element={<Navigate to="/cash-book" replace />} />
         <Route path="/reports" element={<RequireCapability capability="reports.view"><Reports /></RequireCapability>} />
         <Route path="/settings" element={<Settings />} />
