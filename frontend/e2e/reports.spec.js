@@ -47,6 +47,17 @@ test('reports expose complete sales exports, daily closing and clearly scoped st
   await page.getByRole('button', { name: 'Stock and movement', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Export current stock PDF', exact: true })).toBeVisible();
   await expect(page.getByText('Stock values show the current position. The date range applies to sales and movement only.')).toBeVisible();
+  if (!isMobile) {
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
+    const stockDownload = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export current stock PDF', exact: true }).click();
+    await (await stockDownload).saveAs('test-results/stock-valuation.pdf');
+    await page.getByRole('navigation', { name: 'Main', exact: true }).getByRole('link', { name: 'Transactions', exact: true }).click();
+    const receiptDownload = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Receipt', exact: true }).first().click();
+    await (await receiptDownload).saveAs('test-results/transaction-receipt.pdf');
+    await page.getByRole('navigation', { name: 'Main', exact: true }).getByRole('link', { name: 'Reports', exact: true }).click();
+  }
   await page.getByRole('button', { name: 'Daily closing', exact: true }).click();
   await page.evaluate(() => localStorage.setItem('rim.theme', 'dark'));
   await page.reload();

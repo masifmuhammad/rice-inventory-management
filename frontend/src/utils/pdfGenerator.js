@@ -60,6 +60,12 @@ const safeText = (input) => {
 
 const money = (amount, symbol) => safeText(formatMoney(amount, symbol));
 
+// AutoTable's columnStyles apply to body cells; headers and totals need the same
+// alignment explicitly so the heading, figures and total share one right edge.
+const alignNumericColumns = (numeric) => ({ column, cell }) => {
+  if (numeric.includes(column.index) && cell.colSpan === 1) cell.styles.halign = 'right';
+};
+
 /* ------------------------------------------------------------------ canvas */
 
 /**
@@ -530,6 +536,7 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
       cellPadding: { top: 0, bottom: 8, left: 0, right: 0 },
     },
     bodyStyles: { lineWidth: { bottom: 0.5 }, lineColor: HAIRLINE },
+    didParseCell: alignNumericColumns([1, 2, 3]),
     columnStyles: {
       0: { cellWidth: geom.contentWidth - numericColumn * 3, textColor: INK, fontStyle: 'bold' },
       1: { cellWidth: numericColumn, halign: 'right' },
@@ -556,7 +563,7 @@ export const generateTransactionPDF = async (transaction, product, settings = {}
   doc.roundedRect(panelX, y, panelWidth, panelHeight, 4, 4, 'S');
 
   const totalLabel = isSale && !isCredit ? 'Total received' : 'Total value';
-  label(doc, totalLabel, panelX + panelPad, y + 18, { maxWidth: panelWidth - panelPad * 2 });
+  label(doc, totalLabel, geom.right - panelPad, y + 18, { align: 'right', maxWidth: panelWidth - panelPad * 2 });
 
   // Shrink to fit rather than overflow the panel it sits in.
   const totalText = money(transaction.totalValue, business.symbol);
@@ -652,6 +659,7 @@ const reportTable = (doc, geom, y, head, body, { widths, numeric = [], foot } = 
     headStyles: { fontStyle: 'bold', fontSize: 8, textColor: INK, fillColor: PANEL, lineWidth: { bottom: 0.7 }, lineColor: RULE_STRONG },
     footStyles: { fontStyle: 'bold', textColor: INK, fillColor: PANEL },
     alternateRowStyles: { fillColor: ZEBRA }, columnStyles: columns,
+    didParseCell: alignNumericColumns(numeric),
   });
   return doc.lastAutoTable.finalY + 20;
 };
@@ -882,6 +890,7 @@ export const generateInventoryReportPDF = async (
   const weights = [0.19, 0.1, 0.105, 0.115, 0.1, 0.13, 0.13, 0.13];
   const cellPadX = 6;
   const numericColumns = new Set([3, 4, 5, 6, 7]);
+  const alignInventoryColumns = alignNumericColumns([...numericColumns]);
 
   const columnStyles = weights.reduce((styles, weight, index) => {
     styles[index] = { cellWidth: weight * geom.contentWidth };
@@ -960,6 +969,7 @@ export const generateInventoryReportPDF = async (
      * the value fits on a single line instead.
      */
     didParseCell: (data) => {
+      alignInventoryColumns(data);
       if (data.section === 'head' || !numericColumns.has(data.column.index)) return;
 
       const text = Array.isArray(data.cell.text) ? data.cell.text.join(' ') : String(data.cell.text ?? '');

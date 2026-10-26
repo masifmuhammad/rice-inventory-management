@@ -78,6 +78,10 @@ OFL Noto Sans and Noto Sans Arabic. Their licence is in `frontend/public/fonts`.
 `scripts/build-ledger-fonts.py` reproduces the merged, renamed fonts with Python
 fonttools. Documents retain original names, repeat table headings, align amounts
 and identify page footers. Report headings remain English; Urdu data survives.
+Numeric table headings, rows and totals share a right edge across all six
+document types. After desktop ledger E2E exports, run
+`python scripts/check-pdf-column-alignment.py` (PyMuPDF required) to check the
+rendered positions, including repeated headings on continuation pages.
 
 ## Migration and rollback
 
