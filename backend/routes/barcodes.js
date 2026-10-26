@@ -27,6 +27,12 @@ router.post('/batches', requireCapability('transactions.create'), [
 }));
 router.get('/labels/:code', requireCapability('products.view'), [code(param('code'))], validate,
   asyncHandler(async (req, res) => res.json(await service.readLabel(req.params.code, req.businessId))));
+router.post('/batches/:id/release', requireCapability('transactions.create'), [param('id').isUUID()], validate,
+  asyncHandler(async (req, res) => {
+    const result = await service.releaseBatch(req.params.id, req.businessId);
+    if (result.releasedCount) audit(req, 'RELEASE_BARCODE_LABELS', 'BARCODE_BATCH', result.id, { count: result.releasedCount });
+    res.json(result);
+  }));
 router.post('/scan', requireCapability('transactions.create'), [
   body('requestId').isUUID(), code(body('code')), body('mode').isIn(['stock_in', 'stock_out']),
   body('station').optional().trim().isLength({ max: 120 }), body('customer').optional().trim().isLength({ max: 120 }),

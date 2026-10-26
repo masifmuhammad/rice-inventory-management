@@ -69,7 +69,7 @@ const createMovementOnClient = async (client, data, businessId, user) => {
        AND ($3::uuid IS NULL OR id <> $3)`, [businessId, product.id, data.barcodeLabelId || null]
   );
   if (stockAfter < Number(labelled[0].quantity)) {
-    throw new ApiError(409, 'This stock includes labelled packs. Scan their barcodes to stock them out, or keep the counted stock at least as high as the labelled quantity.');
+    throw new ApiError(409, 'This stock includes labelled packs. Scan their barcodes, or open Scan & labels > Make labels > View labels > Release labels for manual transactions.');
   }
   await writeStock(client, product, stockAfter);
   const price = round4(data.price ?? Number(data.type === 'stock_out' ? product.selling_price : product.cost_price));
@@ -181,7 +181,7 @@ const changeMovement = (id, businessId, user, data) => withTransaction(async (cl
      AND ($3::uuid IS NULL OR id<>$3)`, [businessId, product.id, label?.id || null]);
   const minimumStock = Number(labelled.rows[0].quantity) + (label && before.type === 'stock_out' ? Number(label.quantity) : 0);
   if (stockAfter < minimumStock) throw new ApiError(409, 'This reversal would remove stock assigned to labelled packs. Reverse their scans first.');
-  if (label) await client.query('UPDATE barcode_labels SET status=$1, updated_at=NOW() WHERE id=$2', [before.type === 'stock_out' ? 'in_stock' : 'prepared', label.id]);
+  if (label) await client.query("UPDATE barcode_labels SET status=$1, updated_at=NOW() WHERE id=$2 AND status<>'cancelled'", [before.type === 'stock_out' ? 'in_stock' : 'prepared', label.id]);
   await client.query("DELETE FROM cash_entries WHERE transaction_id=$1 AND business_id=$2 AND source='sale'", [id, businessId]);
   if (data) await postCash(client, row, product, before.created_by);
   else {

@@ -3,7 +3,7 @@ import { makeBarcode } from '../../utils/barcode';
 import { formatQuantity } from '../../utils/currency';
 import { translate, useAppLanguage } from '../../context/LanguageContext';
 
-export const LABEL_STATUS = { prepared: 'Awaiting stock in', in_stock: 'In stock', stock_out: 'Stocked out' };
+export const LABEL_STATUS = { prepared: 'Awaiting stock in', in_stock: 'In stock', stock_out: 'Stocked out', cancelled: 'Released for manual use' };
 export default function BarcodeLabel({ label, businessName }) {
   useAppLanguage();
   const svg = useRef(null);

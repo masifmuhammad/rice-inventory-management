@@ -159,6 +159,40 @@ test('production API workflows with PostgreSQL', { skip: !process.env.TEST_DATAB
       assert.equal((await request('/api/reports/movement?startDate=2026-10-22&endDate=2026-10-21')).status, 400);
       assert.equal((await request('/api/unknown')).status, 404);
     });
+    await t.test('releasing accidental labels frees manual stock without changing history', async () => {
+      for (const mode of ['receive', 'existing', 'prepare']) {
+        const rice = await Product.create({ ...productBody, currentStock: mode === 'existing' ? 10 : 0, businessId: business.id, createdBy: admin.id });
+        const batch = await request('/api/barcodes/batches', { method: 'POST', body: { requestId: randomUUID(), product: rice.id, quantity: 5, count: 2, mode } });
+        assert.equal(batch.status, 201);
+        const path = `/api/barcodes/batches/${batch.data.id}/release`;
+        const released = await request(path, { method: 'POST' });
+        assert.equal(released.status, 200, JSON.stringify(released.data));
+        assert.equal(released.data.releasedCount, 2);
+        assert.ok(released.data.labels.every((l) => l.status === 'cancelled'));
+        assert.equal((await request(path, { method: 'POST' })).data.releasedCount, 0);
+        assert.equal((await Product.findById(rice.id)).currentStock, mode === 'prepare' ? 0 : 10);
+        for (const scanMode of ['stock_in', 'stock_out']) {
+          const scan = await request('/api/barcodes/scan', { method: 'POST', body: { requestId: randomUUID(), code: batch.data.labels[0].code, mode: scanMode } });
+          assert.equal(scan.status, 409);
+        }
+        if (mode !== 'prepare') {
+          const sale = await request('/api/transactions', { method: 'POST', body: { product: rice.id, type: 'stock_out', quantity: 10 } });
+          assert.equal(sale.status, 201, JSON.stringify(sale.data));
+          assert.equal(sale.data.stockAfter, 0);
+        }
+      }
+      const rice = await Product.create({ ...productBody, currentStock: 0, businessId: business.id, createdBy: admin.id });
+      const batch = await request('/api/barcodes/batches', { method: 'POST', body: { requestId: randomUUID(), product: rice.id, quantity: 5, count: 2, mode: 'receive' } });
+      const sold = await request('/api/barcodes/scan', { method: 'POST', body: { requestId: randomUUID(), code: batch.data.labels[0].code, mode: 'stock_out' } });
+      const released = await request(`/api/barcodes/batches/${batch.data.id}/release`, { method: 'POST' });
+      assert.equal(released.data.releasedCount, 1);
+      assert.equal(released.data.labels.find((l) => l.id === batch.data.labels[0].id).status, 'stock_out');
+      assert.equal((await Product.findById(rice.id)).currentStock, 5);
+      assert.equal((await request(`/api/transactions/${sold.data.transaction.id}`, { method: 'DELETE' })).status, 200);
+      const hidden = await Product.create({ ...productBody, businessId: other.id, createdBy: admin.id });
+      const foreign = await require('../services/barcodes').createBatch({ requestId: randomUUID(), product: hidden.id, quantity: 1, count: 1, mode: 'existing' }, other.id, admin);
+      assert.equal((await request(`/api/barcodes/batches/${foreign.id}/release`, { method: 'POST' })).status, 404);
+    });
     await t.test('barcode labels receive, sell, retry and reverse without double-moving stock', async () => {
       const rice = await Product.create({ ...productBody, businessId: business.id, createdBy: admin.id, currentStock: 0 });
       const make = (overrides = {}) => ({ requestId: randomUUID(), product: rice.id, mode: 'receive', count: 2, quantity: 25, batchNumber: 'RICE-01', ...overrides });

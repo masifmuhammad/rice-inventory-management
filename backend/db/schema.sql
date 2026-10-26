@@ -130,6 +130,10 @@ CREATE TABLE IF NOT EXISTS barcode_labels (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_barcode_labels_product_status ON barcode_labels (business_id, product_id, status);
+-- Upgrade existing installations as well as fresh databases.
+ALTER TABLE barcode_labels DROP CONSTRAINT IF EXISTS barcode_labels_status_check;
+ALTER TABLE barcode_labels ADD CONSTRAINT barcode_labels_status_check
+  CHECK (status IN ('prepared', 'in_stock', 'stock_out', 'cancelled'));
 CREATE INDEX IF NOT EXISTS idx_barcode_batches_created ON barcode_batches (business_id, created_at DESC);
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS barcode_label_id UUID REFERENCES barcode_labels(id) ON DELETE RESTRICT;
 CREATE INDEX IF NOT EXISTS idx_transactions_barcode_label ON transactions (barcode_label_id, created_at DESC);

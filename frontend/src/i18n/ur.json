@@ -985,5 +985,15 @@
   "This credit sale has repayments. Reverse those repayments in Customer credit first.": "اس ادھار کی فروخت پر ادائیگیاں ہوئی ہیں۔ پہلے گاہکوں کے ادھار میں وہ ادائیگیاں منسوخ کریں۔",
   "To correct a credit sale, reverse it and record it again. Reverse its repayments first.": "ادھار کی فروخت درست کرنے کے لیے اسے منسوخ کرکے دوبارہ درج کریں۔ پہلے اس کی واپسی کی ادائیگیاں منسوخ کریں۔",
   "Reverse repayments applied to this opening balance first.": "پہلے اس ابتدائی بقایا پر کی گئی ادائیگیاں منسوخ کریں۔",
-  "The amount received must be less than the sale total. Use a cash sale for full payment.": "وصول شدہ رقم کل فروخت سے کم ہونی چاہیے۔ پوری ادائیگی کے لیے نقد فروخت منتخب کریں۔"
+  "The amount received must be less than the sale total. Use a cash sale for full payment.": "وصول شدہ رقم کل فروخت سے کم ہونی چاہیے۔ پوری ادائیگی کے لیے نقد فروخت منتخب کریں۔",
+  "Release labels": "لیبل ختم کریں",
+  "Confirm release": "لیبل ختم کرنے کی تصدیق",
+  "Keep labels": "لیبل برقرار رکھیں",
+  "No printer or scanner? Release labels": "پرنٹر یا اسکینر نہیں؟ لیبل ختم کریں",
+  "Released for manual use": "عام لین دین کے لیے آزاد",
+  "released": "ختم شدہ",
+  "Release unsold labels in this batch to use ordinary transactions. Counted stock and past sales stay unchanged. Released barcodes cannot be used again. Remove or discard any printed copies.": "عام لین دین کے لیے اس بیچ کے غیر فروخت شدہ لیبل ختم کریں۔ موجودہ اسٹاک اور پچھلی فروخت تبدیل نہیں ہوں گے۔ ختم شدہ بارکوڈ دوبارہ استعمال نہیں ہو سکتے۔ چھپی ہوئی کاپیاں ہٹا دیں۔",
+  "Labels released. Counted stock is unchanged. You can now record ordinary transactions without a scanner.": "لیبل ختم ہو گئے۔ اسٹاک کی مقدار تبدیل نہیں ہوئی۔ اب اسکینر کے بغیر عام لین دین درج کر سکتے ہیں۔",
+  "This label was released. Record this stock through ordinary transactions; do not use the old label.": "یہ لیبل ختم ہو چکا ہے۔ عام لین دین سے اسٹاک درج کریں؛ پرانا لیبل استعمال نہ کریں۔",
+  "This stock includes labelled packs. Scan their barcodes, or open Scan & labels > Make labels > View labels > Release labels for manual transactions.": "اس اسٹاک کے لیبل بنے ہوئے ہیں۔ بارکوڈ اسکین کریں یا اسکین اور لیبل > لیبل بنائیں > لیبل دیکھیں > لیبل ختم کریں سے عام لین دین بحال کریں۔"
 }

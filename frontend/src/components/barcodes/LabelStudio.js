@@ -40,6 +40,8 @@ export default function LabelStudio({ size, onScan }) {
   const [expiryDate, setExpiryDate] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [confirmRelease, setConfirmRelease] = useState(false);
+  const [notice, setNotice] = useState('');
   const [pending, setPending] = useState(Boolean(recovery.current));
   const [batch, setBatch] = useState(null);
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -67,7 +69,7 @@ export default function LabelStudio({ size, onScan }) {
       const { data } = await api.post('/barcodes/batches', payload);
       writeStored(key, null); recovery.current = null;
       if (!alive.current) return;
-      setPending(false); setBatch(data); setPreviewIndex(0); feedbackSuccess();
+      setPending(false); setBatch(data); setPreviewIndex(0); setConfirmRelease(false); setNotice(''); feedbackSuccess();
       history.refetch(); catalogue.refetch(); window.dispatchEvent(new Event('rim:refresh'));
     } catch (err) {
       if (err.response && err.response.status < 500) { writeStored(key, null); recovery.current = null; if (alive.current) setPending(false); }
@@ -81,28 +83,49 @@ export default function LabelStudio({ size, onScan }) {
   };
   const openBatch = async (id) => {
     setBusy(true); setError('');
-    try { const { data } = await api.get(`/barcodes/batches/${id}`); if (alive.current) { setBatch(data); setPreviewIndex(0); } }
+    try { const { data } = await api.get(`/barcodes/batches/${id}`); if (alive.current) { setBatch(data); setPreviewIndex(0); setConfirmRelease(false); setNotice(''); } }
     catch (err) { if (alive.current) setError(getErrorMessage(err)); }
     finally { if (alive.current) setBusy(false); }
   };
+  const release = async () => {
+    if (busy) return;
+    setBusy(true); setError('');
+    try {
+      const { data } = await api.post('/barcodes/batches/' + batch.id + '/release');
+      if (!alive.current) return;
+      setBatch(data); setConfirmRelease(false);
+      setNotice('Labels released. Counted stock is unchanged. You can now record ordinary transactions without a scanner.');
+      history.refetch(); catalogue.refetch(); window.dispatchEvent(new Event('rim:refresh'));
+    } catch (err) { if (alive.current) setError(getErrorMessage(err)); }
+    finally { if (alive.current) setBusy(false); }
+  };
   const print = (labels, test = false) => {
+    if (!test) labels = labels.filter((label) => label.status !== 'cancelled');
+    if (!labels.length) return;
     try { printLabels(labels, { size, businessName, test }); } catch (err) { setError(err.message); }
   };
+  const usableLabels = batch?.labels.filter((label) => label.status !== 'cancelled') || [];
   const total = Number(quantity) * Number(count);
   const sample = product ? { productName: product.name, sku: product.sku, quantity: Number(quantity) || 1, unit: product.unit, code: '990000000000000000', batchNumber, expiryDate } : null;
 
   return <div className="space-y-7">
     {error && <p role="alert" className="barcode-alert">{translate(error)}</p>}
+    {notice && <p role="status" className="barcode-generation-summary">{translate(notice)} <Link className="underline" to="/transactions">{translate("Open transactions")}</Link></p>}
     {pending && <div className="barcode-alert" role="status"><strong>{translate("Check the previous label request")}</strong><p className="mt-1 text-sm">{translate("The previous request may already have created labels or received stock. Recover it safely before creating another batch.")}</p><Button icon={FiRefreshCw} variant="secondary" loading={busy} className="mt-3" onClick={() => generate(recovery.current)}>{translate("Recover label request")}</Button></div>}
+    {batch && can('transactions.create') && batch.labels.some((label) => ['prepared', 'in_stock'].includes(label.status)) && <section className="barcode-generation-summary space-y-3">
+      <h2 className="font-semibold">{translate("No printer or scanner? Release labels")}</h2>
+      <p className="text-sm">{translate("Release unsold labels in this batch to use ordinary transactions. Counted stock and past sales stay unchanged. Released barcodes cannot be used again. Remove or discard any printed copies.")}</p>
+      {confirmRelease ? <div className="flex flex-wrap gap-2"><Button loading={busy} onClick={release}>{translate("Confirm release")}</Button><Button variant="secondary" disabled={busy} onClick={() => setConfirmRelease(false)}>{translate("Keep labels")}</Button></div> : <Button variant="secondary" disabled={busy} onClick={() => setConfirmRelease(true)}>{translate("Release labels")}</Button>}
+    </section>}
     {batch ? <section className="barcode-studio">
       <div className="barcode-studio-form">
-        <Button variant="ghost" icon={FiArrowLeft} onClick={() => setBatch(null)}>{translate("Create another batch")}</Button>
-        <div className="flex gap-3 mt-5 mb-4"><FiCheckCircle className="w-6 h-6 text-primary-700 dark:text-primary-400 shrink-0" aria-hidden="true" /><div><h2 className="text-xl font-semibold">{translate(batch.labels.length)}{translate(" unique labels ready")}</h2><p className="text-sm text-content-muted mt-1">{translate(batch.mode === 'receive' ? 'New stock was received. These bags can now be scanned out.' : batch.mode === 'existing' ? 'Labels are linked to stock already counted. No stock was added.' : 'Stock will be added when each label is scanned in.')}</p></div></div>
+        <Button variant="ghost" icon={FiArrowLeft} disabled={busy} onClick={() => { setBatch(null); setConfirmRelease(false); setNotice(''); }}>{translate("Create another batch")}</Button>
+        <div className="flex gap-3 mt-5 mb-4"><FiCheckCircle className="w-6 h-6 text-primary-700 dark:text-primary-400 shrink-0" aria-hidden="true" /><div><h2 className="text-xl font-semibold">{translate(usableLabels.length)}{translate(" unique labels ready")}</h2><p className="text-sm text-content-muted mt-1">{translate(!usableLabels.length ? 'Labels released. Counted stock is unchanged. You can now record ordinary transactions without a scanner.' : batch.mode === 'receive' ? 'New stock was received. These bags can now be scanned out.' : batch.mode === 'existing' ? 'Labels are linked to stock already counted. No stock was added.' : 'Stock will be added when each label is scanned in.')}</p></div></div>
         <p className="text-sm text-content-muted">{translate("Print and attach one label per physical bag. Reprinting keeps the original code.")}</p>
-        <div className="flex flex-wrap gap-2 mt-5"><Button icon={FiPrinter} onClick={() => print(batch.labels)}>{translate("Print batch")}</Button><Button variant="secondary" onClick={() => print(batch.labels.slice(0, 1))}>{translate("Print first label")}</Button><Button variant="ghost" onClick={() => onScan(batch.mode === 'prepare' ? 'stock_in' : 'stock_out')}>{translate("Go to scanner")}</Button></div>
+        <div className="flex flex-wrap gap-2 mt-5"><Button disabled={!usableLabels.length} icon={FiPrinter} onClick={() => print(batch.labels)}>{translate("Print batch")}</Button><Button variant="secondary" disabled={!usableLabels.length} onClick={() => print(usableLabels.slice(0, 1))}>{translate("Print first label")}</Button><Button variant="ghost" disabled={!usableLabels.length} onClick={() => onScan(batch.mode === 'prepare' ? 'stock_in' : 'stock_out')}>{translate("Go to scanner")}</Button></div>
         <div className="barcode-label-list mt-6" role="list" aria-label={translate("Generated labels")}>{batch.labels.map((label, index) => <button key={label.id} type="button" role="listitem" aria-label={translate("Preview label {0}: {1}", [index + 1, label.code])} aria-current={previewIndex === index ? 'true' : undefined} className={previewIndex === index ? 'is-selected' : ''} onClick={() => setPreviewIndex(index)}><span className="text-sm tabular-nums">{label.code}</span><span className={`barcode-label-status status-${label.status}`}>{translate(LABEL_STATUS[label.status])}</span></button>)}</div>
       </div>
-      <aside className="barcode-studio-preview"><h3 className="text-sm font-semibold mb-6">{translate("Label ")}{translate(previewIndex + 1)}{translate(" of ")}{translate(batch.labels.length)}</h3><BarcodeLabel label={translate(batch.labels[previewIndex])} businessName={businessName} /><p className="text-sm text-content-muted mt-5">{translate(size === 'a4' ? 'A4 cut-out labels' : `${size.replace('x', ' × ')} mm`)}{translate(" · Code 128")}</p><Button className="mt-4" variant="secondary" icon={FiPrinter} onClick={() => print([batch.labels[previewIndex]])}>{translate("Print this label")}</Button></aside>
+      <aside className="barcode-studio-preview"><h3 className="text-sm font-semibold mb-6">{translate("Label ")}{translate(previewIndex + 1)}{translate(" of ")}{translate(batch.labels.length)}</h3><BarcodeLabel label={translate(batch.labels[previewIndex])} businessName={businessName} /><p className="text-sm text-content-muted mt-5">{translate(size === 'a4' ? 'A4 cut-out labels' : `${size.replace('x', ' × ')} mm`)}{translate(" · Code 128")}</p><Button className="mt-4" variant="secondary" icon={FiPrinter} disabled={batch.labels[previewIndex].status === 'cancelled'} onClick={() => print([batch.labels[previewIndex]])}>{translate("Print this label")}</Button></aside>
     </section> : <section className="barcode-studio">
       <form className="barcode-studio-form space-y-5" onSubmit={submit}>
         <div><h2 className="text-xl font-semibold text-content">{translate("A label for every bag")}</h2><p className="text-sm text-content-muted mt-2">{translate("Choose your rice, pack size and how many bags to label.")}</p></div>
@@ -128,7 +151,7 @@ export default function LabelStudio({ size, onScan }) {
     </section>}
     <section className="barcode-batches"><div className="barcode-section-heading"><div><h2 className="text-lg font-semibold">{translate("Your label batches")}</h2><p className="text-sm text-content-muted mt-1">{translate("Find and reprint labels without adding stock again.")}</p></div><Button variant="ghost" size="icon" icon={FiRefreshCw} aria-label={translate("Refresh label batches")} onClick={() => history.refetch()} loading={history.loading} /></div>
       <div className="px-5 pb-4"><Input label={translate("Find a batch, rice name or barcode")} type="search" value={historySearch} onChange={(e) => { setHistorySearch(e.target.value); setPage(1); }} /></div>
-      {history.error ? <p role="alert" className="px-5 pb-5 text-sm text-red-600 dark:text-red-400">{translate(history.error)}</p> : history.loading ? <p role="status" className="px-5 pb-5 text-sm text-content-muted">{translate("Loading label batches…")}</p> : !history.data?.data.length ? <div className="px-5 pb-6 text-sm text-content-muted"><FiSearch className="inline mr-2" aria-hidden="true" />{translate(historySearch ? 'No matching label batches.' : 'Your first label batch will appear here.')}</div> : <ul className="barcode-batch-list">{history.data.data.map((item) => <li key={item.id}><div className="min-w-0"><p className="font-medium break-words">{translate(item.product_name)}</p><p className="text-xs text-content-muted mt-1">{translate(new Date(item.created_at).toLocaleString())} · {translate(item.count)}{translate(" labels")}</p><p className="text-xs text-content-muted mt-1">{translate(item.in_stock)}{translate(" in stock · ")}{translate(item.stock_out)}{translate(" stocked out · ")}{translate(item.count - item.in_stock - item.stock_out)}{translate(" awaiting receipt")}</p></div><Button variant="secondary" disabled={busy} onClick={() => openBatch(item.id)}>{translate("View labels")}</Button></li>)}</ul>}
+      {history.error ? <p role="alert" className="px-5 pb-5 text-sm text-red-600 dark:text-red-400">{translate(history.error)}</p> : history.loading ? <p role="status" className="px-5 pb-5 text-sm text-content-muted">{translate("Loading label batches…")}</p> : !history.data?.data.length ? <div className="px-5 pb-6 text-sm text-content-muted"><FiSearch className="inline mr-2" aria-hidden="true" />{translate(historySearch ? 'No matching label batches.' : 'Your first label batch will appear here.')}</div> : <ul className="barcode-batch-list">{history.data.data.map((item) => <li key={item.id}><div className="min-w-0"><p className="font-medium break-words">{translate(item.product_name)}</p><p className="text-xs text-content-muted mt-1">{translate(new Date(item.created_at).toLocaleString())} · {translate(item.count)}{translate(" labels")}</p><p className="text-xs text-content-muted mt-1">{translate(item.in_stock)}{translate(" in stock · ")}{translate(item.stock_out)}{translate(" stocked out · ")}{translate(item.count - item.in_stock - item.stock_out - (item.cancelled || 0))}{translate(" awaiting receipt")}{item.cancelled > 0 && <span> / {translate(item.cancelled)} {translate("released")}</span>}</p></div><Button variant="secondary" disabled={busy} onClick={() => openBatch(item.id)}>{translate("View labels")}</Button></li>)}</ul>}
       {history.data?.total > 15 && <div className="flex items-center justify-between gap-3 p-5"><Button variant="secondary" disabled={page === 1 || history.loading} onClick={() => setPage((v) => v - 1)}>{translate("Previous")}</Button><span className="text-sm text-content-muted">{translate(page)} / {translate(Math.ceil(history.data.total / 15))}</span><Button variant="secondary" disabled={page * 15 >= history.data.total || history.loading} onClick={() => setPage((v) => v + 1)}>{translate("Next")}</Button></div>}
     </section>
   </div>;

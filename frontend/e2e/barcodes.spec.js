@@ -184,3 +184,29 @@ test('scan and label screens stay readable in dark mode and on tablet widths', a
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
 });
+
+test('release accidental labels preserves stock and unlocks manual sales', async ({ page }, info) => {
+  await signIn(page);
+  const fixture = await makeFixture(page, 'receive');
+  const releaseUrl = `/api/barcodes/batches/${fixture.id}/release`;
+  await page.goto('/barcodes?tab=labels');
+  await page.getByLabel('Find a batch, rice name or barcode').fill(fixture.product.name);
+  await page.locator('.barcode-batch-list li').filter({ hasText: fixture.product.name }).getByRole('button', { name: 'View labels', exact: true }).click();
+  await page.getByRole('button', { name: 'Release labels', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Keep labels', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm release', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Labels released.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Release labels', exact: true })).toHaveCount(0);
+  await capture(page, `test-results/label-release-${info.project.name}.png`);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const product = await (await page.request.get(`/api/products/${fixture.product.id}`, { headers: fixture.headers })).json();
+  expect(product.currentStock).toBe(10);
+  const retry = await page.request.post(releaseUrl, { headers: fixture.headers });
+  expect(retry.status()).toBe(200);
+  expect((await retry.json()).releasedCount).toBe(0);
+  const scanResponse = await page.request.post('/api/barcodes/scan', { headers: fixture.headers, data: { requestId: require('node:crypto').randomUUID(), code: fixture.labels[0].code, mode: 'stock_out' } });
+  expect(scanResponse.status()).toBe(409);
+  const sale = await page.request.post('/api/transactions', { headers: fixture.headers, data: { product: fixture.product.id, type: 'stock_out', quantity: 10 } });
+  expect(sale.status()).toBe(201);
+  expect((await sale.json()).stockAfter).toBe(0);
+});

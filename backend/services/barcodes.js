@@ -112,6 +112,7 @@ const scanLabel = (data, businessId, user) => withTransaction(async (client) => 
     'SELECT *, expiry_date < (NOW() AT TIME ZONE $3)::date AS expired FROM barcode_labels WHERE code=$1 AND business_id=$2 FOR UPDATE',
     [input.code, businessId, reportTimezone]);
   const label = rows[0];
+  if (label.status === 'cancelled') throw new ApiError(409, 'This label was released. Record this stock through ordinary transactions; do not use the old label.');
   if (label.expired) throw new ApiError(409, 'This pack has expired. Set it aside and ask an administrator to review it.');
   if (input.mode === 'stock_in' && label.status !== 'prepared') throw new ApiError(409,
     label.status === 'in_stock' ? 'This pack is already in stock. No stock was added.' : 'This pack was stocked out. Ask an administrator to reverse the sale before receiving it again.');
@@ -136,11 +137,23 @@ const listBatches = async (businessId, page = 1, search = '') => {
   const { rows } = await getPool().query(
     `SELECT b.id,b.created_at,MIN(l.product_name) AS product_name,MIN(l.unit) AS unit,
       COUNT(*)::int AS count,COUNT(*) FILTER (WHERE l.status='in_stock')::int AS in_stock,
-      COUNT(*) FILTER (WHERE l.status='stock_out')::int AS stock_out
+      COUNT(*) FILTER (WHERE l.status='stock_out')::int AS stock_out,
+      COUNT(*) FILTER (WHERE l.status='cancelled')::int AS cancelled
      FROM barcode_batches b JOIN barcode_labels l ON l.batch_id=b.id
      WHERE b.business_id=$1 AND b.id IN (SELECT b.id FROM barcode_batches b JOIN barcode_labels l ON l.batch_id=b.id WHERE ${where})
      GROUP BY b.id ORDER BY b.created_at DESC,b.id DESC LIMIT 15 OFFSET $4`, [...params, (page - 1) * 15]);
   return { data: rows, total: count.rows[0].total, page };
 };
 
-module.exports = { createBatch, getBatch, listBatches, readLabel, scanLabel };
+// Serialize against scans and manual movements using the same product lock.
+// Release only unsold packs; stock and transaction history remain untouched.
+const releaseBatch = (id, businessId) => withTransaction(async (client) => {
+  const initial = await client.query('SELECT product_id FROM barcode_batches WHERE id=$1 AND business_id=$2', [id, businessId]);
+  if (!initial.rows[0]) throw new ApiError(404, 'Label batch not found');
+  await lockProduct(client, initial.rows[0].product_id, businessId);
+  const released = await client.query(`UPDATE barcode_labels SET status='cancelled',updated_at=NOW()
+    WHERE batch_id=$1 AND business_id=$2 AND status IN ('prepared','in_stock') RETURNING id`, [id, businessId]);
+  return { ...await getBatch(id, businessId, client), releasedCount: released.rowCount };
+});
+
+module.exports = { createBatch, getBatch, listBatches, readLabel, scanLabel, releaseBatch };
