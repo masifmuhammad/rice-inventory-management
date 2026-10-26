@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSettings } from '../../context/SettingsContext';
 import { formatMoney, marginPercent } from '../../utils/currency';
 import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 import { springUI, reducedTransition } from '../../utils/motion';
 import Modal from '../ui/Modal';
+import Button from '../ui/Button';
+import { getErrorMessage } from '../../services/api';
 import { Input, Select, Textarea } from '../ui/Field';
 import { translate, useAppLanguage } from '../../context/LanguageContext';
 
@@ -15,8 +17,8 @@ const EMPTY = {
   otherCategory: '',
   description: '',
   unit: 'kg',
-  currentStock: '',
-  minStockLevel: '',
+  currentStock: '0',
+  minStockLevel: '0',
   maxStockLevel: '',
   costPrice: '',
   sellingPrice: '',
@@ -80,13 +82,16 @@ const validate = (values) => {
   return errors;
 };
 
-export default function ProductFormModal({ open, onClose, onSubmit, product, meta, metaLoading = false }) {
+export default function ProductFormModal({ open, onClose, onSubmit, onViewArchived, product, meta, metaLoading = false }) {
   useAppLanguage();
   const { currencySymbol } = useSettings();
   const reducedMotion = usePrefersReducedMotion();
   const [values, setValues] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [archivedConflict, setArchivedConflict] = useState(false);
+  const formRef = useRef(null);
 
   const isEditing = Boolean(product);
   const categories = meta?.categories || ['Basmati', OTHER];
@@ -97,10 +102,13 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
     if (open) {
       setValues(toFormValues(product, categories));
       setErrors({});
+      setSaveError('');
+      setArchivedConflict(false);
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- categories list is stable from meta
-  }, [open, product, meta]);
+    // Snapshot on open; metadata arriving later must not erase typed values.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, product]);
 
   const set = (field) => (event) => {
     const value = event.target.value;
@@ -121,10 +129,15 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (saving) return;
+    setSaveError(''); setArchivedConflict(false);
 
     const nextErrors = validate(values);
     setErrors(nextErrors);
-    if (Object.values(nextErrors).some(Boolean)) return;
+    if (Object.values(nextErrors).some(Boolean)) {
+      requestAnimationFrame(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
+      return;
+    }
 
     const category = values.category === OTHER ? values.otherCategory.trim() : values.category;
 
@@ -142,6 +155,12 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
         sellingPrice: Number(values.sellingPrice),
         expiryDate: values.expiryDate || null,
       });
+    } catch (error) {
+      setSaveError(getErrorMessage(error, 'Could not save the product'));
+      setArchivedConflict(error.response?.data?.code === 'PRODUCT_ARCHIVED');
+      const fieldErrors = error.response?.data?.errors || [];
+      setErrors(Object.fromEntries(fieldErrors.map((item) => [item.field, item.message])));
+      requestAnimationFrame(() => formRef.current?.querySelector('[data-save-error]')?.focus());
     } finally {
       setSaving(false);
     }
@@ -156,30 +175,36 @@ export default function ProductFormModal({ open, onClose, onSubmit, product, met
       disableClose={saving}
       busy={saving}
       title={translate(isEditing ? 'Edit product' : 'Add product')}
-      description={translate(isEditing ? product?.name : 'Everything except pricing can be changed later.')}
+      description={translate(isEditing ? product?.name : 'No printer or scanner needed. Labels are optional.')}
       size="lg"
       submit={{ form: 'product-form', label: isEditing ? 'Save changes' : 'Create product', loading: saving }}
     >
-      <form id="product-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
+      <form ref={formRef} id="product-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
+        {saveError && <div data-save-error tabIndex={-1} role="alert" className="rounded-xl border border-red-500/30 p-3 text-sm text-content">
+          <p>{translate(saveError)}</p>
+          {archivedConflict && onViewArchived && <Button className="mt-3" variant="secondary" onClick={() => onViewArchived(values.sku)}>{translate("View archived products")}</Button>}
+          {archivedConflict && <Button className="mt-3" variant="ghost" onClick={() => { setValues((current) => ({ ...current, sku: '' })); setSaveError(''); setArchivedConflict(false); }}>{translate("Use a new automatic SKU")}</Button>}
+        </div>}
         <section className="space-y-2.5">
           <h3 className="text-xs font-semibold text-content-subtle tracking-normal">{translate("Basics")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Input
               label={translate("Product name")}
               required
+              maxLength={120}
               value={values.name}
               onChange={set('name')}
               error={errors.name}
               placeholder={translate("Premium Basmati Rice")}
-              autoFocus
               className="sm:col-span-2"
             />
             <Input
               label={translate("SKU")}
+              maxLength={40}
               value={values.sku}
               onChange={set('sku')}
               placeholder={translate("Leave blank to generate")}
-              hint={translate("A code is created automatically if you leave this empty.")}
+              hint={translate("Optional internal product code. Leave blank to generate one. No barcode label is required.")}
             />
             <Select
               label={translate("Category")}

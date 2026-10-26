@@ -67,6 +67,46 @@ test('production API workflows with PostgreSQL', { skip: !process.env.TEST_DATAB
       assert.equal((await request('/api/transactions', { method: 'POST', body: { product: hidden.id, type: 'stock_out', quantity: 1 } })).status, 404);
       assert.equal((await request('/api/auth/switch-business', { method: 'POST', body: { businessId: other.id } })).status, 403);
     });
+    await t.test('products work without labels and archived identities can be restored', async () => {
+      const body = { ...productBody, name: 'Kainat Steam recovery', sku: 'RECOVERY-STEAM', currentStock: 10, minStockLevel: 0 };
+      const created = await request('/api/products', { method: 'POST', body });
+      assert.equal(created.status, 201, JSON.stringify(created.data));
+      const rice = created.data;
+      assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM barcode_labels WHERE product_id=$1', [rice.id])).rows[0].n, 0);
+      const sale = await request('/api/transactions', { method: 'POST', body: { product: rice.id, type: 'stock_out', quantity: 2 } });
+      assert.equal(sale.status, 201);
+      assert.equal((await request(`/api/products/${rice.id}`, { method: 'DELETE' })).status, 200);
+      const clash = await request('/api/products', { method: 'POST', body });
+      assert.equal(clash.status, 409);
+      assert.equal(clash.data.code, 'PRODUCT_ARCHIVED');
+      assert.equal(clash.data.archivedProductId, rice.id);
+      assert.equal((await request('/api/products/archived?search=RECOVERY-STEAM')).data[0].id, rice.id);
+      const restored = await request(`/api/products/${rice.id}/restore`, { method: 'POST', body: { currentStock: 999, businessId: other.id } });
+      assert.equal(restored.status, 200);
+      assert.equal(restored.data.id, rice.id);
+      assert.equal(restored.data.currentStock, 8);
+      assert.equal(restored.data.isActive, true);
+      const repeat = await request(`/api/products/${rice.id}/restore`, { method: 'POST' });
+      assert.equal(repeat.data.currentStock, 8);
+      assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM transactions WHERE id=$1', [sale.data.id])).rows[0].n, 1);
+      assert.equal((await request('/api/products', { method: 'POST', body })).data.code, 'SKU_IN_USE');
+      const changed = await request(`/api/products/${rice.id}`, { method: 'PUT', body: { ...body, currentStock: 8, sku: 'RECOVERY-RENAMED' } });
+      assert.equal(changed.status, 200, JSON.stringify(changed.data));
+      const conflict = await request(`/api/products/${rice.id}`, { method: 'PUT', body: { ...body, currentStock: 8, sku: product.sku } });
+      assert.equal(conflict.status, 409);
+      const fresh = await request('/api/products', { method: 'POST', body: { ...body, sku: '' } });
+      assert.equal(fresh.status, 201);
+      assert.notEqual(fresh.data.id, rice.id);
+      const hidden = await Product.create({ ...body, sku: 'FOREIGN-ARCHIVED', businessId: other.id, createdBy: admin.id, isActive: false });
+      assert.equal((await request(`/api/products/${hidden.id}/restore`, { method: 'POST' })).status, 404);
+      assert.equal((await request('/api/products/archived?search=FOREIGN-ARCHIVED')).data.length, 0);
+      // Numeric suffixes must advance after 9999, including archived products.
+      await Product.create({ ...body, sku: 'GEN-9999', category: 'Other', businessId: business.id, createdBy: admin.id });
+      await Product.create({ ...body, sku: 'GEN-10000', category: 'Other', businessId: business.id, createdBy: admin.id, isActive: false });
+      const next = await request('/api/products', { method: 'POST', body: { ...body, sku: '', category: 'Other' } });
+      assert.equal(next.status, 201, JSON.stringify(next.data));
+      assert.equal(next.data.sku, 'GEN-10001');
+    });
     await t.test('search treats punctuation and SQL wildcards literally', async () => {
       for (const search of ['50%', '(premium)']) {
         const response = await request(`/api/products?search=${encodeURIComponent(search)}`);
@@ -296,6 +336,11 @@ test('production API workflows with PostgreSQL', { skip: !process.env.TEST_DATAB
       const auth = login.data.token;
       for (const path of ['/api/cash-book', '/api/reports/profit-analysis', '/api/admin/users']) assert.equal((await request(path, { auth })).status, 403);
       assert.equal((await request('/api/products', { method: 'POST', auth, body: productBody })).status, 403);
+      assert.equal((await request('/api/products/archived', { auth })).status, 403);
+      assert.equal((await request(`/api/products/${product.id}/restore`, { method: 'POST', auth })).status, 403);
+      const accountant = await User.create({ businessId: business.id, name: 'Accountant', email: `accountant-${suffix}@example.test`, password: 'Accountant-password-42', role: 'accountant', status: 'active' });
+      const accountantLogin = await request('/api/auth/login', { method: 'POST', body: { email: accountant.email, password: 'Accountant-password-42' } });
+      assert.equal((await request(`/api/products/${product.id}/restore`, { method: 'POST', auth: accountantLogin.data.token })).status, 403);
     });
   } finally {
     await new Promise((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));

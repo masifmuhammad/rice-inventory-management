@@ -31,6 +31,7 @@ import { EmptyState, ErrorState, InlineError } from '../components/ui/States';
 import { SkeletonStatCards, SkeletonTable } from '../components/ui/Skeleton';
 import RefetchIndicator from '../components/ui/RefetchIndicator';
 import ProductFormModal from '../components/products/ProductFormModal';
+import ArchivedProducts from '../components/products/ArchivedProducts';
 import { translate, useAppLanguage } from '../context/LanguageContext';
 
 const SORTS = [
@@ -55,6 +56,8 @@ export default function Products() {
   const [sort, setSort] = usePageState('products.sort', 'newest');
   const [editing, setEditing] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedSearch, setArchivedSearch] = useState('');
 
   useEffect(() => {
     const state = location.state;
@@ -126,34 +129,29 @@ export default function Products() {
     async (values) => {
       const isEditing = Boolean(editing);
 
-      try {
-        if (isEditing) {
-          const { data } = await api.put(`/products/${editing._id}`, values);
-          // Patch the row in place rather than refetching the whole list — the
-          // change is visible the instant the server confirms it.
-          products.setData((current) =>
-            (current || []).map((p) => (p._id === data._id ? data : p))
-          );
-          summary.refetch();
-          toast.success(`${data.name} updated`);
-        } else {
-          const { data } = await api.post('/products', values);
-          // Refetch rather than prepend: the list is filtered and sorted by the
-          // server, and a new well-stocked product pushed to the top of a
-          // "Low stock only" view is a row that does not belong there.
-          products.refetch({ keepPreviousData: true });
-          summary.refetch();
-          toast.success(`${data.name} added`);
-        }
-
-        setModalOpen(false);
-        setEditing(null);
-      } catch (error) {
-        toast.error(getErrorMessage(error, 'Could not save the product'));
-        throw error;
+      if (isEditing) {
+        const { data } = await api.put(`/products/${editing._id}`, values);
+        // Patch the row in place rather than refetching the whole list — the
+        // change is visible the instant the server confirms it.
+        products.setData((current) =>
+          (current || []).map((p) => (p._id === data._id ? data : p))
+        );
+        summary.refetch();
+        toast.success(`${data.name} updated`);
+      } else {
+        const { data } = await api.post('/products', values);
+        // Show the newly created product even when old filters hid its row.
+        products.refetch({ keepPreviousData: true });
+        summary.refetch();
+        toast.success(`${data.name} added`);
+        setSearch(''); setCategory(''); setLowStockOnly(false); setSort('newest');
       }
+
+      setModalOpen(false);
+      setEditing(null);
+      window.dispatchEvent(new Event('rim:refresh'));
     },
-    [editing, products, summary]
+    [editing, products, summary, setSearch, setCategory, setLowStockOnly, setSort]
   );
 
   const handleDelete = useCallback(
@@ -175,6 +173,7 @@ export default function Products() {
         await api.delete(`/products/${product._id}`);
         summary.refetch();
         toast.success(`${product.name} archived`);
+        window.dispatchEvent(new Event('rim:refresh'));
       } catch (error) {
         products.setData(snapshot);
         toast.error(getErrorMessage(error, 'Could not archive the product'));
@@ -205,9 +204,17 @@ export default function Products() {
         title={translate("Stock")}
         description={translate("Your rice, available quantity and prices.")}
         actions={
-          <><Button variant="secondary" icon={FiPrinter} onClick={() => navigate('/barcodes?tab=labels')}>{translate("Make labels")}</Button><Button hidden={!can('products.manage')} icon={FiPlus} onClick={openCreate}>{translate("Add product")}</Button></>
+          <><Button hidden={!can('products.manage')} icon={FiPlus} onClick={openCreate}>{translate("Add product")}</Button><Button variant="secondary" icon={FiPrinter} onClick={() => navigate('/barcodes?tab=labels')}>{translate("Make labels")}</Button>{can('products.delete') && <Button variant="ghost" aria-expanded={showArchived} onClick={() => setShowArchived((value) => !value)}>{translate('Archived products')}</Button>}</>
         }
       />
+
+      {showArchived && can('products.delete') && <ArchivedProducts search={archivedSearch} onSearch={setArchivedSearch} onRestored={(product) => {
+        setShowArchived(false);
+        setSearch(product.name); setCategory(''); setLowStockOnly(false);
+        products.refetch({ keepPreviousData: true }); summary.refetch();
+        toast.success(translate('Product restored. Stock and history are unchanged.'));
+        window.dispatchEvent(new Event('rim:refresh'));
+      }} />}
 
       {summary.error ? (
         /* Without this the four cards confidently render 0 products and
@@ -495,6 +502,7 @@ export default function Products() {
           setEditing(null);
         }}
         onSubmit={handleSubmit}
+        onViewArchived={can('products.delete') ? (sku) => { setModalOpen(false); setEditing(null); setArchivedSearch(sku); setShowArchived(true); window.scrollTo({ top: 0, behavior: 'auto' }); } : undefined}
         product={editing}
         meta={meta.data}
         metaLoading={meta.loading && !meta.data}

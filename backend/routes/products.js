@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { body, query } = require('express-validator');
+const { body, query, param } = require('express-validator');
+const { getPool } = require('../config/db');
 const Product = require('../models/Product');
 const Transaction = require('../models/Transaction');
 const auth = require('../middleware/auth');
@@ -33,13 +34,11 @@ const CATEGORY_PREFIX = {
 const generateSku = async (category, businessId) => {
   const prefix = CATEGORY_PREFIX[category] || 'GEN';
 
-  const last = await Product.findOne(
-    { sku: new RegExp(`^${prefix}-\\d+$`), businessId },
-    { sort: { sku: -1 }, select: 'sku' }
-  );
-
-  const lastNumber = last ? parseInt(last.sku.split('-')[1], 10) : 0;
-  return `${prefix}-${String(lastNumber + 1).padStart(4, '0')}`;
+  // Sort suffixes numerically: lexical ordering keeps BAS-9999 above BAS-10000.
+  // Archived codes stay reserved so historical product identities are preserved.
+  const { rows } = await getPool().query(`SELECT (COALESCE(MAX(SUBSTRING(sku FROM '[0-9]+$')::numeric),0)+1)::text AS next
+    FROM products WHERE business_id=$1 AND sku ~ $2`, [businessId, `^${prefix}-[0-9]+$`]);
+  return `${prefix}-${rows[0].next.padStart(4, '0')}`;
 };
 
 // @route   GET /api/products
@@ -85,6 +84,22 @@ router.get(
 router.get('/meta', auth, (req, res) => {
   res.json({ categories: CATEGORIES, units: UNITS });
 });
+
+router.get('/archived', auth, requireCapability('products.delete'),
+  [query('search').optional().trim().isLength({ max: 120 })], validate,
+  asyncHandler(async (req, res) => {
+    const filter = { businessId: req.businessId, isActive: false };
+    if (req.query.search) filter.$or = [{ name: { source: req.query.search } }];
+    res.json(await Product.find(filter, { sort: { name: 1 }, limit: 500 }));
+  }));
+
+router.post('/:id/restore', auth, requireCapability('products.delete'), [param('id').isUUID()], validate,
+  asyncHandler(async (req, res) => {
+    const { product, restored } = await Product.restore(req.params.id, req.businessId);
+    if (!product) throw new ApiError(404, 'Product not found');
+    if (restored) audit(req, 'RESTORE_PRODUCT', 'PRODUCT', product.id, { name: product.name, sku: product.sku });
+    res.json(product);
+  }));
 
 // @route   GET /api/products/summary
 // @desc    Totals across ALL products, not just the page that was fetched
@@ -173,7 +188,10 @@ router.post(
     const providedSku = (req.body.sku || '').trim().toUpperCase();
     if (providedSku) {
       const clash = await Product.findOne({ sku: providedSku, businessId: req.businessId });
-      if (clash) throw new ApiError(409, `SKU ${providedSku} is already used by "${clash.name}"`);
+      if (clash) throw new ApiError(409,
+        clash.isActive ? `SKU ${providedSku} is already used by "${clash.name}". Leave SKU blank to create a different product.`
+          : `SKU ${providedSku} belongs to archived product "${clash.name}". Restore it to keep its stock and history, or leave SKU blank to create a different product.`,
+        null, { code: clash.isActive ? 'SKU_IN_USE' : 'PRODUCT_ARCHIVED', ...(clash.isActive ? {} : { archivedProductId: clash.id }) });
       payload.sku = providedSku;
     }
 

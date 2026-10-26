@@ -133,6 +133,18 @@ class Product {
     return rows[0] ? new Product(rows[0]) : null;
   }
 
+  static async restore(id, businessId) {
+    return withTransaction(async (client) => {
+      const { rows } = await client.query('SELECT * FROM products WHERE id=$1 AND business_id=$2 FOR UPDATE', [id, businessId]);
+      if (!rows[0]) return { product: null, restored: false };
+      const restored = !rows[0].is_active;
+      const row = restored
+        ? (await client.query('UPDATE products SET is_active=TRUE,updated_at=NOW() WHERE id=$1 AND business_id=$2 RETURNING *', [id, businessId])).rows[0]
+        : rows[0];
+      return { product: new Product(row), restored };
+    });
+  }
+
   static async findOne(filter = {}, { sort, select } = {}) {
     const pool = getPool();
     const params = [];
@@ -143,7 +155,7 @@ class Product {
       clauses.push(`p.business_id = $${params.length}`);
     }
 
-    if (filter._id) {
+    if (filter._id && !filter._id.$ne) {
       params.push(filter._id);
       clauses.push(`p.id = $${params.length}`);
     }
