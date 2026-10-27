@@ -59,15 +59,15 @@ function BusinessDashboard() {
   const transactions = recent.data?.data || [];
   if (stats.error && !stats.data) return <ErrorState title={translate("Could not load the dashboard")} message={translate(stats.error)} onRetry={stats.refetch} />;
   return (
-    <div className="space-y-5 sm:space-y-6 max-w-[1400px] mx-auto">
+    <div className="business-dashboard space-y-5 sm:space-y-6 max-w-[1400px] mx-auto">
       <PageHeader summary={translate(canReport && stats.data ? 'Stock ' + formatCompactMoney(stats.data.totalStockValue, currencySymbol) + (can('cash.view') ? ' | Funds ' + formatCompactMoney(stats.data.cashBalance, currencySymbol) : '') : totalProducts + ' products')} title={translate("Dashboard")} description={translate("Your business, in balance.")} actions={canReport && <Link to="/reports" className="hidden sm:inline-flex items-center gap-2 text-sm text-content-muted min-h-[44px]">{translate("View reports ")}<FiArrowUpRight aria-hidden="true" /></Link>} />
       {stats.error && <InlineError message={translate(stats.error)} onRetry={stats.refetch} />}
       <DailyWork customers={credit} suppliers={suppliers} />
-      {can('credit.view') && <Link to="/credit" className="flex flex-wrap items-center justify-between gap-3 py-4 border-y border-hairline/10 min-h-[60px] group">
+      {can('credit.view') && <Link to="/credit" className="dashboard-ledger-row flex flex-wrap items-center justify-between gap-3 py-4 border-y border-hairline/10 min-h-[60px] group">
         <span><span className="text-sm font-semibold text-content">{translate('Customer credit')}</span><span className="block text-xs text-content-muted mt-1">{translate('Balances, due dates and repayments')}</span></span>
         <span className="flex items-center gap-3 text-sm font-money font-semibold tabular-nums">{credit.error ? translate('View accounts') : credit.loading && !credit.data ? translate('Loading…') : formatMoney(creditBalance,currencySymbol)}<FiArrowRight aria-hidden="true"/></span>
       </Link>}
-      {can('suppliers.view') && <Link to="/suppliers" className="flex flex-wrap items-center justify-between gap-3 py-4 border-b border-hairline/10 min-h-[60px] group">
+      {can('suppliers.view') && <Link to="/suppliers" className="dashboard-ledger-row flex flex-wrap items-center justify-between gap-3 py-4 border-b border-hairline/10 min-h-[60px] group">
         <span><span className="text-sm font-semibold text-content">{translate('Supplier ledger')}</span><span className="block text-xs text-content-muted mt-1">{translate('Purchases, bills due and payments')}</span></span>
         <span className="flex items-center gap-3 text-sm font-money font-semibold tabular-nums">{suppliers.error ? translate('View accounts') : suppliers.loading && !suppliers.data ? translate('Loading…') : formatMoney(supplierBalance,currencySymbol)}<FiArrowRight aria-hidden="true"/></span>
       </Link>}

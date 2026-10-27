@@ -157,7 +157,7 @@ function HeaderCreate({ can }) {
 
 /**
  * Desktop chrome: big title left; search, create, circular actions right.
- * Mobile keeps the brand switcher centered.
+ * Mobile lets the business name share the available space with touch controls.
  */
 export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
   useAppLanguage();
@@ -171,8 +171,8 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
        lg:pt-4 gives the header the same top inset as the floating sidebar rail,
        which is what puts the page title and the brand mark on one line. */
     <header className="sticky top-0 z-30 chrome-blur pt-[env(safe-area-inset-top)] lg:pt-4">
-      <div className="relative h-[3.75rem] sm:h-16 flex items-center gap-3 px-3 sm:px-6">
-        <div className="z-10 flex items-center gap-2 min-w-0 flex-1">
+      <div className="app-header-row relative h-[3.75rem] sm:h-16 flex items-center gap-3 px-3 sm:px-6">
+        <div className="app-header-leading z-10 flex items-center gap-2 min-w-0 flex-1">
           <button
             type="button"
             onClick={onOpenDrawer}
@@ -191,40 +191,26 @@ export default function AppHeader({ onOpenDrawer, drawerOpen, onOpenProfile }) {
           ) : null}
         </div>
 
-        {/* The reserved side gutters have to clear the right-hand cluster, which
-            is bell (40) + gap (8) + avatar (36) + padding (12) ≈ 96px. At 4.5rem
-            the centred business name ran under the bell — and that cluster is
-            `z-10`, so it painted over the name and read as the name being cut
-            off mid-word. */}
-        {/* `z-20` is load-bearing, not decoration. The left block beside this is
-            `flex-1 z-10`, so on a phone — where its <h1> is hidden and only the
-            hamburger occupies it — it stretches across the middle of the header
-            and sits directly on top of this one. The switcher still *painted*,
-            because it is absolutely positioned, but every tap landed on that
-            invisible block instead: a visible dropdown chevron that did nothing.
-            Raising this above the two z-10 siblings puts the button back in
-            front for hit-testing. The wrapper stays `pointer-events-none`, so it
-            never steals taps meant for the hamburger or the bell. */}
-        <div className="mobile-header-brand lg:hidden absolute left-14 right-[14rem] sm:left-[4.5rem] sm:right-[26rem] z-20 flex justify-center pointer-events-none">
+        <div className="mobile-header-brand lg:hidden min-w-0 flex-1">
           {collapsed ? (
-            <div className="min-w-0 text-center pointer-events-auto" data-testid="compact-page-header">
+            <div className="min-w-0 text-start" data-testid="compact-page-header">
               {/* Two lines at most: stacking every summary part overflowed the
                   60px bar onto the page below. The summary is one quiet line
                   that truncates; the page itself repeats the full figures. */}
               <p className="text-[16px] leading-5 font-semibold tracking-tight text-content truncate">{translate(pageTitle)}</p>
               {summary && <p className="text-[12px] leading-4 text-content-muted truncate tabular-nums" title={translate(summary)}>{translate(summary.split(' | ').join(' · '))}</p>}
             </div>
-          ) : <BusinessSwitcher className="pointer-events-auto min-w-0 max-w-[14rem]" centered showLogo />}
+          ) : <BusinessSwitcher className="min-w-0" />}
         </div>
 
-        <div className="z-10 flex items-center gap-2 sm:gap-2.5 flex-shrink-0 justify-end">
+        <div className="app-header-actions z-10 flex items-center gap-2 sm:gap-2.5 flex-shrink-0 justify-end">
           {!shopMode.enabled && <><HeaderSearch /><HeaderCreate can={can} /></>}
           <button type="button" aria-label={translate('Shop mode')} aria-pressed={shopMode.enabled}
             disabled={shopMode.enabled && shopMode.pending}
             title={translate(shopMode.enabled ? 'Switch to full mode' : 'Switch to Shop mode')}
             onClick={() => { shopMode.setEnabled(!shopMode.enabled); navigate('/'); }}
             className={`shop-mode-toggle ${shopMode.enabled ? 'is-active' : ''}`}>
-            <FiShoppingBag aria-hidden="true" /><span className="hidden sm:inline">{translate('Shop mode')}</span><span className="sm:hidden">{translate('Shop')}</span>
+            <FiShoppingBag aria-hidden="true" /><span className="hidden lg:inline">{translate('Shop mode')}</span>
           </button>
           <LanguagePicker />
           {!shopMode.enabled && <NotificationPanel variant="circle" />}

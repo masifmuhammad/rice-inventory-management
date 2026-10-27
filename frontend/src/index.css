@@ -973,13 +973,25 @@
   html[data-keyboard-open='true'] .mobile-tabbar,
   html[data-keyboard-open='true'] .assistant-floating { visibility: hidden; pointer-events: none; }
 }
-.shop-mode-toggle { display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px; min-width:44px; border-radius:12px; padding:8px 12px; border:1px solid rgb(var(--hairline)/.15); font-size:14px; font-weight:650; background:rgb(var(--surface-1)); color:rgb(var(--content)); }
+.shop-mode-toggle { display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px; min-width:44px; border-radius:999px; padding:8px 12px; border:1px solid rgb(var(--hairline)/.06); font-size:14px; font-weight:600; background:rgb(var(--surface-1)); color:rgb(var(--content-muted)); transition:background-color 150ms,color 150ms; }
 .shop-mode-toggle svg { width:21px; height:21px; }
 .shop-mode-toggle.is-active { background:rgb(var(--content)); color:rgb(var(--surface-1)); border-color:transparent; }
 .shop-mode-toggle:focus-visible { outline:2px solid rgb(var(--color-primary-600)); outline-offset:3px; }
 html[data-shop-mode='true'] { --app-tabbar-height:0px; }
 html[data-shop-mode='true'] .assistant-floating { display:none; }
-@media(max-width:639px) { .shop-mode-toggle { flex-direction:column; gap:1px; padding:3px 5px; font-size:10px; line-height:12px; } }
+@media(max-width:1023px) {
+  .app-header-row { gap:4px; padding-inline:8px; }
+  .app-header-leading { flex:0 0 44px; }
+  .app-header-leading>button { margin:0; }
+  .app-header-actions { gap:2px; }
+  .app-header-actions .shop-mode-toggle { width:44px; height:44px; padding:10px; }
+  .app-header-actions .language-trigger { width:44px; padding:10px; border-radius:999px; }
+  .app-header-actions .language-trigger>span { display:none; }
+  .app-header-actions button[aria-haspopup="dialog"] { width:44px; height:44px; }
+  .mobile-header-brand { overflow:visible; }
+  .mobile-header-brand>div>button { margin:0; padding-inline:2px; width:100%; justify-content:flex-start; }
+  html[data-language="ur"] .mobile-header-brand [role="listbox"] { left:auto; right:0; }
+}
 @media (prefers-reduced-transparency: reduce) {
   .chrome-blur, .chrome-raised { background: rgb(var(--surface-1)); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }

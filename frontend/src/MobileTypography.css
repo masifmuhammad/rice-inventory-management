@@ -32,7 +32,6 @@ html[data-language="ur"] input[type="email"],html[data-language="ur"] input[type
 html[data-language="ur"] .barcode-mode { text-align:right; }
 html[data-language="ur"] .barcode-receive-option { line-height:1.7; }
 html[data-language="ur"] .barcode-label-list>button { text-align:start; }
-html[data-language="ur"] .mobile-header-brand { left:10.75rem; right:3.5rem; }
 html[data-language="ur"] .drawer-surface { left:auto; right:0; }
 html[data-language="ur"] .drawer-surface[data-closed] { --tw-translate-x:100%; }
 html[data-language="ur"] .barcode-studio-form .field-shell>svg { right:auto; left:14px; }
@@ -43,6 +42,20 @@ html[data-language="ur"] .landing { direction:ltr; }
   html[data-language="ur"] .app-content { padding-left:0; padding-right:calc(15.5rem + 2rem); }
 }
 @media(max-width:639px) {
+  .business-dashboard>div:first-child>div:has(>a.hidden) { display:none; }
+  .business-dashboard .inventory-actions-heading { align-items:center; gap:12px; margin-bottom:8px; }
+  .business-dashboard .inventory-actions-heading h2 { font-size:18px; max-width:15ch; }
+  .business-dashboard .inventory-actions-heading>a { flex-wrap:nowrap; flex-shrink:0; gap:6px; }
+  .business-dashboard .inventory-actions>p { font-size:14px; }
+  .business-dashboard .daily-action-grid { gap:10px; }
+  .business-dashboard .daily-work-intro { display:none; }
+  .business-dashboard .daily-action-grid .inventory-action { padding:16px; min-height:120px; justify-content:flex-start; }
+  .business-dashboard .daily-action-grid .inventory-action strong { font-size:16px; }
+  .business-dashboard .daily-action-grid .inventory-action p { display:none; }
+  .business-dashboard .dashboard-ledger-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; padding-block:16px; margin-top:0; }
+  .business-dashboard .dashboard-ledger-row>span:first-child>span:first-child { font-size:15px; }
+  .business-dashboard .dashboard-ledger-row>span:first-child>span:last-child { font-size:13px; }
+  .business-dashboard .dashboard-ledger-row>span:last-child { font-size:15px; gap:8px; white-space:nowrap; }
   body { font-size:16px; line-height:1.5; }
   .app-shell .text-sm { font-size:16px; line-height:1.5; }
   .app-shell .text-xs,.app-shell .text-caption { font-size:14px; line-height:1.5; }

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FiCheck, FiCheckCircle, FiDelete, FiGrid, FiMinus, FiPackage, FiPlus, FiRefreshCw, FiSettings, FiShoppingBag, FiTrash2, FiTruck } from 'react-icons/fi';
+import { FiCheck, FiCheckCircle, FiDelete, FiGrid, FiMinus, FiPackage, FiPlus, FiRefreshCw, FiRadio, FiSettings, FiShoppingBag, FiTrash2, FiTruck } from 'react-icons/fi';
 import api from '../services/api';
 import useApi from '../hooks/useApi';
 import useLedgerSubmission from '../hooks/useLedgerSubmission';
@@ -15,6 +15,8 @@ import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import ShopSetup from '../components/products/ShopSetup';
 import './ShopFloor.css';
+import ScanStation from '../components/barcodes/ScanStation';
+import { readStored, writeStored } from '../utils/barcode';
 
 const readDraft = (key) => { try { const data = JSON.parse(sessionStorage.getItem(key)); return Array.isArray(data?.carts?.sale) && Array.isArray(data?.carts?.receive) ? data : null; } catch { return null; } };
 const packetsAvailable = (p) => p.packQuantity ? Math.floor(Math.round(p.availableStock * 10000) / Math.round(p.packQuantity * 10000)) : 0;
@@ -38,6 +40,9 @@ export default function ShopFloor() {
   const key = `rim.shop-cart.${user?.id || user?._id}.${businessId}`;
   const catalogue = useApi((signal) => api.get('/shop/products', { signal }).then((r) => r.data), [], { keepPreviousData: true });
   const refreshCatalogue = catalogue.refetch;
+  const scanQueue = useRef(readStored(`rim.barcode.scans.${user?.id || user?._id}.${businessId}`, []));
+  const [scanPending, setScanPending] = useState(scanQueue.current.length > 0);
+  const [scanner, setScanner] = useState(() => scanQueue.current.length > 0 || readStored(`${key}.scanner`, false));
   const [receipt, setReceipt] = useState(null);
   const [setup, setSetup] = useState(false);
   const [keypad, setKeypad] = useState(null);
@@ -47,11 +52,11 @@ export default function ShopFloor() {
     catalogue.refetch({ keepPreviousData: true }); window.dispatchEvent(new Event('rim:refresh')); feedbackSuccess();
   });
   const initial = useRef(submission.pending?.draft || readDraft(key));
-  const [mode, setMode] = useState(initial.current?.mode || 'sale');
+  const [mode, setMode] = useState(scanQueue.current.length ? (scanQueue.current[0].mode === 'stock_in' ? 'receive' : 'sale') : initial.current?.mode || 'sale');
   const [carts, setCarts] = useState(() => ({ sale: [], receive: [], ...(initial.current?.carts || {}),
     ...(initial.current?.lines ? { [initial.current.mode]: initial.current.lines } : {}) }));
   const [receiveCount, setReceiveCount] = useState(1);
-  const locked = Boolean(submission.pending) || submission.saving;
+  const locked = Boolean(submission.pending) || submission.saving || scanPending;
   const lines = submission.pending?.draft?.lines || carts[mode];
   const products = catalogue.data?.products || [];
   const configured = products.filter((p) => p.packQuantity > 0);
@@ -63,7 +68,7 @@ export default function ShopFloor() {
   });
 
   useEffect(() => { setTitle(translate('Shop mode')); return () => setTitle(''); }, [setTitle]);
-  useEffect(() => { setPending(Boolean(submission.pending)); return () => setPending(false); }, [submission.pending, setPending]);
+  useEffect(() => { setPending(Boolean(submission.pending) || scanPending); return () => setPending(false); }, [submission.pending, scanPending, setPending]);
   useEffect(() => { try { sessionStorage.setItem(key, JSON.stringify({ mode, carts })); } catch { /* Cart remains available in this view. */ } }, [key, mode, carts]);
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === 'visible') refreshCatalogue({ keepPreviousData: true }); };
@@ -95,12 +100,15 @@ export default function ShopFloor() {
       unitPrice: mode === 'sale' ? p.sellingPrice : p.costPrice, ...(mode === 'receive' ? { supplierId: p.supplierId } : {}) })) }, { mode, lines });
   };
 
-  return <section className="shop-floor" aria-label={translate('Shop mode')}>
-    <div className="shop-heading"><div><h1>{translate('Shop mode')}</h1><p>{translate('Tap rice. Choose packets. Save.')}</p></div>{can('products.manage') && <Button variant="secondary" icon={FiSettings} onClick={() => setSetup(true)} disabled={locked}>{translate('Set up buttons')}</Button>}</div>
+  return <section className={`shop-floor ${scanner ? 'shop-floor-scanning' : ''}`} aria-label={translate('Shop mode')}>
+    <div className="shop-heading"><div><h1>{translate('Shop mode')}</h1><p>{translate(scanner ? 'Scan a bag. Wait for confirmation.' : 'Tap rice. Choose packets. Save.')}</p></div>{can('products.manage') && <Button variant="secondary" className="shop-setup-button" aria-label={translate('Set up buttons')} icon={FiSettings} onClick={() => setSetup(true)} disabled={locked || scanner}><span>{translate('Set up buttons')}</span></Button>}</div>
     <div className="shop-actions" role="group" aria-label={translate('Shop action')}>
       <button type="button" aria-pressed={mode === 'sale'} disabled={locked} onClick={() => { setMode('sale'); setReceipt(null); }}><FiShoppingBag aria-hidden="true" /><span>{translate('Sell')}</span></button>
       <button type="button" aria-pressed={mode === 'receive'} disabled={locked} onClick={() => { setMode('receive'); setReceipt(null); }}><FiTruck aria-hidden="true" /><span>{translate('Receive')}</span></button>
     </div>
+    <div className="shop-input-method" role="group" aria-label={translate('How to record')}><button type="button" aria-pressed={!scanner} disabled={locked} onClick={() => { setScanner(false); writeStored(`${key}.scanner`, false); }}><FiGrid aria-hidden="true" />{translate('Tap products')}</button><button type="button" aria-pressed={scanner} disabled={locked || Boolean(carts[mode].length)} onClick={() => { setScanner(true); setReceipt(null); writeStored(`${key}.scanner`, true); }}><FiRadio aria-hidden="true" />{translate('Use scanner')}</button></div>
+    {!scanner && carts[mode].length > 0 && <p className="shop-note">{translate('Save or clear these packets before using the scanner.')}</p>}
+    {scanner ? <ScanStation key={mode} shop initialMode={mode === 'sale' ? 'stock_out' : 'stock_in'} onPendingChange={setScanPending} /> : <>
     {receipt && <div className="shop-receipt" role="status"><FiCheckCircle aria-hidden="true" /><div><strong>{translate(receipt.count)} {translate('packets')}</strong><span>{translate(receipt.mode === 'sale' ? 'Sale saved — cash and stock updated' : 'Received — stock and supplier bill saved')}</span></div><b>{translate(formatMoney(receipt.total, currencySymbol))}</b></div>}
     {submission.pending && !submission.saving && <p role="status" className="shop-message">{translate('The previous save may already be recorded. Confirm it before making another entry. Stock and money will not be recorded twice.')}</p>}
     {mode === 'receive' && <div className="shop-quantities" role="group" aria-label={translate('Packets received')}>{[1,5,10,25,50].map((count) => <button type="button" key={count} aria-pressed={receiveCount === count} disabled={locked} onClick={() => preset(count)}><FiPackage aria-hidden="true" />{count}</button>)}<button type="button" disabled={locked} aria-label={translate('Other packet count')} onClick={() => setKeypad('receive')}><FiGrid aria-hidden="true" /></button></div>}
@@ -127,6 +135,7 @@ export default function ShopFloor() {
         {submission.saving ? <FiRefreshCw className="animate-spin" aria-hidden="true" /> : <FiCheck aria-hidden="true" />}<span>{translate(submission.pending && !submission.saving ? 'Confirm previous save' : mode === 'sale' ? 'Record cash sale' : 'Receive packets')}</span>
       </button>
     </div>
+    </>}
     {setup && can('products.manage') && <ShopSetup products={products} onClose={() => setSetup(false)} onSaved={() => catalogue.refetch({ keepPreviousData: true })} />}
     {keypad && <PacketKeypad count={keypad === 'receive' ? receiveCount : lines.find((p) => p.id === keypad)?.count || 1} onClose={() => setKeypad(null)} onSave={(count) => { if (keypad === 'receive' || mode === 'receive') preset(count); else setCount(keypad, count); setKeypad(null); }} />}
   </section>;

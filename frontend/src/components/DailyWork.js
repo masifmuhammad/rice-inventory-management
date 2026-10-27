@@ -29,7 +29,8 @@ export default function DailyWork({ customers, suppliers }) {
   const products = useApi((signal) => api.get('/products', { signal, params: { sort: 'name' } }).then((r) => r.data), [], { immediate: Boolean(INITIAL[task]) });
   const cashMeta = useApi((signal) => api.get('/cash-book/meta', { signal }).then((r) => r.data), [], { immediate: task === 'in' || task === 'out' });
   const start = (next) => { setAccountId(''); setNewAccount(null); setError(''); setNotice(''); setTask(next); };
-  const close = () => setTask(null);
+  // A departing dialog can finish its close event after the next form opens.
+  const close = () => setTask((current) => current === task ? null : current);
   const saved = (message) => { setTask(null); setNotice(message); window.dispatchEvent(new Event('rim:refresh')); };
   const isCustomer = task === 'collect';
   const accounts = isCustomer ? customers : suppliers;
@@ -54,8 +55,8 @@ export default function DailyWork({ customers, suppliers }) {
     } catch (err) { setError(getErrorMessage(err)); throw err; }
   };
   return <section className="inventory-actions" aria-label={translate('Daily work')}>
-    <div className="inventory-actions-heading"><h2>{translate('What do you want to record?')}</h2><Link to="/products" className="inventory-action-stock"><FiPackage aria-hidden="true" />{translate('View stock')}</Link></div>
-    <p className="text-sm text-content-muted mb-4">{translate('Start here. Save once; the connected records update together. No scanner needed.')}</p>
+    <div className="inventory-actions-heading"><h2><span className="sm:hidden">{translate('Daily work')}</span><span className="hidden sm:inline">{translate('What do you want to record?')}</span></h2><Link to="/products" className="inventory-action-stock"><FiPackage aria-hidden="true" />{translate('View stock')}</Link></div>
+    <p className="daily-work-intro text-sm text-content-muted mb-4">{translate('Start here. Save once; the connected records update together. No scanner needed.')}</p>
     {notice && <p role="status" className="rounded-xl border border-primary-500/25 bg-surface-sunken p-4 mb-4 text-sm">{translate(notice)}</p>}
     {!task && (pending('transaction') || pending('cash')) && <div role="status" className="rounded-xl border border-hairline/15 p-3 mb-4 text-sm"><p>{translate('A previous save needs confirmation. Confirm it before entering the same work again.')}</p><Button variant="secondary" className="mt-2" onClick={() => start(pending('transaction') ? 'sale' : 'out')}>{translate('Confirm previous save')}</Button></div>}
     <div className="daily-action-grid">{actions.map(({ id, title, description, tone, icon: Icon }) => <button key={id} type="button" aria-label={translate(title)} aria-describedby={`daily-${id}-help`} className={`inventory-action inventory-action-${tone}`} onClick={() => start(id)}><Icon className="inventory-action-icon mb-3" aria-hidden="true" /><strong>{translate(title)}</strong><p id={`daily-${id}-help`}>{translate(description)}</p></button>)}</div>

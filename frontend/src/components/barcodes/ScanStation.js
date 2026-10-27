@@ -21,7 +21,7 @@ const MODES = [
   { id: 'lookup', title: 'Read label', icon: FiSearch, description: 'Check a bag, its stock status and movement history. Reading a label does not change stock.' },
 ];
 
-export default function ScanStation({ initialMode = 'stock_out', size }) {
+export default function ScanStation({ initialMode = 'stock_out', size, shop = false, onPendingChange }) {
   useAppLanguage();
   const { user, businessId, can } = useAuth();
   const { businessName, currencySymbol } = useSettings();
@@ -34,7 +34,7 @@ export default function ScanStation({ initialMode = 'stock_out', size }) {
   const input = useRef(null);
   const imageInput = useRef(null);
   const [mode, setMode] = useState(MODES.some((m) => m.id === initialMode) ? initialMode : 'stock_out');
-  const [armed, setArmed] = useState(false);
+  const [armed, setArmed] = useState(shop);
   const [code, setCode] = useState('');
   const [focused, setFocused] = useState(false);
   const [station, setStation] = useState(() => readStored(`${key}.station`, ''));
@@ -42,7 +42,7 @@ export default function ScanStation({ initialMode = 'stock_out', size }) {
   const [paymentType,setPaymentType] = useState('cash');
   const [customerId,setCustomerId] = useState('');
   const [dueDate,setDueDate] = useState('');
-  const customers = useApi((signal)=>api.get('/credit',{signal}).then(r=>r.data.customers),[],{immediate:can('credit.view')});
+  const customers = useApi((signal)=>api.get('/credit',{signal}).then(r=>r.data.customers),[],{immediate:!shop && can('credit.view')});
   const [pending, setPending] = useState(queue.current.length);
   const [blocked, setBlocked] = useState(paused.current);
   const [entries, setEntries] = useState([]);
@@ -57,6 +57,25 @@ export default function ScanStation({ initialMode = 'stock_out', size }) {
     ? 'Scan a bag to sell it on credit. Stock reduces and the balance is added to the selected customer.' : selected.description;
   const SelectedIcon = selected.icon;
   const ready = (armed || mode === 'lookup') && !blocked && online;
+  const scanHandler = useRef(null);
+
+  useEffect(() => { onPendingChange?.(pending > 0); }, [pending, onPendingChange]);
+  // Keyboard scanners end each label with Enter/Tab. Keep them working after
+  // tapping a non-input control, without intercepting typing in other forms.
+  useEffect(() => {
+    if (!shop) return undefined;
+    let buffer = '', last = 0;
+    const scan = (event) => {
+      if (document.hidden || document.querySelector('[role="dialog"]') || event.target.closest?.('input,textarea,select,[contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey || event.repeat) { buffer = ''; return; }
+      if (Date.now() - last > 1000) buffer = '';
+      last = Date.now();
+      if (/^\d$/.test(event.key)) { buffer = (buffer + event.key).slice(-18); return; }
+      if ((event.key === 'Enter' || event.key === 'Tab') && buffer.length >= 6) { event.preventDefault(); event.stopPropagation(); scanHandler.current?.(buffer); }
+      buffer = '';
+    };
+    document.addEventListener('keydown', scan, true);
+    return () => document.removeEventListener('keydown', scan, true);
+  }, [shop]);
 
   useEffect(() => {
     alive.current = true;
@@ -108,13 +127,14 @@ export default function ScanStation({ initialMode = 'stock_out', size }) {
     queue.current.push({ requestId: requestId(), code: clean, mode, station, customer: mode === 'stock_out' ? customer : '',
       ...(mode==='stock_out' && paymentType==='credit' ? {paymentType,customerId,dueDate} : {}),
     });
-    writeStored(key, queue.current); setPending(queue.current.length); setCode(''); setError(''); setResult(null);
+    writeStored(key, queue.current); setPending(queue.current.length); setCode(''); setError(''); if (!shop) setResult(null);
     pump();
   };
   const start = () => {
     if (mode==='stock_out' && paymentType==='credit' && (!customerId || !dueDate)) {setError('Choose a credit customer and a payment due date before scanning.');return;}
     setArmed(true); setError(''); requestAnimationFrame(() => input.current?.focus());
   };
+  scanHandler.current = enqueue;
   const retry = () => { paused.current = false; setBlocked(false); setArmed(true); setError(''); pump(); };
   const undo = async (entry) => {
     if (!entry?.transaction?.id || pending || undoBusy) return;
@@ -143,6 +163,18 @@ export default function ScanStation({ initialMode = 'stock_out', size }) {
     try { printLabels([result.label], { size, businessName }); } catch (err) { setError(err.message); }
   };
   const latest = entries.find((entry) => entry.ok && !entry.reversed && entry.transaction);
+
+  if (shop) return <section className="shop-scanner" aria-label={translate('Scan station')}>
+    <div className="shop-scanner-heading"><FiZap aria-hidden="true" /><div><h2>{translate(mode === 'stock_out' ? 'Scan to sell' : 'Scan to receive')}</h2><p>{translate(mode === 'stock_out' ? 'Each scan records a cash sale. No save button needed.' : 'Each scan adds one prepared bag to stock. No supplier bill or payment is recorded.')}</p></div></div>
+    {result && <div className="shop-receipt" role="status"><FiCheckCircle aria-hidden="true" /><div><strong>{result.label.productName}</strong><span>{translate(result.replayed ? 'Previous scan confirmed' : result.mode === 'stock_out' ? 'Sale saved — cash and stock updated' : 'Bag added to stock')} · {translate(formatQuantity(result.label.quantity, result.label.unit))}</span></div>{result.mode === 'stock_out' && <b>{translate(formatMoney(result.transaction.totalValue, currencySymbol))}</b>}</div>}
+    {blocked && <div className="shop-message" role="alert"><p>{translate('Scans need checking')}</p><Button variant="secondary" onClick={retry} disabled={!online}>{translate('Recover pending scans')}</Button></div>}
+    {error && <p className="shop-message" role="alert">{translate(error)}</p>}
+    <label htmlFor="shop-pack-code">{translate('Scan a bag or enter its barcode')}</label>
+    <div className="shop-scanner-input"><input ref={input} id="shop-pack-code" value={code} onChange={(event) => setCode(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' || (event.key === 'Tab' && !event.shiftKey && code)) { event.preventDefault(); enqueue(code); } }} disabled={!ready} inputMode="none" autoComplete="off" autoCorrect="off" spellCheck={false} maxLength={64} placeholder="99…" aria-describedby="shop-scanner-help" /><Button size="icon" icon={FiCheck} aria-label={translate('Submit barcode')} disabled={!ready || !code.trim()} onClick={() => { enqueue(code); input.current?.focus(); }} /></div>
+    <details className="shop-scanner-help"><summary>{translate('Scanner setup')}</summary><p id="shop-scanner-help" className="shop-note">{translate('Use this app’s packet labels. Connect a USB or Bluetooth scanner in keyboard mode, with Enter or Tab after each scan.')}</p></details>
+    <div className={`shop-scanner-state ${ready ? 'is-ready' : ''}`} role="status"><FiCircle aria-hidden="true" /><span>{translate(!online ? 'Offline — scanning paused' : blocked ? 'Waiting for recovery' : !armed ? 'Paused' : pending ? 'Saving scanned bags…' : 'Ready for the next bag')}</span><Button variant="ghost" disabled={pending > 0 || !online} onClick={() => armed ? setArmed(false) : start()}>{translate(armed ? 'Pause' : 'Resume scanning')}</Button></div>
+    {entries.length > 0 && <p className="shop-note">{translate('{0} bags recorded this session', [entries.filter((entry) => entry.ok).length])}</p>}
+  </section>;
 
   return <div className="barcode-scan-layout">
     <section className={`barcode-station ${armed || mode === 'lookup' ? 'is-armed' : ''}`} aria-label={translate("Scan station")}>
