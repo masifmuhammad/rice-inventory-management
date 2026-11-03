@@ -17,7 +17,7 @@ services:
       timeout: 5s
       retries: 10
 
-  app:
+  backend:
     image: ${APP_IMAGE:?Set APP_IMAGE to the tested release image}
     restart: unless-stopped
     ports:

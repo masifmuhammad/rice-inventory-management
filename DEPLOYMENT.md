@@ -39,7 +39,7 @@ The backend does **not** update just because Vercel redeploys. For a release,
 build the repository's Dockerfile, label the image with
 `org.opencontainers.image.revision=<commit>`, transfer/load it on Oracle, update
 `APP_IMAGE` and `APP_REVISION` in the private production `.env`, and run
-`docker compose --env-file .env -f compose.yml up -d app`. Take a backup first;
+`docker compose --env-file .env -f compose.yml up -d backend`. Take a backup first;
 check the health revision, sign-in, and stock/cash reads afterward. Never rebuild
 the frontend on the 1 GB Oracle instance; build it locally or in CI.
 
