@@ -61,7 +61,7 @@ export function printLabels(labels, { size = DEFAULT_LABEL_SIZE, businessName, t
     svg{display:block;width:100%;height:${small ? 6 : compact ? 10 : height === 50 ? 21 : 15}mm;flex-shrink:0}
     .code{font-size:${small ? 6 : compact ? 7 : 9}pt;letter-spacing:${small ? '.4px' : '.7px'};text-align:center}
     footer{font-size:${small ? 4.5 : compact ? 5 : 6.5}pt;margin-top:${small ? '.2mm' : '1mm'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .label.simple{padding:1.5mm;align-items:center;gap:1mm}
+    .label.simple{padding:1.5mm 3.5mm;align-items:center;gap:1mm}
     .simple svg{max-width:100%;flex:none}
     .simple-details{display:flex;align-items:baseline;gap:1mm;width:100%;font-size:6.5pt;line-height:1.2;white-space:nowrap}
     .simple-details .product{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
