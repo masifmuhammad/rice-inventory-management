@@ -9,14 +9,14 @@ export const requestId = () => {
   const hex = Array.from(bytes, (v) => v.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
-export const makeBarcode = (element, code) => JsBarcode(element, code, {
+export const makeBarcode = (element, code, options = {}) => JsBarcode(element, code, {
   format: 'CODE128C', width: 2, height: 62, margin: 20, marginTop: 4, marginBottom: 3,
-  displayValue: false, background: '#ffffff', lineColor: '#000000',
+  displayValue: false, background: '#ffffff', lineColor: '#000000', ...options,
 });
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export const DEFAULT_LABEL_SIZE = '40x20';
-export const LABEL_SIZES = { '40x20': [40, 20], '50x30': [50, 30], '70x40': [70, 40], '100x50': [100, 50], a4: [70, 40] };
+export const DEFAULT_LABEL_SIZE = '50x25';
+export const LABEL_SIZES = { '50x25': [50, 25], '40x20': [40, 20], '50x30': [50, 30], '70x40': [70, 40], '100x50': [100, 50], a4: [70, 40] };
 
 // Isolated document: app navigation, dark mode, and mobile chrome never print.
 export function printLabels(labels, { size = DEFAULT_LABEL_SIZE, businessName, test = false }) {
@@ -26,11 +26,18 @@ export function printLabels(labels, { size = DEFAULT_LABEL_SIZE, businessName, t
   const language = getLanguage();
   const text = (value, values) => escapeHtml(translate(value, values));
   const [width, height] = LABEL_SIZES[size] || LABEL_SIZES[DEFAULT_LABEL_SIZE];
+  const simple = width === 50 && height === 25;
   const small = height === 20;
   const compact = width <= 50;
   const content = labels.map((label) => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    makeBarcode(svg, label.code);
+    makeBarcode(svg, label.code, simple ? { height: 102, margin: 0, marginLeft: 20, marginRight: 20, marginTop: 0, marginBottom: 0 } : {});
+    if (simple) {
+      // At 8 dots/mm (203 dpi), two-dot modules keep an 18-digit code at 38.5 mm.
+      svg.style.width = `${parseFloat(svg.getAttribute('width')) / 8}mm`;
+      svg.style.height = '12.75mm';
+      return `<article class="label simple">${svg.outerHTML}<div class="simple-details">${test ? '<strong class="test-marker">TEST</strong>' : ''}<span class="product">${escapeHtml(label.productName)}</span><span class="pack-size">${escapeHtml(label.quantity)} ${escapeHtml(label.unit)}</span><span class="code">${escapeHtml(label.code)}</span></div></article>`;
+    }
     // Shorten the bars without narrowing them or their quiet zones.
     if (small) svg.setAttribute('preserveAspectRatio', 'none');
     return `<article class="label"><header>${escapeHtml(businessName)}${test ? ' · TEST ONLY' : ''}</header>
@@ -51,9 +58,16 @@ export function printLabels(labels, { size = DEFAULT_LABEL_SIZE, businessName, t
     svg{display:block;width:100%;height:${small ? 6 : compact ? 10 : height === 50 ? 21 : 15}mm;flex-shrink:0}
     .code{font-size:${small ? 6 : compact ? 7 : 9}pt;letter-spacing:${small ? '.4px' : '.7px'};text-align:center}
     footer{font-size:${small ? 4.5 : compact ? 5 : 6.5}pt;margin-top:${small ? '.2mm' : '1mm'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .label.simple{padding:1.5mm;align-items:center;gap:1mm}
+    .simple svg{max-width:100%;flex:none}
+    .simple-details{display:flex;align-items:baseline;gap:1mm;width:100%;font-size:6.5pt;line-height:1.2;white-space:nowrap}
+    .simple-details .product{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+    .simple-details .pack-size,.simple-details .test-marker,.simple-details .code{flex:none}
+    .simple-details .code{font-size:inherit;letter-spacing:0}
     @media print{body{background:#fff}.tools{display:none}main{margin:0}.label:last-child{break-after:auto;page-break-after:auto}}
     </style></head><body><div class="tools"><button id="print">${text(labels.length === 1 ? 'Print 1 label' : 'Print {0} labels', [labels.length])}</button>
     <p>${text('Paper')}: <bdi>${size === 'a4' ? text('A4 cut-out labels') : `${width} × ${height} mm`}</bdi>. ${text('Choose the same paper size in the printer settings.')} ${text('Set scale to 100%, margins to None, and turn headers and footers off. Print one test label and scan it before printing a full batch.')}</p>
+    ${simple ? `<p>${text('Zebra TLP 2844: use custom paper 50 × 25 mm (1.969 × 0.984 inches), Portrait (no rotation), and labels with gaps in Windows Printing Preferences.')}</p>` : ''}
     <p>${text(test ? 'Test only. This barcode is not an inventory record.' : 'Reprints use the same codes. Attach only one unique label to each physical pack.')}</p></div><main>${content}</main></body></html>`);
   target.document.close();
   target.document.getElementById('print').onclick = () => target.print();

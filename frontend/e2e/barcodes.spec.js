@@ -48,6 +48,8 @@ test('home actions lead to stock and a complete label → receive → sell workf
   await page.getByRole('radio', { name: /Print first, receive later/ }).check();
   await page.getByRole('button', { name: 'Generate labels', exact: true }).click();
   await expect(page.getByRole('heading', { name: '2 unique labels ready' })).toBeVisible();
+  await expect(page.locator('.barcode-paper-select')).toContainText('50 × 25 mm');
+  await expect(page.locator('.pack-label')).toHaveClass(/pack-label-simple/);
   const first = await page.locator('.barcode-label-list button').first().getAttribute('aria-label');
   const code = first.match(/99\d{16}/)[0];
   const barcodeImage = await page.locator('.pack-label svg').screenshot();
@@ -58,11 +60,24 @@ test('home actions lead to stock and a complete label → receive → sell workf
   const popup = await popupPromise;
   await expect(popup.getByRole('button', { name: 'Print 1 label' })).toBeVisible();
   await expect(popup.locator('.code')).toHaveText(code);
+  await expect(popup.locator('.label > svg')).toHaveCount(1);
+  await expect(popup.locator('.simple-details')).toHaveCount(1);
+  await expect(popup.locator('.label header,.label h2,.label footer')).toHaveCount(0);
   if (info.project.name === 'desktop') {
-    await popup.pdf({ path: 'test-results/barcode-label-40x20.pdf', preferCSSPageSize: true });
+    await popup.pdf({ path: 'test-results/barcode-label-50x25.pdf', preferCSSPageSize: true });
     await popup.screenshot({ path: 'test-results/barcode-print-desktop.png', fullPage: true });
   }
   await popup.close();
+  const batchPopupPromise = page.waitForEvent('popup');
+  await page.getByRole('button', { name: 'Print batch', exact: true }).click();
+  const batchPopup = await batchPopupPromise;
+  await expect(batchPopup.locator('.label')).toHaveCount(2);
+  expect(new Set(await batchPopup.locator('.code').allTextContents()).size).toBe(2);
+  if (info.project.name === 'desktop') {
+    const pdf = await batchPopup.pdf({ preferCSSPageSize: true });
+    expect((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length).toBe(2);
+  }
+  await batchPopup.close();
   await page.getByRole('button', { name: 'Go to scanner' }).click();
   await page.getByRole('button', { name: 'Start stock in', exact: true }).click();
   await scan(page, code);

@@ -42,6 +42,11 @@ colors:
   dark-inventory-out-fill: "#302b43"
   dark-inventory-out-ink: "#d8cff5"
 typography:
+  label:
+    fontFamily: "Arial, sans-serif"
+    fontSize: "6.5pt"
+    fontWeight: 400
+    lineHeight: 1.2
   figure:
     fontFamily: "Manrope, system-ui, -apple-system, sans-serif"
     fontSize: "clamp(1.25rem, 5.4vw, 2.5rem)"
@@ -300,9 +305,9 @@ Large, single-language action cards use the inventory operation pairs, a directi
 
 Scanner modes pair the same operation colours with readable names, icons and an inset selected outline (2px). Stock-changing modes require an explicit start; label lookup does not change stock. Distinguish ready, pending, blocked and server-confirmed states with text. A scanner beep is not a stock confirmation. Confirmed results reveal once over (240ms); reduced motion shows the result immediately. Keep optional counter/customer details secondary to the scan controls.
 
-Printable labels remain white with dark ink in both themes. Their barcode is the actual Code 128 SVG for the pack code; preserve the human-readable number, quantity/unit and active business identity. Preview/test labels are explicitly distinguished from recorded stock labels.
+Printable labels remain white with dark ink in both themes. Their barcode is the actual Code 128 SVG for the pack code; preserve the human-readable number and quantity/unit. Detailed paper formats also include the active business identity. Preview/test labels are explicitly distinguished from recorded stock labels.
 
-The default thermal label is (40 × 20 mm), with compact type, a single-line product name and shorter bars that retain the barcode's full width and quiet zones. Larger paper options remain available. Match the printer's paper size, print at 100% with no margins, and disable browser headers and footers.
+The default thermal label is (50 × 25 mm), matching the owner's working BarTender setup of (1.969 × 0.984 inches), Portrait, on a Zebra TLP 2844 EPL printer. This format prints only a horizontal barcode and one line containing the product, quantity/unit and human-readable code. Long product names truncate within that line while the quantity and code stay intact. Two-dot modules at 8 dots/mm keep the 18-digit Code 128 C symbol, including quiet zones, at (38.5 mm) wide, with (12.75 mm) bars. Each pack occupies one fixed-size page. Other paper formats retain their detailed labels. Match the printer's paper size and gap media, print at 100% with no margins, and disable browser headers and footers.
 
 ## Customer credit
 

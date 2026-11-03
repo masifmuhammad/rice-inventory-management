@@ -4,11 +4,16 @@ import { formatQuantity } from '../../utils/currency';
 import { translate, useAppLanguage } from '../../context/LanguageContext';
 
 export const LABEL_STATUS = { prepared: 'Awaiting stock in', in_stock: 'In stock', stock_out: 'Stocked out', cancelled: 'Released for manual use' };
-export default function BarcodeLabel({ label, businessName }) {
+export default function BarcodeLabel({ label, businessName, size }) {
   useAppLanguage();
   const svg = useRef(null);
-  useEffect(() => { if (svg.current && label?.code) makeBarcode(svg.current, label.code); }, [label?.code]);
+  const simple = size === '50x25';
+  useEffect(() => { if (svg.current && label?.code) makeBarcode(svg.current, label.code, simple ? { height: 102, margin: 0, marginLeft: 20, marginRight: 20, marginTop: 0, marginBottom: 0 } : {}); }, [label?.code, simple]);
   if (!label) return null;
+  if (simple) return <div className="pack-label pack-label-simple" aria-label={translate("Label for {0}", [label.productName])}>
+    <svg ref={svg} role="img" aria-label={translate("Code 128 barcode {0}", [label.code])} />
+    <div className="pack-label-simple-details"><span className="pack-label-product">{label.productName}</span><span>{translate(formatQuantity(label.quantity))} {translate(label.unit)}</span><span className="pack-label-code">{label.code}</span></div>
+  </div>;
   return <div className="pack-label" aria-label={translate("Label for {0}", [label.productName])}>
     <p className="pack-label-business">{businessName}</p>
     <h3>{label.productName}</h3>
