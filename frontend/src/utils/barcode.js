@@ -15,19 +15,24 @@ export const makeBarcode = (element, code) => JsBarcode(element, code, {
 });
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export const LABEL_SIZES = { '50x30': [50, 30], '70x40': [70, 40], '100x50': [100, 50], a4: [70, 40] };
+export const DEFAULT_LABEL_SIZE = '40x20';
+export const LABEL_SIZES = { '40x20': [40, 20], '50x30': [50, 30], '70x40': [70, 40], '100x50': [100, 50], a4: [70, 40] };
 
 // Isolated document: app navigation, dark mode, and mobile chrome never print.
-export function printLabels(labels, { size = '70x40', businessName, test = false }) {
+export function printLabels(labels, { size = DEFAULT_LABEL_SIZE, businessName, test = false }) {
   const target = window.open('', '_blank', 'width=850,height=700');
   if (!target) throw new Error('Allow pop-ups for this site, then choose Print again.');
   target.opener = null;
   const language = getLanguage();
   const text = (value, values) => escapeHtml(translate(value, values));
-  const [width, height] = LABEL_SIZES[size] || LABEL_SIZES['70x40'];
+  const [width, height] = LABEL_SIZES[size] || LABEL_SIZES[DEFAULT_LABEL_SIZE];
+  const small = height === 20;
+  const compact = width <= 50;
   const content = labels.map((label) => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     makeBarcode(svg, label.code);
+    // Shorten the bars without narrowing them or their quiet zones.
+    if (small) svg.setAttribute('preserveAspectRatio', 'none');
     return `<article class="label"><header>${escapeHtml(businessName)}${test ? ' · TEST ONLY' : ''}</header>
       <h2>${escapeHtml(label.productName)}</h2><div class="details"><strong>${escapeHtml(label.quantity)} ${escapeHtml(label.unit)}</strong><span>${escapeHtml(label.sku)}</span></div>
       ${svg.outerHTML}<div class="code">${escapeHtml(label.code)}</div>
@@ -39,16 +44,16 @@ export function printLabels(labels, { size = '70x40', businessName, test = false
     .tools{max-width:780px;margin:20px auto;padding:16px;background:#fff;font-size:16px;line-height:1.6;direction:${language === 'ur' ? 'rtl' : 'ltr'}}
     button{padding:10px 20px;border:0;border-radius:8px;background:#111;color:#fff;cursor:pointer;font-size:14px}
     main{display:${size === 'a4' ? 'grid' : 'block'};${size === 'a4' ? 'grid-template-columns:repeat(3,70mm);width:210mm;' : `width:${width}mm;`}margin:0 auto}
-    .label{background:#fff;width:${width}mm;height:${height}mm;padding:${width === 50 ? '1.5mm' : '2.5mm'};display:flex;flex-direction:column;justify-content:center;break-inside:avoid;${size !== 'a4' ? 'break-after:page;' : ''}overflow:hidden}
-    header{font-size:${width === 50 ? 6 : 8}pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    h2{font-size:${width === 50 ? 8 : 11}pt;margin:1mm 0;line-height:1.15;max-height:2.3em;overflow:hidden;overflow-wrap:anywhere}
-    .details{display:flex;justify-content:space-between;gap:1mm;font-size:${width === 50 ? 6 : 8}pt;white-space:nowrap}.details span{overflow:hidden;text-overflow:ellipsis}
-    svg{display:block;width:100%;height:${width === 50 ? 10 : height === 50 ? 21 : 15}mm;flex-shrink:0}
-    .code{font-size:${width === 50 ? 7 : 9}pt;letter-spacing:.7px;text-align:center}
-    footer{font-size:${width === 50 ? 5 : 6.5}pt;margin-top:1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    @media print{body{background:#fff}.tools{display:none}main{margin:0}.label:last-child{break-after:auto}}
+    .label{background:#fff;width:${width}mm;height:${height}mm;padding:${small ? 1 : compact ? 1.5 : 2.5}mm;display:flex;flex-direction:column;justify-content:center;${small ? 'line-height:1.1;' : ''}break-inside:avoid;page-break-inside:avoid;${size !== 'a4' ? 'break-after:page;page-break-after:always;' : ''}overflow:hidden}
+    header{font-size:${small ? 5 : compact ? 6 : 8}pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    h2{font-size:${small ? 7 : compact ? 8 : 11}pt;margin:${small ? '.3mm' : '1mm'} 0;line-height:${small ? 1.1 : 1.15};max-height:${small ? '1.1em' : '2.3em'};overflow:hidden;${small ? 'white-space:nowrap;text-overflow:ellipsis;' : 'overflow-wrap:anywhere;'}}
+    .details{display:flex;justify-content:space-between;gap:1mm;font-size:${small ? 5 : compact ? 6 : 8}pt;white-space:nowrap}.details span{overflow:hidden;text-overflow:ellipsis}
+    svg{display:block;width:100%;height:${small ? 6 : compact ? 10 : height === 50 ? 21 : 15}mm;flex-shrink:0}
+    .code{font-size:${small ? 6 : compact ? 7 : 9}pt;letter-spacing:${small ? '.4px' : '.7px'};text-align:center}
+    footer{font-size:${small ? 4.5 : compact ? 5 : 6.5}pt;margin-top:${small ? '.2mm' : '1mm'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    @media print{body{background:#fff}.tools{display:none}main{margin:0}.label:last-child{break-after:auto;page-break-after:auto}}
     </style></head><body><div class="tools"><button id="print">${text(labels.length === 1 ? 'Print 1 label' : 'Print {0} labels', [labels.length])}</button>
-    <p>${text('Paper')}: <bdi>${size === 'a4' ? text('A4 cut-out labels') : `${width} × ${height} mm`}</bdi>. ${text('Set scale to 100%, margins to None, and turn headers and footers off. Print one test label and scan it before printing a full batch.')}</p>
+    <p>${text('Paper')}: <bdi>${size === 'a4' ? text('A4 cut-out labels') : `${width} × ${height} mm`}</bdi>. ${text('Choose the same paper size in the printer settings.')} ${text('Set scale to 100%, margins to None, and turn headers and footers off. Print one test label and scan it before printing a full batch.')}</p>
     <p>${text(test ? 'Test only. This barcode is not an inventory record.' : 'Reprints use the same codes. Attach only one unique label to each physical pack.')}</p></div><main>${content}</main></body></html>`);
   target.document.close();
   target.document.getElementById('print').onclick = () => target.print();

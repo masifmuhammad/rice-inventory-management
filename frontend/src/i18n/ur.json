@@ -844,6 +844,7 @@
   "Print 1 label": "ایک لیبل چھاپیں",
   "Print {0} labels": "{0} لیبل چھاپیں",
   "Paper": "کاغذ",
+  "Choose the same paper size in the printer settings.": "پرنٹر کی ترتیبات میں بھی کاغذ کا یہی سائز منتخب کریں۔",
   "Set scale to 100%, margins to None, and turn headers and footers off. Print one test label and scan it before printing a full batch.": "پیمانہ 100%، حاشیے None رکھیں اور اوپر نیچے کی عبارت بند کریں۔ پورا بیچ چھاپنے سے پہلے ایک آزمائشی لیبل چھاپ کر اسکین کریں۔",
   "Test only. This barcode is not an inventory record.": "صرف آزمائش کے لیے۔ یہ بارکوڈ مال کے حساب میں شامل نہیں۔",
   "Reprints use the same codes. Attach only one unique label to each physical pack.": "دوبارہ چھاپنے پر کوڈ وہی رہتا ہے۔ ہر بوری پر صرف ایک منفرد لیبل لگائیں۔",

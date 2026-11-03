@@ -59,7 +59,7 @@ test('home actions lead to stock and a complete label → receive → sell workf
   await expect(popup.getByRole('button', { name: 'Print 1 label' })).toBeVisible();
   await expect(popup.locator('.code')).toHaveText(code);
   if (info.project.name === 'desktop') {
-    await popup.pdf({ path: 'test-results/barcode-label-70x40.pdf', preferCSSPageSize: true });
+    await popup.pdf({ path: 'test-results/barcode-label-40x20.pdf', preferCSSPageSize: true });
     await popup.screenshot({ path: 'test-results/barcode-print-desktop.png', fullPage: true });
   }
   await popup.close();

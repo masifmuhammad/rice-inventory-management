@@ -302,6 +302,8 @@ Scanner modes pair the same operation colours with readable names, icons and an 
 
 Printable labels remain white with dark ink in both themes. Their barcode is the actual Code 128 SVG for the pack code; preserve the human-readable number, quantity/unit and active business identity. Preview/test labels are explicitly distinguished from recorded stock labels.
 
+The default thermal label is (40 × 20 mm), with compact type, a single-line product name and shorter bars that retain the barcode's full width and quiet zones. Larger paper options remain available. Match the printer's paper size, print at 100% with no margins, and disable browser headers and footers.
+
 ## Customer credit
 
 This is an Operate surface: customer selection and collection actions carry the
