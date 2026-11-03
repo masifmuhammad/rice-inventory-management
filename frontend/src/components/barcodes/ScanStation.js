@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { FiArrowDownLeft, FiArrowUpRight, FiCamera, FiCheck, FiCheckCircle, FiCircle, FiImage, FiPause, FiPrinter, FiRotateCcw, FiSearch, FiZap } from 'react-icons/fi';
 import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -59,6 +59,9 @@ export default function ScanStation({ initialMode = 'stock_out', size, shop = fa
   const ready = (armed || mode === 'lookup') && !blocked && online;
   const scanHandler = useRef(null);
 
+  // Focus as the field becomes enabled, before a scanner can send its first
+  // digit. Deferring this to a frame can split one scan across two receivers.
+  useLayoutEffect(() => { if (ready) input.current?.focus(); }, [ready]);
   useEffect(() => { onPendingChange?.(pending > 0); }, [pending, onPendingChange]);
   // Keyboard scanners end each label with Enter/Tab. Keep them working after
   // tapping a non-input control, without intercepting typing in other forms.
@@ -132,7 +135,7 @@ export default function ScanStation({ initialMode = 'stock_out', size, shop = fa
   };
   const start = () => {
     if (mode==='stock_out' && paymentType==='credit' && (!customerId || !dueDate)) {setError('Choose a credit customer and a payment due date before scanning.');return;}
-    setArmed(true); setError(''); requestAnimationFrame(() => input.current?.focus());
+    setArmed(true); setError('');
   };
   scanHandler.current = enqueue;
   const retry = () => { paused.current = false; setBlocked(false); setArmed(true); setError(''); pump(); };
