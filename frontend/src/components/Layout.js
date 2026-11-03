@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Dialog, DialogBackdrop, DialogPanel } from '@headlessui/react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -32,14 +32,11 @@ import AppHeader from './AppHeader';
 import PageTransition from './PageTransition';
 import ProfileSheet from './ProfileSheet';
 import PullToRefresh from './PullToRefresh';
-import { lazyPage } from '../utils/lazyPage';
 import { usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import useDrawerEdgeSwipe from '../hooks/useDrawerEdgeSwipe';
 import useTabSwipe from '../hooks/useTabSwipe';
 import { iconSwap, springUI, withReducedMotion } from '../utils/motion';
 import { translate, useAppLanguage } from '../context/LanguageContext';
-
-const AssistantShell = lazyPage(() => import('./assistant/AssistantShell'), 'assistant');
 
 export const NAVIGATION = [
   { name: 'Dashboard', href: '/', icon: FiHome, end: true },
@@ -393,10 +390,6 @@ export default function Layout() {
 
         <main
           id="main-content"
-          /* The bottom padding reserves the tab bar *and* the assistant button
-             that floats above it — 5rem covers the button's 3.5rem plus its
-             1.5rem gap. Without it the button sits on top of the last row of a
-             short list, which is exactly where a delete control lives. */
           className={`px-4 sm:px-6 lg:px-7 py-5 sm:py-6 pb-[calc(var(--app-tabbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-[max(1.5rem,env(safe-area-inset-bottom))] transition-opacity duration-500 ease-[cubic-bezier(0.2,0,0,1)] ${
             contentPulse ? 'opacity-70' : 'opacity-100'
           }`}
@@ -409,9 +402,6 @@ export default function Layout() {
 
       <MobileTabBar />
       <BusinessSwitchOverlay />
-      <Suspense fallback={null}>
-        <AssistantShell />
-      </Suspense>
     </div>
   );
 }

@@ -43,6 +43,12 @@ build the repository's Dockerfile, label the image with
 check the health revision, sign-in, and stock/cash reads afterward. Never rebuild
 the frontend on the 1 GB Oracle instance; build it locally or in CI.
 
+`deploy/oracle/release.sh` automates the Oracle portion: upload the release archive
+and its `.sha256` file into `/home/ubuntu/rice-live/`, then run
+`bash release.sh <full-commit> <archive-path>` there. It checks the image revision,
+saves a verified Neon backup, restarts only the backend, and restores the previous
+application if health checks fail. It never restores or replaces the database.
+
 ## Backups and rollback
 
 Run `bash /home/ubuntu/rice-live/backup.sh` to save a complete PostgreSQL custom
@@ -97,10 +103,6 @@ Render's free plan has no Shell, so seed from your own machine against the Neon 
 Then run **npm run seed**. The first account is an active administrator and must change its password on first sign-in. New registrations require admin approval.
 
 Do not save SEED_ADMIN_PASSWORD anywhere after setup. Running the seed again leaves existing accounts untouched. SEED_RESET_EXISTING=true is an explicit recovery operation: it resets credentials, activates admin permissions, and requires another password change. Never run npm run reset in production.
-
-## Optional AI assistant
-
-Add OPENROUTER_API_KEY only if you want chat, voice and scanning. It stays on the server. Set OPENROUTER_SITE_URL to the public HTTPS app URL. Without a key, inventory and ledger features still work and the assistant stays hidden. Live AI calls require provider credentials and available models/credits; they are not part of offline tests.
 
 ## Production behavior
 

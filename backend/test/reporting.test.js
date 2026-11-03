@@ -15,7 +15,6 @@ test('sales register and daily closing reconcile complete business-scoped record
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
   process.env.NODE_ENV = 'test';
   process.env.JWT_SECRET = 'report-tests-secret-at-least-32-characters';
-  process.env.OPENROUTER_API_KEY = '';
   const { connectDB, closeDB, getPool } = require('../config/db');
   const { dayStart, localDay, shiftDay } = require('../db/dates');
   const Business = require('../models/Business'); const User = require('../models/User'); const Product = require('../models/Product');

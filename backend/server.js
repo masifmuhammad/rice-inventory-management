@@ -50,10 +50,9 @@ app.use(
   })
 );
 
-// Explicitly allow mic/camera for the AI assistant. Some mobile WebViews inherit
-// a restrictive default that blocks getUserMedia without this header.
+// Camera access is used by the local barcode scanner. No microphone is needed.
 app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'microphone=(self), camera=(self)');
+  res.setHeader('Permissions-Policy', 'microphone=(), camera=(self)');
   next();
 });
 
@@ -116,7 +115,6 @@ app.use('/api/suppliers', require('./routes/suppliers'));
 app.use('/api/cash-withdrawals', require('./routes/cashWithdrawals'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/admin', require('./routes/admin'));
-app.use('/api/ai', require('./routes/ai'));
 
 app.use('/api', notFound);
 

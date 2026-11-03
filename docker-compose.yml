@@ -42,7 +42,6 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/rice_inventory
       # Override this. The server refuses to start in production without it.
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in a .env file next to docker-compose.yml}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       # The day a "day" ends for daily report buckets. Timestamps are stored as
       # TIMESTAMPTZ and the container clock is UTC, so without this a sale at
       # 02:00 in Karachi is filed under the previous day.

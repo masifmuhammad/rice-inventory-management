@@ -70,23 +70,6 @@ export default function Transactions() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const scan = location.state?.aiScan;
-    if (scan?.proposedTransaction) {
-      const tx = scan.proposedTransaction;
-      setScanPrefill({
-        type: 'stock_in',
-        product: tx.product,
-        quantity: tx.quantity,
-        price: scan.product?.costPrice,
-        supplier: tx.supplier || '',
-        reference: tx.reference || '',
-        notes: tx.notes || 'From AI delivery note scan',
-      });
-      setModalOpen(true);
-      navigate(location.pathname, { replace: true, state: {} });
-      return;
-    }
-
     if (location.state?.openCreate) {
       setScanPrefill({ type: location.state.transactionType || 'stock_in' });
       setModalOpen(true);

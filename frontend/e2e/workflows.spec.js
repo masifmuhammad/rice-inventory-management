@@ -210,8 +210,9 @@ test('navigation preserves filters without reloading and long pages keep context
   expect(await page.evaluate(() => window.__navigationSentinel)).toBe('same-document');
 });
 
-test('responsive header summaries and optional assistant stay clear of content', async ({ page, isMobile }) => {
-  await page.route('**/api/ai/status', (route) => route.fulfill({ json: { enabled: true } }));
+test('responsive header summaries and settings work without AI', async ({ page, isMobile }) => {
+  const aiRequests = [];
+  page.on('request', (request) => { if (request.url().includes('/api/ai/')) aiRequests.push(request.url()); });
   if (!isMobile) await page.setViewportSize({ width: 768, height: 1024 });
   await signIn(page);
   await page.evaluate(() => scrollTo(0, 200));
@@ -227,12 +228,10 @@ test('responsive header summaries and optional assistant stay clear of content',
     });
   })).toBe(true);
   await page.goto('/settings');
-  const assistant = page.getByRole('button', { name: 'Open AI assistant', exact: true });
-  await expect(assistant).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save details', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open AI assistant', exact: true })).toHaveCount(0);
   if (!isMobile) {
     await expect(page.getByRole('searchbox', { name: 'Search products', exact: true })).toBeHidden();
-    const save = await page.getByRole('button', { name: 'Save details', exact: true }).boundingBox();
-    const trigger = await assistant.boundingBox();
-    expect(save.x + save.width).toBeLessThan(trigger.x);
   }
+  expect(aiRequests).toEqual([]);
 });

@@ -26,7 +26,7 @@ test('supplier aging respects due-date boundaries and settled bills',()=>{
 
 test('supplier credit reconciles receipts, deposits, partial payments, statements and reversals',{skip:!process.env.TEST_DATABASE_URL},async(t)=>{
   assert.match(new URL(process.env.TEST_DATABASE_URL).pathname,/test|readiness/i);
-  process.env.DATABASE_URL=process.env.TEST_DATABASE_URL;process.env.NODE_ENV='test';process.env.OPENROUTER_API_KEY='';
+  process.env.DATABASE_URL=process.env.TEST_DATABASE_URL;process.env.NODE_ENV='test';
   process.env.JWT_SECRET='supplier-tests-secret-at-least-32-characters';
   const {connectDB,closeDB,getPool}=require('../config/db');
   const Business=require('../models/Business');const User=require('../models/User');const Product=require('../models/Product');

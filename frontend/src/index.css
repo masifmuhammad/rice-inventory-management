@@ -727,8 +727,8 @@
   }
 
   /**
-   * A floating surface that must read above the page — the mobile tab bar and
-   * the assistant's popover. This is the one place a blur earns its cost: the
+   * A floating surface that must read above the page — the mobile tab bar.
+   * This is the one place a blur earns its cost: the
    * element is small and fixed, so the compositor blurs a ~360×64 region rather
    * than a full-width strip, and the page genuinely does slide under it.
    */
@@ -861,53 +861,6 @@
     letter-spacing: -0.028em;
   }
 
-  /**
-   * Bilingual assistant copy. English stays Inter; Urdu uses Nastaliq with
-   * taller leading so diacritics and joins stay clear (not muted to death).
-   */
-  .assistant-en {
-    font-family: theme('fontFamily.sans');
-    font-size: 0.9375rem;
-    line-height: 1.65;
-    letter-spacing: -0.011em;
-    text-wrap: pretty;
-  }
-
-  .assistant-en-sm {
-    font-family: theme('fontFamily.sans');
-    font-size: 0.8125rem;
-    line-height: 1.5;
-    letter-spacing: -0.01em;
-    text-wrap: pretty;
-  }
-
-  .assistant-ur {
-    font-family: theme('fontFamily.urdu');
-    font-size: 1.125rem;
-    line-height: 2.15;
-    letter-spacing: 0;
-    word-spacing: 0.04em;
-    text-wrap: pretty;
-    font-weight: 500;
-  }
-
-  .assistant-ur-sm {
-    font-family: theme('fontFamily.urdu');
-    font-size: 0.95rem;
-    line-height: 1.95;
-    letter-spacing: 0;
-    word-spacing: 0.03em;
-    font-weight: 500;
-  }
-
-  .assistant-lang-label {
-    font-family: theme('fontFamily.sans');
-    font-size: 0.625rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgb(var(--content-subtle));
-  }
 }
 
 /* Scrollbars: slim and quiet, but still grabbable. */
@@ -965,20 +918,17 @@
   .cash-overview .stat-grid > :nth-child(2) { border-right-width: 1px; }
   .cash-overview .stat-grid > :nth-child(3) { border-right-width: 0; border-bottom-width: 1px; }
   .cash-overview .stat-grid > :last-child { grid-column: 1 / -1; }
-  html[data-keyboard-open='true'] .mobile-tabbar,
-  html[data-keyboard-open='true'] .assistant-floating { visibility: hidden; pointer-events: none; }
+  html[data-keyboard-open='true'] .mobile-tabbar { visibility: hidden; pointer-events: none; }
   [role='listbox'][data-headlessui-state] { bottom: var(--app-visual-bottom-inset, 0px); max-height: min(70dvh, calc(var(--app-visual-height, 100dvh) - 20px)); }
 }
 @media (min-width: 640px) and (max-width: 1023px) {
-  html[data-keyboard-open='true'] .mobile-tabbar,
-  html[data-keyboard-open='true'] .assistant-floating { visibility: hidden; pointer-events: none; }
+  html[data-keyboard-open='true'] .mobile-tabbar { visibility: hidden; pointer-events: none; }
 }
 .shop-mode-toggle { display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px; min-width:44px; border-radius:999px; padding:8px 12px; border:1px solid rgb(var(--hairline)/.06); font-size:14px; font-weight:600; background:rgb(var(--surface-1)); color:rgb(var(--content-muted)); transition:background-color 150ms,color 150ms; }
 .shop-mode-toggle svg { width:21px; height:21px; }
 .shop-mode-toggle.is-active { background:rgb(var(--content)); color:rgb(var(--surface-1)); border-color:transparent; }
 .shop-mode-toggle:focus-visible { outline:2px solid rgb(var(--color-primary-600)); outline-offset:3px; }
 html[data-shop-mode='true'] { --app-tabbar-height:0px; }
-html[data-shop-mode='true'] .assistant-floating { display:none; }
 @media(max-width:1023px) {
   .app-header-row { gap:4px; padding-inline:8px; }
   .app-header-leading { flex:0 0 44px; }
@@ -1000,13 +950,4 @@ html[data-shop-mode='true'] .assistant-floating { display:none; }
 .font-money { font-variant-numeric: tabular-nums lining-nums; }
 @media (max-width: 639px) {
   .cash-overview .stat-grid > :first-child .stat-figure { font-size: clamp(2rem, 9vw, 2.75rem); }
-}
-
-@media (max-width: 1023px) {
-  body:has(.assistant-floating) #main-content { padding-bottom: calc(var(--app-tabbar-height) + env(safe-area-inset-bottom) + 5rem); }
-}
-
-/* Keep tablet and desktop form actions clear of the optional assistant. */
-@media (min-width: 640px) {
-  body:has(.assistant-floating) #main-content { padding-right: 6rem; }
 }

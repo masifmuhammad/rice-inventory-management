@@ -8,6 +8,8 @@ async function signIn(page) {
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await (await settingsReady).finished();
+  await expect(page.getByRole('button', { name: 'Record sale', exact: true })).toBeVisible();
+  await page.locator('[data-sonner-toast]').waitFor({ state: 'hidden' });
 }
 async function headers(page) {
   return { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('rim.token'))}` };

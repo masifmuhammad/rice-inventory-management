@@ -31,8 +31,6 @@ services:
       APP_REVISION: ${APP_REVISION:?Set APP_REVISION}
       TZ: Asia/Karachi
       REPORT_TIMEZONE: Asia/Karachi
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_SITE_URL: https://193.123.81.103.nip.io
       CORS_ORIGINS: https://rice-inventory-management-rh2d.vercel.app
     depends_on:
       db:

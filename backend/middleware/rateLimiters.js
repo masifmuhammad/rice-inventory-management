@@ -41,15 +41,6 @@ const registerLimiter = rateLimit({
   handler: message('Too many account requests from this network. Please try again later.'),
 });
 
-/** AI endpoints — generous enough for daily use, tight enough to protect credits. */
-const aiLimiter = rateLimit({
-  windowMs: 24 * 60 * 60 * 1000,
-  max: isTest ? 100000 : 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: message('Daily AI limit reached. Try again tomorrow or contact your admin.'),
-});
-
 // A busy scan station needs a separate budget from ordinary page requests.
 // Still bound unauthenticated attempts before the database-backed auth check.
 const barcodeLimiter = rateLimit({
@@ -57,4 +48,4 @@ const barcodeLimiter = rateLimit({
   standardHeaders: true, legacyHeaders: false,
   handler: message('Too many barcode requests. Pause scanning and try again shortly.'),
 });
-module.exports = { apiLimiter, authLimiter, registerLimiter, aiLimiter, barcodeLimiter };
+module.exports = { apiLimiter, authLimiter, registerLimiter, barcodeLimiter };

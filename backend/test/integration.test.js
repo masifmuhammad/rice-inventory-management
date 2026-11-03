@@ -7,7 +7,6 @@ test('production API workflows with PostgreSQL', { skip: !process.env.TEST_DATAB
   const testUrl = new URL(process.env.TEST_DATABASE_URL);
   assert.match(testUrl.pathname, /(?:test|readiness)/i, 'Use a dedicated test database');
   process.env.NODE_ENV = 'test';
-  process.env.OPENROUTER_API_KEY = '';
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
   process.env.JWT_SECRET = 'integration-test-secret-at-least-32-characters';
   const { connectDB, closeDB, getPool, isDbReady } = require('../config/db');
@@ -33,6 +32,15 @@ test('production API workflows with PostgreSQL', { skip: !process.env.TEST_DATAB
   const productBody = { name: 'Basmati 50% (premium)', category: 'Basmati', unit: 'kg', currentStock: 100, minStockLevel: 5, costPrice: 10, sellingPrice: 15 };
   let product;
   try {
+    await t.test('removed AI endpoints are unavailable and microphone access is disabled', async () => {
+      for (const path of ['status', 'chat', 'intent', 'voice', 'briefing', 'scan', 'scan-receipt', 'anomalies']) {
+        for (const method of ['GET', 'POST']) {
+          assert.equal((await request(`/api/ai/${path}`, { method, auth: null, ...(method === 'POST' ? { body: {} } : {}) })).status, 404);
+        }
+      }
+      const health = await request('/api/health', { auth: null });
+      assert.equal(health.headers.get('permissions-policy'), 'microphone=(), camera=(self)');
+    });
     await t.test('login tokens work immediately and after password changes', async () => {
       let login = await request('/api/auth/login', { method: 'POST', body: { email: admin.email, password: 'Test-password-42' } });
       assert.equal(login.status, 200, JSON.stringify(login.data));

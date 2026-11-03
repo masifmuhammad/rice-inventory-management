@@ -28,6 +28,3 @@ services:
         value: Asia/Karachi
       - key: REPORT_TIMEZONE
         value: Asia/Karachi
-      # Optional: leave blank to hide the AI assistant.
-      - key: OPENROUTER_API_KEY
-        sync: false

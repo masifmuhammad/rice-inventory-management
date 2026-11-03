@@ -5,7 +5,6 @@ assert.match(new URL(process.env.TEST_DATABASE_URL).pathname, /test|readiness/i)
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
 process.env.NODE_ENV = 'test';
 // A developer's local .env must never enable paid provider calls in fixtures.
-process.env.OPENROUTER_API_KEY = '';
 process.env.JWT_SECRET = 'browser-test-secret-at-least-32-characters';
 process.env.PORT = process.env.E2E_PORT || '5055';
 const { connectDB } = require('../config/db');

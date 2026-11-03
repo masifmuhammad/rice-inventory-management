@@ -61,13 +61,6 @@ const loadEnv = () => {
      * bucket to match it, so today's movement simply never appeared.
      */
     reportTimezone: process.env.REPORT_TIMEZONE || 'Asia/Karachi',
-    openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
-    openrouterModelFree: process.env.OPENROUTER_MODEL_FREE || 'openrouter/free',
-    openrouterModelPaid: process.env.OPENROUTER_MODEL_PAID || 'meta-llama/llama-3.1-8b-instruct',
-    openrouterStt: process.env.OPENROUTER_STT || 'openai/whisper-1',
-    openrouterSttFallback: process.env.OPENROUTER_STT_FALLBACK || 'openai/whisper-large-v3',
-    openrouterSiteUrl: process.env.OPENROUTER_SITE_URL || 'http://localhost:5000',
-    openrouterSiteName: process.env.OPENROUTER_SITE_NAME || 'Rice Inventory',
   };
 };
 
