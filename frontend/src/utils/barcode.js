@@ -45,8 +45,11 @@ export function printLabels(labels, { size = DEFAULT_LABEL_SIZE, businessName, t
       ${svg.outerHTML}<div class="code">${escapeHtml(label.code)}</div>
       <footer>${label.batchNumber ? `Batch ${escapeHtml(label.batchNumber)}` : 'Unique pack label'}${label.expiryDate ? ` · Exp ${escapeHtml(String(label.expiryDate).slice(0, 10))}` : ''}</footer></article>`;
   }).join('');
+  // Thermal labels use `size: auto` on purpose: a wide CSS page (50x25) makes Chrome
+  // force Landscape onto the Zebra/Seagull driver, which then rotates or shrinks the
+  // print. With auto, the driver's own stock (50x25 mm, Portrait, like BarTender) wins.
   target.document.write(`<!doctype html><html lang="${language}"><head><meta charset="utf-8"><title>${text(test ? 'Test label' : 'Pack labels')} — ${escapeHtml(businessName)}</title><style>
-    @page { size: ${size === 'a4' ? 'A4' : `${width}mm ${height}mm`}; margin: ${size === 'a4' ? '10mm 0' : '0'}; }
+    @page { size: ${size === 'a4' ? 'A4' : 'auto'}; margin: ${size === 'a4' ? '10mm 0' : '0'}; }
     *{box-sizing:border-box} body{margin:0;background:#ececec;color:#000;font-family:Arial,sans-serif}
     .tools{max-width:780px;margin:20px auto;padding:16px;background:#fff;font-size:16px;line-height:1.6;direction:${language === 'ur' ? 'rtl' : 'ltr'}}
     button{padding:10px 20px;border:0;border-radius:8px;background:#111;color:#fff;cursor:pointer;font-size:14px}
@@ -67,7 +70,7 @@ export function printLabels(labels, { size = DEFAULT_LABEL_SIZE, businessName, t
     @media print{body{background:#fff}.tools{display:none}main{margin:0}.label:last-child{break-after:auto;page-break-after:auto}}
     </style></head><body><div class="tools"><button id="print">${text(labels.length === 1 ? 'Print 1 label' : 'Print {0} labels', [labels.length])}</button>
     <p>${text('Paper')}: <bdi>${size === 'a4' ? text('A4 cut-out labels') : `${width} × ${height} mm`}</bdi>. ${text('Choose the same paper size in the printer settings.')} ${text('Set scale to 100%, margins to None, and turn headers and footers off. Print one test label and scan it before printing a full batch.')}</p>
-    ${simple ? `<p>${text('Zebra TLP 2844: use custom paper 50 × 25 mm (1.969 × 0.984 inches), Portrait (no rotation), and labels with gaps in Windows Printing Preferences.')}</p>` : ''}
+    ${simple ? `<p>${text('Zebra TLP 2844: in Windows Printing Preferences set Width 50 mm, Height 25 mm, Portrait, unprintable area 0. In the print window choose Layout Portrait, Margins None, Scale 100%.')}</p>` : ''}
     <p>${text(test ? 'Test only. This barcode is not an inventory record.' : 'Reprints use the same codes. Attach only one unique label to each physical pack.')}</p></div><main>${content}</main></body></html>`);
   target.document.close();
   target.document.getElementById('print').onclick = () => target.print();
