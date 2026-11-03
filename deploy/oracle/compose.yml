@@ -1,0 +1,54 @@
+name: rice-live
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: riceapp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: rice_inventory
+    volumes:
+      - primary-data:/var/lib/postgresql
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U riceapp -d rice_inventory']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ${APP_IMAGE:?Set APP_IMAGE to the tested release image}
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:5056:5000'
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: ${PRIMARY_DATABASE_URL:?Set PRIMARY_DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      JWT_EXPIRES_IN: 7d
+      APP_REVISION: ${APP_REVISION:?Set APP_REVISION}
+      TZ: Asia/Karachi
+      REPORT_TIMEZONE: Asia/Karachi
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_SITE_URL: https://193.123.81.103.nip.io
+      CORS_ORIGINS: https://rice-inventory-management-rh2d.vercel.app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      database:
+      edge:
+        aliases: [rice-live]
+
+volumes:
+  primary-data:
+    name: rice-live-postgres18
+
+networks:
+  database:
+    internal: true
+  edge:
+    external: true
+    name: rice-inventory-management_default

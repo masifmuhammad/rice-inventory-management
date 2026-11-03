@@ -1,14 +1,8 @@
-# Render's free web service sleeps after 15 minutes without traffic, and the
-# next visitor then waits about a minute. Hitting the health check keeps it
-# awake; one always-on service fits inside Render's 750 free hours a month.
-#
-# GitHub may start scheduled runs several minutes late, so this runs every
-# 5 minutes to stay well inside the 15-minute window.
-name: Keep Render awake
+# Manual backend check. Oracle is the primary host; Render is retained only
+# for recovery. Scheduled pings must not keep Render or Neon compute awake.
+name: Check backend health
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions: {}
@@ -18,4 +12,4 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - run: curl --fail --silent --show-error --max-time 90 --retry 2 https://rice-inventory.onrender.com/api/health
+      - run: curl --fail --silent --show-error --max-time 30 --retry 2 https://193.123.81.103.nip.io/api/health

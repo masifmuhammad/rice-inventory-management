@@ -88,7 +88,7 @@ app.get('/api/health', asyncHandler(async (req, res) => {
   res.status(ready ? 200 : 503).json({
     status: ready ? 'OK' : 'DEGRADED',
     database: ready ? 'connected' : 'disconnected',
-    revision: process.env.RENDER_GIT_COMMIT || null,
+    revision: process.env.APP_REVISION || process.env.RENDER_GIT_COMMIT || null,
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });

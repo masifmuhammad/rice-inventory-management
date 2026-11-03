@@ -1,4 +1,69 @@
-# Deploy to Render
+# Production hosting
+
+The current production setup uses **Oracle for the app and primary PostgreSQL
+database**, with **Neon for backups**. The Oracle Docker image includes the latest
+React frontend, so the whole app is available at
+<https://193.123.81.103.nip.io>. The existing Vercel frontend at
+<https://rice-inventory-management-rh2d.vercel.app> forwards `/api/*` to Oracle
+using `frontend/vercel.json`; its Vercel project root must be `frontend`.
+Leave `REACT_APP_API_URL` unset for that proxy setup.
+
+| Component | Purpose |
+| --- | --- |
+| Oracle `193.123.81.103` | Express backend and primary PostgreSQL 18 database; also serves React |
+| Vercel | Existing alternate frontend; API requests proxy to Oracle |
+| Neon `neondb` | Original Render-era data in `public`, plus rolling Oracle dump backups in `oracle_backups.snapshots` |
+| Render | Historical deployment retained; not the active backend |
+
+The November 3 recovery preserves the newer Neon business as the default and
+imports the two older Oracle businesses separately. The newest account/password
+is retained; the older account has the same email, so its business memberships
+and historical user references map to that account. Original Oracle and Neon
+backups remain available independently. Stock and cash are never combined across
+businesses.
+
+## Oracle operations
+
+Production files live in `/home/ubuntu/rice-live/`: `compose.yml`, `.env`,
+`.env.backup`, `backup.sh`, and `backups/`. Configuration is in
+`deploy/oracle/compose.yml`. PostgreSQL uses the dedicated `rice-live-postgres18`
+Docker volume. Its port is not published. Caddy retains its existing certificates
+and proxies to the `rice-live:5000` network alias. The app's local health endpoint
+is `http://127.0.0.1:5056/api/health`.
+
+`/api/health` must return JSON with `status: OK`, `database: connected`, and the
+release commit in `revision`. A frontend page returned from `/api/health` means
+API routing is broken, even if the HTTP status is 200.
+
+The backend does **not** update just because Vercel redeploys. For a release,
+build the repository's Dockerfile, label the image with
+`org.opencontainers.image.revision=<commit>`, transfer/load it on Oracle, update
+`APP_IMAGE` and `APP_REVISION` in the private production `.env`, and run
+`docker compose --env-file .env -f compose.yml up -d app`. Take a backup first;
+check the health revision, sign-in, and stock/cash reads afterward. Never rebuild
+the frontend on the 1 GB Oracle instance; build it locally or in CI.
+
+## Backups and rollback
+
+Run `bash /home/ubuntu/rice-live/backup.sh` to save a complete PostgreSQL custom
+dump on Oracle and upload it to Neon. The uploader downloads the stored bytes and
+checks SHA-256 before reporting success. The latest seven uploaded snapshots are
+kept in `oracle_backups.snapshots`; the original `public` schema is untouched.
+A daily cron entry runs the same script under a lock and writes `backup.log`.
+Check that log and the most recent snapshot timestamp regularly.
+
+For recovery, download a snapshot's `archive` bytea to a file, verify its recorded
+SHA-256, and restore with PostgreSQL 18 `pg_restore` into a **new empty database**.
+Validate record counts, stock and cash before switching `PRIMARY_DATABASE_URL`.
+Never restore over the only working database. Retain the prior image and database
+until the replacement is verified. The pre-recovery Oracle containers/volume are
+retained for rollback; do not run `docker compose down -v` or prune volumes.
+
+This setup adds no paid resources. Actual free-tier eligibility, account billing
+and usage limits remain controlled by Oracle, Neon and Vercel. Scheduled Render
+keep-awake pings are disabled so they do not consume idle compute allowances.
+
+## Historical Render setup
 
 The production layout is one Docker web service on Render's free plan serving both React and Express, with a free PostgreSQL database on [Neon](https://neon.tech). Render's own free PostgreSQL is deleted after 30 days, so it is not used. The free web service sleeps after 15 minutes idle; the first visit after that takes about a minute. The frontend calls /api on the same HTTPS origin. There is no separate frontend host or CORS setup to maintain.
 
