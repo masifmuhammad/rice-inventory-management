@@ -6,9 +6,14 @@ React frontend, so the whole app is available at
 <https://193.123.81.103.nip.io> and <https://api.999rice.online> (both names
 are on one Caddy site block; the server's Caddyfile is a local edit, not the
 repo copy). The public site <https://www.999rice.online> (apex 308-redirects to
-www) is the Vercel frontend, which forwards `/api/*` to `api.999rice.online`
-using `frontend/vercel.json`; its Vercel project root must be `frontend`.
-Leave `REACT_APP_API_URL` unset for that proxy setup. DNS is at Namecheap:
+www) is the Vercel frontend; its Vercel project root must be `frontend`.
+Vercel **Production** sets `REACT_APP_API_URL=https://api.999rice.online/api`, so
+browsers call Oracle directly and the rate limiters and audit log see real client
+IPs. Proxying through Vercel would make every user share Vercel's egress IP. For
+that reason Oracle's `~/rice-live/compose.yml` lists the www, apex and vercel.app
+origins in `CORS_ORIGINS`, and the CSP in `frontend/vercel.json` allows
+`api.999rice.online` in `connect-src`. The `/api/*` rewrite in `vercel.json` is
+only a fallback for preview deploys. DNS is at Namecheap:
 `A @ 216.198.79.1`, `CNAME www <project>.vercel-dns-017.com`, `A api 193.123.81.103`.
 
 | Component | Purpose |
