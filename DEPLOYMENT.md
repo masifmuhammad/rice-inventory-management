@@ -3,10 +3,13 @@
 The current production setup uses **Oracle for the app and primary PostgreSQL
 database**, with **Neon for backups**. The Oracle Docker image includes the latest
 React frontend, so the whole app is available at
-<https://193.123.81.103.nip.io>. The existing Vercel frontend at
-<https://rice-inventory-management-rh2d.vercel.app> forwards `/api/*` to Oracle
+<https://193.123.81.103.nip.io> and <https://api.999rice.online> (both names
+are on one Caddy site block; the server's Caddyfile is a local edit, not the
+repo copy). The public site <https://www.999rice.online> (apex 308-redirects to
+www) is the Vercel frontend, which forwards `/api/*` to `api.999rice.online`
 using `frontend/vercel.json`; its Vercel project root must be `frontend`.
-Leave `REACT_APP_API_URL` unset for that proxy setup.
+Leave `REACT_APP_API_URL` unset for that proxy setup. DNS is at Namecheap:
+`A @ 216.198.79.1`, `CNAME www <project>.vercel-dns-017.com`, `A api 193.123.81.103`.
 
 | Component | Purpose |
 | --- | --- |
